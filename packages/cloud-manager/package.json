@@ -1,0 +1,20 @@
+{
+  "name": "@fish/cloud-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fish bot multi-tenant cloud manager: hosting, gateway, relay billing.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  },
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,501 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+@import './styles/glass.css';
+
+/* Tailwind v4: dark mode driven by a .dark class, not a media query */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    position: relative;
+    font-family: var(--font-ui);
+    /* Apple sets UI text slightly tight; at 15px this is where it reads right */
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Low-saturation wash. The glass re-saturates it, so anything punchy here
+       comes back oversaturated through the material. */
+    background:
+      radial-gradient(1000px 680px at 16% 6%, rgb(255 255 255 / 0.6) 0%, transparent 62%),
+      linear-gradient(
+        140deg,
+        #e2dffc 0%,
+        #ecdcf8 28%,
+        #f6e0ef 52%,
+        #ecdff6 76%,
+        #e4e0fa 100%
+      );
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    /* Not flat black: refraction needs tonal variation behind the sheet to
+       bend, and pure #000 gives it nothing to work with. */
+    background:
+      radial-gradient(1200px 800px at 15% 0%, #241b2c 0%, transparent 60%),
+      radial-gradient(1000px 700px at 85% 100%, #17222b 0%, transparent 55%),
+      linear-gradient(160deg, #121114 0%, #16151a 55%, #121418 100%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.021em;
+  }
+
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+  }
+
+  #root {
+    @apply min-h-screen;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Overlay scrollbars, the way macOS draws them: no track, thumb only. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(0 0 0 / 0.18);
+    border-radius: var(--r-capsule);
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(0 0 0 / 0.32);
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.2);
+    background-clip: content-box;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 255 255 / 0.34);
+    background-clip: content-box;
+  }
+
+  * {
+    scrollbar-color: rgb(0 0 0 / 0.2) transparent;
+    scrollbar-width: thin;
+  }
+
+  .dark * {
+    scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: 2px;
+  }
+
+  /* Reduced motion: no transitions anywhere. Has to be !important, because
+     Tailwind transition utilities (transition-all duration-300 on the
+     sidebar) sit in the utilities layer and outrank component rules. A
+     300ms color transition under reduced motion also made the glass runtime
+     read a mid-transition tint after a theme switch. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Text hierarchy. Both spellings exist across the codebase. */
+  .text-theme,
+  .text-primary {
+    color: var(--text-primary);
+  }
+
+  .text-theme-secondary,
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+
+  .text-theme-muted,
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  .text-theme-hint,
+  .text-hint {
+    color: var(--text-hint);
+  }
+
+  /* Surfaces. These are flat fills used on top of a glass sheet -- they must
+     not blur, or two sheets stack and both go muddy. */
+  .bg-theme-card {
+    background: rgb(var(--glass-tint) / var(--glass-alpha-regular));
+  }
+
+  .bg-theme-item,
+  .bg-item {
+    background: var(--fill-quiet);
+  }
+
+  .bg-theme-item-hover {
+    background: var(--fill-quiet-hover);
+  }
+
+  .hover\:bg-theme-item-hover:hover,
+  .bg-item-hover:hover {
+    background: var(--fill-quiet-hover);
+  }
+
+  .bg-theme-selected,
+  .bg-selected {
+    background: var(--fill-selected);
+  }
+
+  .bg-theme-input {
+    background: var(--fill-input);
+  }
+
+  /* Borders collapse to hairlines: Liquid Glass separates with material
+     steps, and a visible 1px grey line reads as a seam in the sheet. */
+  .border-theme,
+  .border-theme-input {
+    border-color: var(--hairline);
+  }
+
+  .border-theme-divider,
+  .border-divider {
+    border-color: var(--hairline);
+  }
+
+  /* Panel container. Aliased onto the glass material in glass.css, so the
+     52 existing call sites pick up refraction and the specular rim as-is. */
+  .card {
+    border-radius: var(--r-panel);
+  }
+
+  /* Popover surface: thick glass, because menus hold readable text. */
+  .bg-popup {
+    border-radius: var(--r-card);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(105deg, var(--accent-from) 0%, var(--accent-to) 100%);
+  }
+
+  .gradient-primary-br {
+    background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%);
+  }
+
+  /*
+   * Primary action. The one place the accent gets a full fill, so it needs
+   * to look lit rather than painted: the rim highlight sits inside the
+   * gradient and the shadow is tinted with the accent, not grey.
+   */
+  .btn-primary {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--r-capsule);
+    padding: 0.625rem 1.25rem;
+    font-weight: 590;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    color: #fff;
+    background: linear-gradient(105deg, var(--accent-from) 0%, var(--accent-to) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      inset 0 -1px 0 rgb(0 0 0 / 0.08),
+      0 1px 2px rgb(219 39 119 / 0.2),
+      0 8px 20px -6px rgb(219 39 119 / 0.45);
+    transition:
+      box-shadow var(--dur-base) var(--ease-glass),
+      transform var(--dur-fast) var(--ease-glass),
+      filter var(--dur-fast) var(--ease-glass);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.35),
+      inset 0 -1px 0 rgb(0 0 0 / 0.08),
+      0 1px 2px rgb(219 39 119 / 0.22),
+      0 12px 28px -8px rgb(219 39 119 / 0.55);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.97);
+    filter: brightness(0.97);
+  }
+
+  .btn-primary:disabled {
+    filter: saturate(0.25);
+    opacity: 0.5;
+    box-shadow: none;
+    transform: none;
+  }
+
+  /*
+   * Secondary action: a glass pill. Carries no accent, so it never competes
+   * with the primary button next to it.
+   */
+  .btn-glass {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--r-capsule);
+    padding: 0.625rem 1.25rem;
+    font-weight: 510;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    background-color: rgb(var(--glass-tint) / var(--glass-alpha-raised));
+    backdrop-filter: blur(9px) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(9px) saturate(var(--glass-saturate));
+    box-shadow:
+      inset 0 1px 0 var(--spec-top),
+      inset 0 -1px 0 var(--spec-bottom),
+      inset 0 6px 10px -9px var(--lens-top),
+      inset 0 -6px 10px -9px var(--lens-bottom),
+      0 0 0 0.5px var(--edge-shade),
+      0 1px 2px rgb(var(--shade) / var(--shade-alpha-near)),
+      0 4px 12px -4px rgb(var(--shade) / var(--shade-alpha-far));
+    transition:
+      background-color var(--dur-base) var(--ease-glass),
+      transform var(--dur-fast) var(--ease-glass);
+  }
+
+  .btn-glass:hover {
+    background-color: rgb(var(--glass-tint) / calc(var(--glass-alpha-raised) + 0.12));
+  }
+
+  .btn-glass:active {
+    transform: scale(0.97);
+  }
+
+  /*
+   * Text fields. Recessed rather than raised: the inner shadow reads as a
+   * well cut into the glass, which is how iOS 26 draws inputs.
+   */
+  .input-field {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border-radius: var(--r-control);
+    border: 1px solid var(--hairline);
+    background: var(--fill-input);
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.04);
+    transition:
+      border-color var(--dur-fast) var(--ease-glass),
+      box-shadow var(--dur-fast) var(--ease-glass),
+      background var(--dur-fast) var(--ease-glass);
+  }
+
+  .input-field:hover {
+    background: var(--fill-quiet-hover);
+  }
+
+  .input-field:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgb(var(--glass-tint) / 0.6);
+    box-shadow:
+      inset 0 1px 2px rgb(0 0 0 / 0.03),
+      0 0 0 3.5px var(--accent-soft);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-hint);
+  }
+
+  .input-field:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /*
+   * Switches. The knob is the one thing in the UI that reads as solid,
+   * polished glass -- it sits above the track and casts onto it.
+   */
+  .switch {
+    @apply relative inline-flex items-center cursor-pointer;
+  }
+
+  .switch-toggle,
+  .switch-toggle-lg {
+    position: relative;
+    appearance: none;
+    cursor: pointer;
+    border-radius: var(--r-capsule);
+    background: rgb(120 120 128 / 0.16);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.07);
+    transition:
+      background var(--dur-base) var(--ease-glass),
+      box-shadow var(--dur-base) var(--ease-glass);
+  }
+
+  .switch-toggle::before,
+  .switch-toggle-lg::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    border-radius: var(--r-capsule);
+    background: #fff;
+    box-shadow:
+      0 1px 1px rgb(0 0 0 / 0.04),
+      0 3px 8px rgb(0 0 0 / 0.16);
+    transition: transform var(--dur-base) var(--ease-glass);
+  }
+
+  .switch-toggle {
+    width: 3.25rem;
+    height: 1.75rem;
+  }
+
+  .switch-toggle::before {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .switch-toggle:checked::before {
+    transform: translateX(1.5rem);
+  }
+
+  .switch-toggle-lg {
+    width: 3.75rem;
+    height: 2rem;
+  }
+
+  .switch-toggle-lg::before {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .switch-toggle-lg:checked::before {
+    transform: translateX(1.75rem);
+  }
+
+  .switch-toggle:checked,
+  .switch-toggle-lg:checked {
+    background: linear-gradient(105deg, var(--accent-from) 0%, var(--accent-to) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 1px 3px rgb(219 39 119 / 0.3);
+  }
+
+  .dark .switch-toggle,
+  .dark .switch-toggle-lg {
+    background: rgb(120 120 128 / 0.32);
+  }
+
+  .switch-toggle:focus-visible,
+  .switch-toggle-lg:focus-visible {
+    outline: 2px solid var(--accent-ring);
+    outline-offset: 2px;
+  }
+
+  /* Accent-tinted Tailwind classes, remapped so the accent lives in one
+     place. Values match pink-500/600 in light mode, so nothing shifts there;
+     dark mode gets the softer tint it used to patch in by hand. */
+  .text-pink-500,
+  .text-pink-600 {
+    color: var(--accent) !important;
+  }
+
+  .text-pink-400 {
+    color: var(--accent) !important;
+  }
+
+  .bg-pink-500 {
+    background-color: var(--accent) !important;
+  }
+
+  .bg-pink-600,
+  .hover\:bg-pink-600:hover {
+    background-color: var(--accent-strong) !important;
+  }
+
+  .border-pink-500 {
+    border-color: var(--accent) !important;
+  }
+
+  .ring-pink-500\/20,
+  .focus\:ring-pink-500\/20:focus {
+    --tw-ring-color: var(--accent-soft) !important;
+  }
+}
+
+@layer utilities {
+  /* The one orchestrated entrance: content arriving on a tab switch. Glass
+     panels settle in rather than sliding, so this is opacity plus a short
+     lift, not a long travel. */
+  @keyframes glass-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.995);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-fade-in {
+    animation: glass-in var(--dur-slow) var(--ease-glass) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in {
+      animation-duration: 1ms;
+    }
+  }
+
+  /* Numerals that hold their column in tables and log timestamps */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}

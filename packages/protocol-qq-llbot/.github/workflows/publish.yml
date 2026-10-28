@@ -1,0 +1,277 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '选择要构建的目标平台'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - win-cli
+          - win-desktop
+          - linux-x64
+          - linux-arm64
+          - macos-arm64
+          - macos-desktop-arm64
+
+jobs:
+  build-and-release:
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: |
+          export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+          corepack enable
+          yarn install --no-immutable
+          cd src/webui/FE
+          npm install
+
+      - name: Build
+        run: |
+          yarn build
+          yarn build-webui
+
+      - name: Compress dist
+        run: |
+
+          sudo apt install zip -y
+          cd ./dist/
+          zip -r ../LuckyLillia.zip ./*
+
+      - name: Compress for Windows Cli
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'win-cli' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          mkdir luckylillia-cli-win-x64
+          cd luckylillia-cli-win-x64
+          mkdir -p bin/llbot
+          cp ../dist/使用说明.txt ./
+          cp ../dist/更新日志.txt ./
+          cp -r ../dist/* bin/llbot/
+          find bin/llbot -maxdepth 1 -name 'sign-proxy.*.node' ! -name 'sign-proxy.win-x64.node' -delete
+          wget https://github.com/linyuchen/PMHQ/releases/latest/download/pmhq-win-x64.zip
+          unzip pmhq-win-x64.zip
+          mkdir -p bin/pmhq
+          rm pmhq-win-x64.zip
+          mv pmhq-win-x64.exe bin/pmhq/pmhq.exe
+          mv pmhq.dll bin/pmhq/
+          wget https://github.com/LLOneBot/LuckyLillia.CLI/releases/latest/download/LuckyLillia-win-x64.exe
+          mv LuckyLillia-win-x64.exe LuckyLillia.exe
+          wget https://github.com/LLOneBot/exe/releases/latest/download/node.exe -O bin/llbot/node.exe
+          wget https://github.com/LLOneBot/exe/releases/latest/download/ffmpeg.exe -O bin/llbot/ffmpeg.exe
+          wget https://github.com/LLOneBot/exe/releases/latest/download/ffprobe.exe -O bin/llbot/ffprobe.exe
+          zip -r ../LuckyLillia-CLI-win-x64.zip ./*
+
+      - name: Compress for Windows Desktop
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'win-desktop' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          mkdir luckylillia-desktop-win-x64
+          cd luckylillia-desktop-win-x64
+          mkdir -p bin/llbot
+          cp ../dist/使用说明.txt ./
+          cp ../dist/更新日志.txt ./
+          cp -r ../dist/* ./bin/llbot/
+          find bin/llbot -maxdepth 1 -name 'sign-proxy.*.node' ! -name 'sign-proxy.win-x64.node' -delete
+          wget https://github.com/LLOneBot/LuckyLilliaDesktop.Avalonia/releases/latest/download/lucky-lillia-desktop-win-x64.zip
+          unzip lucky-lillia-desktop-win-x64.zip
+          rm lucky-lillia-desktop-win-x64.zip
+          mv lucky-lillia-desktop.exe LuckyLillia.exe
+          zip -r ../LuckyLillia-Desktop-win-x64.zip ./*
+
+      - name: Compress for Linux CLI x64
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-x64' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          mkdir luckylillia-cli-linux-x64
+          cd luckylillia-cli-linux-x64
+          mkdir -p bin/llbot
+          mkdir -p bin/pmhq
+          cp ../doc/使用说明-linux-cli.txt ./使用说明.txt
+          cp ../dist/更新日志.txt ./
+          cp -r ../dist/* ./bin/llbot/
+          find bin/llbot -maxdepth 1 -name 'sign-proxy.*.node' ! -name 'sign-proxy.linux-x64-*.node' -delete
+          wget https://github.com/linyuchen/PMHQ/releases/latest/download/pmhq-linux-x64.zip
+          unzip pmhq-linux-x64.zip
+          rm pmhq-linux-x64.zip
+          mv pmhq-linux-x64 bin/pmhq/pmhq
+          mv libpmhq.so bin/pmhq/
+          wget https://github.com/LLOneBot/exe/releases/latest/download/node-linux-x64 -O bin/llbot/node
+          wget https://github.com/LLOneBot/LuckyLillia.CLI/releases/latest/download/LuckyLillia-linux-x64 -O LuckyLillia
+          cp ../script/start-linux.sh ./start.sh
+          zip -r ../LuckyLillia-CLI-linux-x64.zip ./*
+
+      - name: Compress for Linux CLI arm64
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-arm64' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          mkdir luckylillia-cli-linux-arm64
+          cd luckylillia-cli-linux-arm64
+          mkdir -p bin/llbot
+          mkdir -p bin/pmhq
+          cp ../doc/使用说明-linux-cli.txt ./使用说明.txt
+          cp ../dist/更新日志.txt ./
+          cp -r ../dist/* ./bin/llbot/
+          find bin/llbot -maxdepth 1 -name 'sign-proxy.*.node' ! -name 'sign-proxy.linux-arm64-*.node' -delete
+          wget https://github.com/linyuchen/PMHQ/releases/latest/download/pmhq-linux-arm64.zip
+          unzip pmhq-linux-arm64.zip
+          rm pmhq-linux-arm64.zip
+          mv pmhq-linux-arm64 bin/pmhq/pmhq
+          mv libpmhq.so bin/pmhq/
+          wget https://github.com/LLOneBot/exe/releases/latest/download/node-linux-arm64 -O bin/llbot/node
+          wget https://github.com/LLOneBot/LuckyLillia.CLI/releases/latest/download/LuckyLillia-linux-arm64 -O LuckyLillia
+          cp ../script/start-linux.sh ./start.sh
+          zip -r ../LuckyLillia-CLI-linux-arm64.zip ./*
+
+      - name: Compress for macOS CLI arm64
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'macos-arm64' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          mkdir luckylillia-cli-macos-arm64
+          cd luckylillia-cli-macos-arm64
+          mkdir -p bin/llbot
+          cp ../doc/使用说明-macos-cli.txt ./使用说明.txt
+          cp ../script/start-mac.sh ./start.sh
+          cp ../dist/更新日志.txt ./
+          cp -r ../dist/* ./bin/llbot/
+          find bin/llbot -maxdepth 1 -name 'sign-proxy.*.node' ! -name 'sign-proxy.darwin-arm64.node' -delete
+          wget https://github.com/LLOneBot/exe/releases/latest/download/node-darwin-arm64 -O bin/llbot/node
+          wget https://github.com/LLOneBot/LuckyLillia.CLI/releases/latest/download/LuckyLillia-macos-arm64 -O LuckyLillia
+          tar -cJvf ../LuckyLillia-CLI-macos-arm64.tar.xz ./*
+
+      - name: Compress for macOS Desktop arm64
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'macos-desktop-arm64' || startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          mkdir luckylillia-desktop-macos-arm64
+          cd luckylillia-desktop-macos-arm64
+          mkdir -p bin/llbot
+          cp ../doc/使用说明.txt ./使用说明.txt
+          cp ../dist/更新日志.txt ./
+          cp -r ../dist/* ./bin/llbot/
+          find bin/llbot -maxdepth 1 -name 'sign-proxy.*.node' ! -name 'sign-proxy.darwin-arm64.node' -delete
+          wget https://github.com/LLOneBot/LuckyLilliaDesktop.Avalonia/releases/latest/download/lucky-lillia-desktop-macos-arm64.tar.gz
+          tar -xzvf lucky-lillia-desktop-macos-arm64.tar.gz
+          rm lucky-lillia-desktop-macos-arm64.tar.gz
+          tar -cJvf ../LuckyLillia-Desktop-macos-arm64.tar.xz ./*
+
+      - name: Compress for Docker
+        run: |
+          cp script/install-llbot-docker.sh LuckyLillia-Docker.sh
+
+      # 手动触发时只上传 artifacts
+      - name: Upload LuckyLillia.zip
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia
+          path: LuckyLillia.zip
+          retention-days: 30
+
+      - name: Upload LuckyLillia-Desktop-win-x64.zip
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.event.inputs.target == 'all' || github.event.inputs.target == 'win-desktop') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-Desktop-win-x64
+          path: LuckyLillia-Desktop-win-x64.zip
+          retention-days: 30
+
+      - name: Upload LuckyLillia-CLI-win-x64.zip
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.event.inputs.target == 'all' || github.event.inputs.target == 'win-cli') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-CLI-win-x64
+          path: LuckyLillia-CLI-win-x64.zip
+          retention-days: 30
+
+      - name: Upload LuckyLillia-CLI-linux-x64.zip
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-x64') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-CLI-linux-x64
+          path: LuckyLillia-CLI-linux-x64.zip
+          retention-days: 30
+
+      - name: Upload LuckyLillia-CLI-linux-arm64.zip
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.event.inputs.target == 'all' || github.event.inputs.target == 'linux-arm64') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-CLI-linux-arm64
+          path: LuckyLillia-CLI-linux-arm64.zip
+          retention-days: 30
+
+      - name: Upload LuckyLillia-CLI-macos-arm64.tar.xz
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.event.inputs.target == 'all' || github.event.inputs.target == 'macos-arm64') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-CLI-macos-arm64
+          path: LuckyLillia-CLI-macos-arm64.tar.xz
+          retention-days: 30
+
+      - name: Upload LuckyLillia-Desktop-macos-arm64.tar.xz
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.event.inputs.target == 'all' || github.event.inputs.target == 'macos-desktop-arm64') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-Desktop-macos-arm64
+          path: LuckyLillia-Desktop-macos-arm64.tar.xz
+          retention-days: 30
+
+      - name: Upload LuckyLillia-Docker.sh
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LuckyLillia-Docker
+          path: LuckyLillia-Docker.sh
+          retention-days: 30
+
+      # tag 触发时创建 release
+      - name: Extract version from tag
+        if: startsWith(github.ref, 'refs/tags/')
+        id: get-version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release body from changelog
+        if: startsWith(github.ref, 'refs/tags/')
+        id: changelog
+        run: |
+          # 取第一个分段
+          content="$(awk 'BEGIN{RS="=================";ORS=""} NR==1{print}' doc/更新日志.txt)"
+          # 去掉前两行
+          body="$(echo "$content" | tail -n +3)"
+          # 去除前后空白
+          body="$(echo "$body" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          # 输出到 GITHUB_OUTPUT
+          echo "BODY<<EOF" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: 'LuckyLillia.zip, LuckyLillia-Desktop-win-x64.zip, LuckyLillia-Desktop-macos-arm64.tar.xz, LuckyLillia-CLI-win-x64.zip, LuckyLillia-CLI-linux-x64.zip, LuckyLillia-CLI-linux-arm64.zip, LuckyLillia-CLI-macos-arm64.tar.xz, LuckyLillia-Docker.sh'
+          draft: true
+          token: ${{ secrets.RELEASE_TOKEN }}
+          name: LuckyLilliaBot v${{ steps.get-version.outputs.VERSION }}
+          body: |
+            ${{ steps.changelog.outputs.BODY }}
+
+            **Windows Desktop 版本只支持 Windows Server 2012 R2 / Windows 10 及以上版本**
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          npm install -g npm@latest
+          mv dist package
+          tar -czf luckylillia-dist.tgz package/*
+          npm publish luckylillia-dist.tgz --provenance

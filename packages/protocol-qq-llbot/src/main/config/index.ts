@@ -1,0 +1,354 @@
+import { Context, Service } from 'cordis'
+import { DATA_DIR, selfInfo } from '@/common/globalVars'
+import { defaultConfig } from './defaultConfig'
+import { Config as LLBotConfig, WebUIConfig } from '@/common/types'
+import { Dict } from 'cosmokit'
+import path from 'node:path'
+import fs from 'node:fs'
+import JSON5 from 'json5'
+import { mergeNewProperties } from '@/common/utils'
+import { getSpecifiedUin, isDevMode } from '@/common/utils/environment'
+
+declare module 'cordis' {
+  interface Context {
+    config: Config
+  }
+}
+
+export default class Config extends Service {
+  private configPath: string | undefined
+  private config: LLBotConfig | null = null
+  private watching = false
+  private skipNextWatch = false
+  private defaultConfigPath = path.join(import.meta.dirname, 'default_config.json')
+  private logger
+  private readonly WATCH_DEBOUNCE_MS = 2000
+  /** 保存 fs.watchFile 的回调引用，用于 unwatchFile 清理 */
+  private watchFileListener?: (curr: fs.Stats, prev: fs.Stats) => void
+
+  constructor(ctx: Context) {
+    super(ctx, 'config')
+    this.logger = ctx.logger('config')
+  }
+
+  async [Service.init]() {
+    return () => {
+      if (this.configPath && this.watchFileListener) {
+        fs.unwatchFile(this.configPath, this.watchFileListener)
+        this.watchFileListener = undefined
+      }
+    }
+  }
+
+  listenChange(cb: (config: LLBotConfig) => void) {
+    this.logger.info('配置文件位于', this.configPath)
+
+    this.config = this.get()
+    if (this.configPath) {
+      let lastReloadTime = 0
+      this.watchFileListener = () => {
+        if (!this.watching) return
+        if (this.skipNextWatch) {
+          this.skipNextWatch = false
+          return
+        }
+        // 防止 fs.watchFile 短时间内多次触发
+        const now = Date.now()
+        if (now - lastReloadTime < this.WATCH_DEBOUNCE_MS) return
+        lastReloadTime = now
+        this.logger.info('配置重載')
+        const c = this.reloadConfig()
+        cb(c)
+      }
+      fs.watchFile(this.configPath, { persistent: false, interval: 1000 }, this.watchFileListener)
+      setTimeout(() => this.watching = true, 1500)
+    }
+  }
+
+  get(cache = true) {
+    if (this.config && cache) {
+      return this.config
+    }
+
+    // 登录前 selfInfo.uin 为空: 若 argv 带了 -q <uin> 且对应 config_<uin>.json 已存在, 提前用它
+    // (让 WebUI/logLevel 直接起在目标账号配置上, 免去登录后从 default 端口/token 重启的窗口)。
+    // 只读不建文件: 新账号 (文件不存在) 仍走 default, 建文件留给登录成功后的 get(false)。
+    let uin = selfInfo.uin
+    if (!uin) {
+      const argUin = getSpecifiedUin()
+      if (argUin && fs.existsSync(path.join(DATA_DIR, `config_${argUin}.json`))) {
+        uin = argUin
+      }
+    }
+    this.configPath = uin ? path.join(DATA_DIR, `config_${uin}.json`) : undefined
+
+    return this.reloadConfig()
+  }
+
+  private getDefaultConfig(): LLBotConfig {
+    const _defaultConfig = { ...defaultConfig }
+    const defaultConfigFromFile = fs.readFileSync(this.defaultConfigPath, 'utf-8')
+    try {
+      const parsedDefaultConfig: LLBotConfig = JSON5.parse(defaultConfigFromFile)
+      Object.assign(_defaultConfig, parsedDefaultConfig)
+    } catch (e) {
+      this.logger.error('解析 default_config.json 错误', e)
+    }
+    return _defaultConfig
+  }
+
+  private reloadConfig(): LLBotConfig {
+    if (!this.configPath) {
+      return this.getDefaultConfig()
+    }
+    if (!fs.existsSync(this.configPath)) {
+      this.config = this.getDefaultConfig()
+      this.set(this.config)
+      return this.config
+    }
+    else {
+      const data = fs.readFileSync(this.configPath, 'utf-8')
+      let jsonData: LLBotConfig = defaultConfig
+      try {
+        jsonData = JSON5.parse(data)
+        this.logger.info('配置加载成功')
+        jsonData = this.migrateConfig(jsonData)
+        mergeNewProperties(defaultConfig, jsonData)
+        jsonData.webui = this.migrateWebUIToken(jsonData.webui)
+        jsonData = this.cleanupConfig(defaultConfig, jsonData) as LLBotConfig
+        // 只在配置内容实际变化时才写入文件，避免触发 watchFile 导致无限重载
+        const newData = JSON.stringify(jsonData, null, 2)
+        if (newData !== data) {
+          this.set(jsonData)
+        }
+        this.config = jsonData
+        return this.config
+      } catch (e) {
+        this.logger.error(`${this.configPath} json 内容不合格`, e)
+        this.config = this.getDefaultConfig()
+        return this.config
+      }
+    }
+  }
+
+  set(config: LLBotConfig) {
+    this.config = config
+    this.writeConfig(config)
+  }
+
+  private writeConfig(config: LLBotConfig) {
+    if (!this.configPath) {
+      return
+    }
+    // 跳过本次自身写入触发的 watchFile 回调
+    this.skipNextWatch = true
+    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2), 'utf-8')
+  }
+
+
+  /**
+   * 递归清理配置对象，以 defaultConfig 为基准，删除 oldConfig 中不存在于 defaultConfig 的 key
+   */
+  private cleanupConfig(defaultConfig: Dict, oldConfig: Dict): Dict {
+    // 如果不是对象，直接返回
+    if (typeof defaultConfig !== 'object' || defaultConfig === null || Array.isArray(defaultConfig)) {
+      return oldConfig
+    }
+    if (typeof oldConfig !== 'object' || oldConfig === null) {
+      return oldConfig
+    }
+
+    const cleaned: Dict = {}
+
+    // 遍历 defaultConfig 的 key
+    for (const key in defaultConfig) {
+      if (defaultConfig.hasOwnProperty(key)) {
+        // 如果 oldConfig 中存在该 key
+        if (oldConfig.hasOwnProperty(key)) {
+          const defaultValue = defaultConfig[key]
+          const oldValue = oldConfig[key]
+
+          // 如果 defaultValue 是普通对象（非数组），递归清理
+          if (
+            typeof defaultValue === 'object' &&
+            defaultValue !== null &&
+            !Array.isArray(defaultValue) &&
+            typeof oldValue === 'object' &&
+            oldValue !== null &&
+            !Array.isArray(oldValue)
+          ) {
+            cleaned[key] = this.cleanupConfig(defaultValue, oldValue)
+          } else {
+            // 否则直接使用 oldConfig 的值
+            cleaned[key] = oldValue
+          }
+        } else {
+          // oldConfig 中不存在该 key，使用 defaultConfig 的值
+          cleaned[key] = defaultConfig[key]
+        }
+      }
+    }
+
+    return cleaned
+  }
+
+  private migrateConfig(oldConfig: Dict): LLBotConfig {
+    let migratedConfig = oldConfig
+    if (oldConfig.musicSignUrl && oldConfig.musicSignUrl.includes('linyuchen')) {
+      oldConfig.musicSignUrl = defaultConfig.musicSignUrl
+    }
+    // 先迁移 ob11.connect 数组格式
+    if (!oldConfig.ob11 || !Array.isArray(oldConfig.ob11.connect)) {
+      const ob11 = oldConfig.ob11 || {}
+      migratedConfig = {
+        ...oldConfig,
+        ob11: {
+          enable: ob11.enable || false,
+          connect: [
+            {
+              type: 'ws',
+              enable: ob11.enableWs || false,
+              port: ob11.wsPort || 3001,
+              heartInterval: oldConfig.heartInterval || 30000,
+              token: ob11.token || '',
+              messageFormat: ob11.messagePostFormat || 'array',
+              reportSelfMessage: ob11.reportSelfMessage || false,
+              reportOfflineMessage: oldConfig.receiveOfflineMsg || false,
+              debug: oldConfig.debug || false,
+            },
+            {
+              type: 'ws-reverse',
+              enable: ob11.enableWsReverse || false,
+              url: (ob11.wsReverseUrls && ob11.wsReverseUrls[0]) || '',
+              heartInterval: oldConfig.heartInterval || 30000,
+              token: ob11.token || '',
+              messageFormat: ob11.messagePostFormat || 'array',
+              reportSelfMessage: ob11.reportSelfMessage || false,
+              reportOfflineMessage: oldConfig.receiveOfflineMsg || false,
+              debug: oldConfig.debug || false,
+            },
+            {
+              type: 'http',
+              enable: ob11.enableHttp || false,
+              port: ob11.httpPort || 3000,
+              token: ob11.token || '',
+              messageFormat: ob11.messagePostFormat || 'array',
+              reportSelfMessage: ob11.reportSelfMessage || false,
+              reportOfflineMessage: oldConfig.receiveOfflineMsg || false,
+              debug: oldConfig.debug || false,
+            },
+            {
+              type: 'http-post',
+              enable: ob11.enableHttpPost || false,
+              url: (ob11.httpPostUrls && ob11.httpPostUrls[0]) || '',
+              enableHeart: ob11.enableHttpHeart || false,
+              heartInterval: oldConfig.heartInterval || 30000,
+              token: ob11.httpSecret || '',
+              messageFormat: ob11.messagePostFormat || 'array',
+              reportSelfMessage: ob11.reportSelfMessage || false,
+              reportOfflineMessage: oldConfig.receiveOfflineMsg || false,
+              debug: oldConfig.debug || false,
+            },
+          ],
+        },
+      }
+    }
+
+    // 迁移 onlyLocalhost 配置项
+    if ('onlyLocalhost' in oldConfig) {
+      const host = oldConfig.onlyLocalhost ? '127.0.0.1' : ''
+
+      if (migratedConfig.webui && !migratedConfig.webui.host) {
+        migratedConfig.webui.host = host
+      }
+      if (migratedConfig.satori && !migratedConfig.satori.host) {
+        migratedConfig.satori.host = host
+      }
+      if (migratedConfig.milky?.http && !migratedConfig.milky.http.host) {
+        migratedConfig.milky.http.host = host
+      }
+      if (Array.isArray(migratedConfig.ob11?.connect)) {
+        for (const conn of migratedConfig.ob11.connect) {
+          if ((conn.type === 'ws' || conn.type === 'http') && !conn.host) {
+            conn.host = host
+          }
+        }
+      }
+      delete migratedConfig.onlyLocalhost
+    }
+
+    return migratedConfig as LLBotConfig
+  }
+
+  private migrateWebUIToken(oldWebuiConfig: WebUIConfig & { token?: string }) {
+    if (oldWebuiConfig.token && !webuiTokenUtil.getToken()) {
+      webuiTokenUtil.setToken(oldWebuiConfig.token)
+      delete oldWebuiConfig['token']
+    }
+    return oldWebuiConfig
+  }
+}
+
+class WebUITokenUtil {
+  private token: string = ''
+
+  constructor(private readonly tokenPath: string) {
+    this.tokenPath = tokenPath
+  }
+
+  getToken() {
+    if (!this.token) {
+      if (fs.existsSync(this.tokenPath)) {
+        this.token = fs.readFileSync(this.tokenPath, 'utf-8').trim()
+      }
+    }
+    return this.token
+  }
+
+  setToken(token: string) {
+    this.token = token.trim()
+    fs.writeFileSync(this.tokenPath, token, 'utf-8')
+  }
+}
+
+export const webuiTokenUtil = new WebUITokenUtil(path.join(DATA_DIR, 'webui_token.txt'))
+
+// data/auth_token.txt (--dev: data/auth_token.dev.txt, keeps the local-manager token apart from the real one)
+class AuthTokenUtil {
+  private token: string = ''
+  private loaded = false
+
+  constructor(private readonly tokenPath: string) {
+    this.tokenPath = tokenPath
+  }
+
+  getToken() {
+    if (!this.loaded) {
+      if (fs.existsSync(this.tokenPath)) {
+        this.token = fs.readFileSync(this.tokenPath, 'utf-8').trim()
+      }
+      this.loaded = true
+    }
+    return this.token
+  }
+
+  /** 绝对路径, 给报错提示直接告诉用户去哪贴 token. */
+  getPath() {
+    return path.resolve(this.tokenPath)
+  }
+
+  setToken(token: string) {
+    this.token = token.trim()
+    fs.writeFileSync(this.tokenPath, this.token, 'utf-8')
+    this.loaded = true
+  }
+
+  reload() {
+    this.loaded = false
+    return this.getToken()
+  }
+}
+
+export const authTokenUtil = new AuthTokenUtil(path.join(DATA_DIR, isDevMode() ? 'auth_token.dev.txt' : 'auth_token.txt'))
+
+

@@ -1,0 +1,67 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Dev (直连协议)",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "tsx",
+            "args": ["watch", "src/main/main.ts", "-q", "${input:directUin}"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Dev (PMHQ)",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "tsx",
+            "args": ["watch", "src/main/main.ts", "--pmhq-port=${input:pmhqPort}"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Dev WebUI",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["--prefix", "src/webui/FE", "run", "dev", "--", "--host", "0.0.0.0"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "env": {
+                "WEBUI_PORT": "${input:webuiPort}"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "directUin",
+            "type": "promptString",
+            "description": "QQ 号（直连模式快速登录用，留空则走扫码）",
+            "default": ""
+        },
+        {
+            "id": "pmhqPort",
+            "type": "promptString",
+            "description": "PMHQ Port",
+            "default": "13000"
+        },
+        {
+            "id": "webuiPort",
+            "type": "promptString",
+            "description": "WebUI Server Port",
+            "default": "3080"
+        }
+    ]
+}

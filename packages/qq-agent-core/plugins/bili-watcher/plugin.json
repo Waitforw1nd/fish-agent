@@ -1,0 +1,16 @@
+{
+  "id": "bili-watcher",
+  "name": "B 站订阅与去重",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "category": "message",
+  "description": "云端启停 B 站轮询；订阅类型与目标由云端 B 站配置管理，桥接负责过滤与去重。",
+  "author": "fish-bot-cloud",
+  "enabledByDefault": true,
+  "capabilities": [
+    "bili.watch-filter",
+    "bili.watch-plan"
+  ],
+  "settings": {},
+  "configSchema": {}
+}

@@ -1,0 +1,480 @@
+import { selfInfo } from '@/common/globalVars'
+import {
+  GroupMember,
+  GroupMsgMask,
+  Group,
+  GroupMemberRole,
+  RawMessage,
+} from '../types'
+import { Service, Context } from 'cordis'
+import { createReadStream, promises as fsp } from 'node:fs'
+import { getMd5BufferFromFile } from '@/common/utils/file'
+import { groupCodeToGroupUin } from '@/common/utils'
+import { HighwayHttpSession } from '../helper/highway'
+import { Media } from '../proto'
+import { noop } from 'cosmokit'
+import { isCmdNotPermitted } from '@/common/protocolErrors'
+
+declare module 'cordis' {
+  interface Context {
+    ntGroupApi: NTGroupApi
+  }
+}
+
+export class NTGroupApi extends Service {
+  static inject = ['qqProtocol']
+  private groupsCache: Group[] = []
+  private groupCache: Map<number, Group> = new Map()
+  private membersCache: Map<number, GroupMember[]> = new Map()
+  private refreshingMembers: Map<number, Promise<void>> = new Map()
+
+  constructor(protected ctx: Context) {
+    super(ctx, 'ntGroupApi')
+    ctx.on('nt/group-added', () => {
+      if (this.groupsCache.length > 0) {
+        this.getGroups(true)
+      }
+    })
+    ctx.on('nt/group-removed', () => {
+      if (this.groupsCache.length > 0) {
+        this.getGroups(true)
+      }
+    })
+    ctx.on('nt/group-member-added', (data) => {
+      if (this.membersCache.has(data.groupCode)) {
+        this.getGroupMembers(data.groupCode, true)
+      }
+    })
+    ctx.on('nt/group-member-removed', (data) => {
+      if (this.membersCache.has(data.groupCode)) {
+        this.getGroupMembers(data.groupCode, true)
+      }
+    })
+    ctx.on('nt/group-mute', (data) => {
+      if (this.groupsCache.length > 0 && data.memberUid === selfInfo.uid) {
+        this.getGroups(true)
+      }
+    })
+    ctx.on('nt/group-whole-mute', () => {
+      if (this.groupsCache.length > 0) {
+        this.getGroups(true)
+      }
+    })
+    ctx.on('nt/group-admin-changed', (data) => {
+      if (this.groupsCache.length > 0 && data.targetUid === selfInfo.uid) {
+        this.getGroups(true)
+      }
+      if (this.membersCache.has(data.groupCode)) {
+        this.getGroupMembers(data.groupCode, true)
+      }
+    })
+  }
+
+  async getGroups(forceUpdate: boolean) {
+    if (forceUpdate || this.groupsCache.length === 0) {
+      const res = await this.ctx.qqProtocol.fetchGroups()
+      this.groupsCache = res.groups.map(group => ({
+        groupCode: group.groupCode,
+        groupName: group.info.groupName,
+        ownerUid: group.info.groupOwner.uid,
+        createdAt: group.info.createdTime,
+        maxMemberCount: group.info.memberMax,
+        memberCount: group.info.memberCount,
+        description: group.info.richDescription ?? '',
+        question: group.info.question ?? '',
+        announcementPreview: group.info.announcement ?? '',
+        remark: group.personInfo.remark ?? '',
+        isPin: !!group.info.topTime,
+        groupShutupExpireTime: group.info.groupShutupExpireTime ?? 0,
+        personShutupExpireTime: group.personInfo.personShutupExpireTime ?? 0,
+        memberRole: group.personInfo.memberRole as 2 | 3 | 4,
+        msgMask: group.personInfo.msgMask as 1 | 2 | 3 | 4
+      }))
+    }
+    return this.groupsCache
+  }
+
+  async getGroup(groupCode: number, forceUpdate: boolean) {
+    const groups = await this.getGroups(forceUpdate)
+    const group = groups.find(e => e.groupCode === groupCode)
+    if (group) {
+      return group
+    } else if (forceUpdate || !this.groupCache.has(groupCode)) {
+      const { info } = await this.ctx.qqProtocol.fetchGroup(groupCode)
+      const group = {
+        groupCode: info.groupCode,
+        groupName: info.results.richGroupName ?? info.results.groupName,
+        ownerUid: info.results.ownerUid,
+        createdAt: info.results.groupCreateTime,
+        maxMemberCount: info.results.maxMemberNum,
+        memberCount: info.results.memberNum,
+        description: info.results.description ?? '',
+        question: info.results.question,
+        announcementPreview: '',
+        remark: '',
+        isPin: false,
+        groupShutupExpireTime: 0,
+        personShutupExpireTime: info.results.shutUpMeTimestamp,
+        memberRole: GroupMemberRole.Normal,
+        msgMask: GroupMsgMask.AllowNotify
+      }
+      this.groupCache.set(group.groupCode, group)
+      return group
+    }
+    return this.groupCache.get(groupCode)!
+  }
+
+  async getGroupMembers(groupCode: number, forceUpdate: boolean) {
+    if (this.refreshingMembers.has(groupCode)) {
+      await this.refreshingMembers.get(groupCode)
+    } else if (forceUpdate || !this.membersCache.has(groupCode)) {
+      const { promise, resolve, reject } = Promise.withResolvers<void>()
+      this.refreshingMembers.set(groupCode, promise)
+      const members = []
+      let cookie: Buffer | undefined
+      try {
+        while (true) {
+          const res = await this.ctx.qqProtocol.fetchGroupMembers(groupCode, cookie)
+          for (const member of res.members) {
+            members.push({
+              uin: member.id.uin,
+              uid: member.id.uid,
+              nick: member.memberName,
+              cardName: member.memberCard.memberCard ?? '',
+              specialTitle: member.specialTitle ?? '',
+              level: member.level?.level ?? 0,
+              joinedAt: member.joinTimestamp,
+              lastSpokeAt: member.lastMsgTimestamp,
+              shutupExpireTime: member.shutUpTimestamp ?? 0,
+              role: {
+                0: GroupMemberRole.Normal,
+                1: GroupMemberRole.Owner,
+                2: GroupMemberRole.Admin
+              }[member.permission ?? 0]!
+            })
+          }
+          cookie = res.cookie
+          if (!cookie) break
+        }
+      } catch (e) {
+        this.refreshingMembers.delete(groupCode)
+        // 当前协议端没有拉成员列表的权限 (手表): 缓存空列表当作"已知没有", 否则每条群消息都会
+        // 再撞一次注定被拒的包并刷一行错误日志. resolve 掉让并发等待者也走空列表, 别各自抛.
+        if (isCmdNotPermitted(e)) {
+          this.ctx.logger.warn('[Group] member list unavailable on this protocol, degrading to message-carried info')
+          this.membersCache.set(groupCode, [])
+          resolve()
+          return []
+        }
+        promise.catch(noop) // 防止出现 unhandledRejection
+        reject(e)
+        throw e
+      }
+      this.membersCache.set(groupCode, members)
+      resolve()
+      this.refreshingMembers.delete(groupCode)
+    }
+    return this.membersCache.get(groupCode)!
+  }
+
+  async getGroupMemberByUid(groupCode: number, uid: string, forceUpdate: boolean) {
+    let members = this.membersCache.get(groupCode)
+    const member = members?.find(e => e.uid === uid)
+    if (forceUpdate || !member) {
+      members = await this.getGroupMembers(groupCode, true)
+    } else {
+      return member
+    }
+    return members.find(e => e.uid === uid)
+  }
+
+  /**
+   * 消息转换专用: 拿群成员信息, 拿不到就用消息自带的发送者信息凑一个。
+   *
+   * 手表协议没有拉成员列表的 cmd 权限 (-10122), 硬等这一步只能把整条消息丢掉。level / 特殊头衔 /
+   * 加群时间这些拿不到就留默认值 —— 少几个字段远好过消息不见。role 一律以消息里的为准, 它比
+   * 缓存新。
+   */
+  async getGroupMemberOrFromMessage(message: RawMessage): Promise<GroupMember> {
+    try {
+      const member = await this.getGroupMemberByUid(message.peerUin, message.senderUid, false)
+      if (member) return { ...member, role: message.memberRole }
+    } catch (e) {
+      this.ctx.logger.debug('[Group] member lookup failed, using message-carried sender info:', e)
+    }
+    return {
+      uin: message.senderUin,
+      uid: message.senderUid,
+      nick: message.sendNickName,
+      cardName: message.sendMemberName,
+      specialTitle: '',
+      level: 0,
+      joinedAt: 0,
+      lastSpokeAt: message.msgTime,
+      shutupExpireTime: 0,
+      role: message.memberRole,
+    }
+  }
+
+  async getGroupMemberByUin(groupCode: number, uin: number, forceUpdate: boolean) {
+    let members = this.membersCache.get(groupCode)
+    const member = members?.find(e => e.uin === uin)
+    if (forceUpdate || !member) {
+      members = await this.getGroupMembers(groupCode, true)
+    } else {
+      return member
+    }
+    return members.find(e => e.uin === uin)
+  }
+
+  async getGroupNotifications(doubt: boolean, count: number, startSeq?: number) {
+    const res = await this.ctx.qqProtocol.fetchGroupNotifies(
+      count,
+      doubt,
+      startSeq ? BigInt(startSeq) : undefined
+    )
+    return {
+      nextStartSeq: Number(res.newLatestSequence),
+      notifications: res.requests.map(e => ({
+        ...e,
+        sequence: Number(e.sequence)
+      }))
+    }
+  }
+
+  async setGroupRequest(
+    doubt: boolean,
+    groupCode: number,
+    seq: number,
+    type: number,
+    accept: boolean,
+    reason = ''
+  ) {
+    return await this.ctx.qqProtocol.handleGroupRequest(
+      BigInt(seq),
+      type,
+      groupCode,
+      accept ? 1 : 2,
+      reason,
+      doubt,
+    )
+  }
+
+  async quitGroup(groupCode: number) {
+    return await this.ctx.qqProtocol.leaveGroup(groupCode)
+  }
+
+  async kickGroupMember(groupCode: number, kickUids: string[], refuseForever = false, kickReason = '') {
+    return await this.ctx.qqProtocol.kickGroupMember(groupCode, kickUids, refuseForever, kickReason)
+  }
+
+  /** duration 为秒数，为 0 时解除禁言 */
+  async muteGroupMember(groupCode: number, memList: { uid: string, duration: number }[]) {
+    return await this.ctx.qqProtocol.muteGroupMember(+groupCode, memList)
+  }
+
+  async muteGroup(groupCode: number, shutUp: boolean) {
+    return await this.ctx.qqProtocol.muteAllGroupMembers(groupCode, shutUp)
+  }
+
+  async setGroupMemberCard(groupCode: number, memberUid: string, cardName: string) {
+    return await this.ctx.qqProtocol.setGroupMemberCard(groupCode, memberUid, cardName)
+  }
+
+  async setGroupMemberAdmin(groupCode: number, memberUid: string, isSet: boolean) {
+    return await this.ctx.qqProtocol.setGroupMemberAdmin(groupCode, memberUid, isSet)
+  }
+
+  async setGroupMemberSpecialTitle(groupCode: number, memberUid: string, specialTitle: string) {
+    return await this.ctx.qqProtocol.setSpecialTitle(groupCode, memberUid, specialTitle)
+  }
+
+  async setGroupName(groupCode: number, groupName: string) {
+    return await this.ctx.qqProtocol.setGroupName(groupCode, groupName)
+  }
+
+  async getGroupRemainAtTimes(groupCode: number) {
+    return await this.ctx.qqProtocol.fetchGroupAtAllRemain(+selfInfo.uin, groupCode)
+  }
+
+  async addGroupEssence(groupCode: number, msgSeq: number, msgRandom: number) {
+    return await this.ctx.qqProtocol.setGroupEssence(groupCode, msgSeq, msgRandom, true)
+  }
+
+  async removeGroupEssence(groupCode: number, msgSeq: number, msgRandom: number) {
+    return await this.ctx.qqProtocol.setGroupEssence(groupCode, msgSeq, msgRandom, false)
+  }
+
+  async getGroupRecommendContactArk(groupCode: number) {
+    const { ark } = await this.ctx.qqProtocol.getGroupRecommendContactArk(groupCode)
+    return ark
+  }
+
+  /**
+   * 设群头像。HTTP-only 上传：PicUp.DataUp + cmd=3000 + GroupAvatarExtra（含 groupUin），
+   * 字节级匹配 PMHQ 抓的 NTQQ Windows 客户端。
+   *
+   * 关键坑：GroupAvatarExtra.groupUin 是**内部 groupUin**，不是用户看到的 groupCode。
+   * 错传 groupCode 会被服务器拒绝 "No Perm"（藏在 bytesRspExtendInfo.field4，outer errorCode 是 0）。
+   */
+  async setGroupAvatar(groupCode: string, filePath: string): Promise<{ result: number, errMsg: string }> {
+    const stat = await fsp.stat(filePath)
+    const md5 = await getMd5BufferFromFile(filePath)
+    const session = await this.ctx.qqProtocol.getHighwaySession()
+    const ext = Media.GroupAvatarExtra.encode({
+      type: 101,
+      groupUin: groupCodeToGroupUin(+groupCode),
+      field3: { field1: 1 },
+      field5: 3,
+      field6: 1,
+    })
+    const trans = {
+      uin: selfInfo.uin,
+      cmd: 3000, // 群头像 commandId（PMHQ 抓包验过：与自身头像同走 PicUp.DataUp，仅 cmd 与 ext 不同）
+      readable: createReadStream(filePath, { highWaterMark: 1024 * 1024 }),
+      sum: md5,
+      size: stat.size,
+      ticket: session.sigSession,
+      ext,
+      server: session.highwayHostAndPorts[1],
+    }
+    try {
+      await new HighwayHttpSession(trans).upload()
+      return { result: 0, errMsg: '' }
+    } catch (e) {
+      return { result: -1, errMsg: (e as Error).message }
+    }
+  }
+
+  async setGroupMsgMask(groupCode: number, msgMask: GroupMsgMask) {
+    const res = await this.ctx.qqProtocol.setGroupMsgMask(groupCode, selfInfo.uid, msgMask)
+    return res.body
+  }
+
+  async setGroupRemark(groupCode: string, groupRemark = ''): Promise<any> {
+    return await this.ctx.qqProtocol.setGroupRemark(+groupCode, groupRemark)
+  }
+
+  async getGroupFileList(groupCode: number, folderId: string, startIndex: number, fileCount: number) {
+    const res = await this.ctx.qqProtocol.getGroupFileList(groupCode, folderId, startIndex, fileCount)
+    return {
+      ...res.listResp,
+      retCode: Number(res.listResp.retCode)
+    }
+  }
+
+  async getGroupFileCount(groupCode: number) {
+    const res = await this.ctx.qqProtocol.getGroupFileCount(groupCode)
+    return res.countResp
+  }
+
+  async getGroupFileSpace(groupCode: number) {
+    const res = await this.ctx.qqProtocol.getGroupFileSpace(groupCode)
+    return {
+      totalSpace: Number(res.spaceResp.totalSpace),
+      usedSpace: Number(res.spaceResp.usedSpace)
+    }
+  }
+
+  async deleteGroupFile(groupCode: number, fileId: string, busId = 102) {
+    const res = await this.ctx.qqProtocol.deleteGroupFile(groupCode, fileId, busId)
+    return {
+      ...res.delete,
+      retCode: Number(res.delete.retCode)
+    }
+  }
+
+  async moveGroupFile(groupCode: number, fileId: string, curFolderId: string, dstFolderId: string) {
+    const res = await this.ctx.qqProtocol.moveGroupFile(groupCode, fileId, curFolderId, dstFolderId)
+    return {
+      ...res.move,
+      retCode: Number(res.move.retCode)
+    }
+  }
+
+  async persistGroupFile(groupCode: number, fileId: string) {
+    const res = await this.ctx.qqProtocol.transGroupFile(groupCode, fileId)
+    return {
+      ...res,
+      retCode: Number(res.retCode)
+    }
+  }
+
+  async renameGroupFile(groupCode: number, fileId: string, parentFolderId: string, newFileName: string) {
+    const res = await this.ctx.qqProtocol.renameGroupFile(groupCode, fileId, parentFolderId, newFileName)
+    return {
+      ...res.rename,
+      retCode: Number(res.rename.retCode)
+    }
+  }
+
+  async forwardGroupFile(groupCode: number, dstUin: number, fileId: string, busId: number, toFriend: boolean) {
+    const res = await this.ctx.qqProtocol.forwardGroupFile(groupCode, dstUin, fileId, busId, toFriend)
+    return {
+      ...res.copyToRsp,
+      retCode: Number(res.copyToRsp.retCode)
+    }
+  }
+
+  async createGroupFolder(groupCode: number, folderName: string) {
+    const res = await this.ctx.qqProtocol.createGroupFolder(groupCode, folderName, '/')
+    return {
+      ...res.create,
+      retCode: Number(res.create.retCode)
+    }
+  }
+
+  async deleteGroupFolder(groupCode: number, folderId: string) {
+    const res = await this.ctx.qqProtocol.deleteGroupFolder(groupCode, folderId)
+    return {
+      ...res.delete,
+      retCode: Number(res.delete.retCode)
+    }
+  }
+
+  async renameGroupFolder(groupCode: number, folderId: string, newFolderName: string) {
+    const res = await this.ctx.qqProtocol.renameGroupFolder(groupCode, folderId, newFolderName)
+    return {
+      ...res.rename,
+      retCode: Number(res.rename.retCode)
+    }
+  }
+
+  async getGroupAlbumList(groupCode: number) {
+    const res = await this.ctx.qqProtocol.fetchGroupAlbumList(groupCode)
+    return {
+      retCode: res.retCode,
+      retMsg: res.retMsg,
+      albumList: res.body?.albums ?? []
+    }
+  }
+
+  async createGroupAlbum(groupCode: number, name: string, desc: string) {
+    const res = await this.ctx.qqProtocol.createGroupAlbum(groupCode, name, desc)
+    return {
+      retCode: res.retCode,
+      retMsg: res.retMsg,
+      info: res.body?.info
+    }
+  }
+
+  async deleteGroupAlbum(groupCode: number, albumId: string) {
+    return await this.ctx.qqProtocol.deleteGroupAlbum(groupCode, albumId)
+  }
+
+  async getGroupAlbumMediaList(groupCode: number, albumId: string, attachInfo?: string) {
+    return await this.ctx.qqProtocol.fetchGroupAlbumMediaList(groupCode, albumId, attachInfo)
+  }
+
+  async setGroupPin(groupCode: number, isPinned: boolean) {
+    return await this.ctx.qqProtocol.setGroupPin(groupCode, isPinned)
+  }
+
+  async sendGroupNudge(groupCode: number, targetUin: number) {
+    return await this.ctx.qqProtocol.sendGroupPoke(groupCode, targetUin)
+  }
+
+  async groupClockIn(groupCode: number) {
+    return await this.ctx.qqProtocol.groupClockIn(groupCode.toString())
+  }
+}

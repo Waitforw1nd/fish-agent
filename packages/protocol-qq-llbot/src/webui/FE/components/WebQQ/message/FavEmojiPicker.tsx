@@ -1,0 +1,267 @@
+import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { Loader2, Trash2 } from 'lucide-react'
+import { fetchFavEmojiList, deleteFavEmoji as apiDeleteFavEmoji } from '../../../utils/webqqApi'
+import { getCurrentUin } from '../../../utils/currentUin'
+import { showToast } from '../../common'
+
+export interface FavEmoji {
+  emoId: number
+  resId: string
+  url: string
+  desc: string
+}
+
+// 模块级缓存
+let cachedEmojis: FavEmoji[] | null = null
+
+// 清除缓存（供外部调用）
+export const clearFavEmojiCache = () => {
+  cachedEmojis = null
+}
+
+const RECENT_FAV_EMOJI_BASE_KEY = 'webqq_recent_fav_emojis'
+const MAX_RECENT = 10
+
+// 未登录时返回 null: 不能退化成无前缀的共享桶, 那会让不同账号的最近表情混在一起
+function getRecentFavEmojiKey(): string | null {
+  const uin = getCurrentUin()
+  return uin ? `${uin}-${RECENT_FAV_EMOJI_BASE_KEY}` : null
+}
+
+function getRecentFavEmojis(): FavEmoji[] {
+  const key = getRecentFavEmojiKey()
+  if (!key) return []
+  try {
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+function addRecentFavEmoji(emoji: FavEmoji) {
+  const key = getRecentFavEmojiKey()
+  if (!key) return
+  const recent = getRecentFavEmojis().filter(e => e.emoId !== emoji.emoId)
+  recent.unshift(emoji)
+  localStorage.setItem(key, JSON.stringify(recent.slice(0, MAX_RECENT)))
+}
+
+function removeRecentFavEmoji(emoId: number) {
+  const key = getRecentFavEmojiKey()
+  if (!key) return
+  const recent = getRecentFavEmojis().filter(e => e.emoId !== emoId)
+  localStorage.setItem(key, JSON.stringify(recent))
+}
+
+// 表情右键菜单
+const EmojiContextMenu: React.FC<{
+  x: number
+  y: number
+  emoji: FavEmoji
+  onClose: () => void
+  onDelete: () => void
+}> = ({ x, y, onClose, onDelete }) => {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState({ left: x, top: y })
+
+  useEffect(() => {
+    if (!menuRef.current) return
+    const menuRect = menuRef.current.getBoundingClientRect()
+    const padding = 10
+    let left = x, top = y
+    if (x + menuRect.width > window.innerWidth - padding) left = x - menuRect.width
+    if (left < padding) left = padding
+    if (y + menuRect.height > window.innerHeight - padding) top = y - menuRect.height
+    if (top < padding) top = padding
+    setPosition({ left, top })
+  }, [x, y])
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-[60]" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }} />
+      <div
+        ref={menuRef}
+        className="fixed z-[60] bg-popup r-control glass-pop origin-top-left py-1 min-w-[100px]"
+        style={{ left: position.left, top: position.top }}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <button
+          onClick={onDelete}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-theme-item-hover transition-colors"
+        >
+          <Trash2 size={14} /> 删除
+        </button>
+      </div>
+    </>,
+    document.body
+  )
+}
+
+interface FavEmojiPickerProps {
+  onSelect: (emoji: FavEmoji) => void
+  onClose: () => void
+}
+
+export const FavEmojiPicker: React.FC<FavEmojiPickerProps> = ({ onSelect, onClose }) => {
+  const [emojis, setEmojis] = useState<FavEmoji[]>(cachedEmojis || [])
+  const [loading, setLoading] = useState(!cachedEmojis)
+  const [error, setError] = useState<string | null>(null)
+  const [recentEmojis, setRecentEmojis] = useState<FavEmoji[]>(getRecentFavEmojis())
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; emoji: FavEmoji } | null>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // 如果有缓存，直接使用
+    if (cachedEmojis) {
+      setEmojis(cachedEmojis)
+      setLoading(false)
+      return
+    }
+
+    const loadEmojis = async () => {
+      try {
+        const list = await fetchFavEmojiList()
+        const emojiList = list.map((item: any) => ({
+          emoId: item.emoId,
+          resId: item.resId || '',
+          url: item.url,
+          desc: item.desc || ''
+        }))
+        cachedEmojis = emojiList
+        setEmojis(emojiList)
+      } catch {
+        setError('加载失败')
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadEmojis()
+  }, [])
+
+  // 使用 ref 跟踪 contextMenu 状态，避免闭包问题
+  const contextMenuRef = useRef(contextMenu)
+  contextMenuRef.current = contextMenu
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // 如果右键菜单打开，不关闭 Picker
+      if (contextMenuRef.current) return
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [onClose])
+
+  const handleSelect = (emoji: FavEmoji) => {
+    addRecentFavEmoji(emoji)
+    setRecentEmojis(getRecentFavEmojis())
+    onSelect(emoji)
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, emoji: FavEmoji) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, emoji })
+  }
+
+  const handleDelete = async () => {
+    if (!contextMenu) return
+    const { emoji } = contextMenu
+    setContextMenu(null)
+
+    try {
+      const result = await apiDeleteFavEmoji(emoji.resId)
+      if (result.result === 0) {
+        showToast('已删除', 'success')
+        // 更新列表
+        const newEmojis = emojis.filter(e => e.emoId !== emoji.emoId)
+        setEmojis(newEmojis)
+        cachedEmojis = newEmojis
+        // 从最近使用中移除
+        removeRecentFavEmoji(emoji.emoId)
+        setRecentEmojis(getRecentFavEmojis())
+      } else {
+        showToast(result.errMsg || '删除失败', 'error')
+      }
+    } catch (e) {
+      showToast(e.message || '删除失败', 'error')
+    }
+  }
+
+  return (
+    <div
+      ref={pickerRef}
+      className="absolute bottom-full left-0 mb-2 glass glass-thick glass-dense r-card glass-pop origin-bottom-left z-50 w-[320px]"
+    >
+      <div className="p-2 border-b border-theme-divider text-sm text-theme-secondary">收藏表情</div>
+      <div className="p-2 max-h-[300px] overflow-y-auto">
+        {recentEmojis.length > 0 && (
+          <>
+            <div className="text-xs text-theme-hint mb-1">最近使用</div>
+            <div className="grid grid-cols-4 gap-1 mb-2 pb-2 border-b border-theme-divider">
+              {recentEmojis.map((emoji) => (
+                <button
+                  key={`recent-${emoji.emoId}`}
+                  onClick={() => handleSelect(emoji)}
+                  onContextMenu={(e) => handleContextMenu(e, emoji)}
+                  className="p-1 rounded-lg hover:bg-theme-item transition-colors"
+                  title={emoji.desc}
+                >
+                  <img src={emoji.url} alt={emoji.desc} className="w-16 h-16 object-contain" />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={24} className="animate-spin text-pink-500" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-theme-hint text-sm">{error}</div>
+        ) : emojis.length === 0 ? (
+          <div className="text-center py-8 text-theme-hint text-sm">暂无收藏表情</div>
+        ) : (
+          <>
+            <div className="text-xs text-theme-hint mb-1">全部</div>
+            <div className="grid grid-cols-4 gap-1">
+              {emojis.map((emoji) => (
+                <button
+                  key={emoji.emoId}
+                  onClick={() => handleSelect(emoji)}
+                  onContextMenu={(e) => handleContextMenu(e, emoji)}
+                  className="p-1 rounded-lg hover:bg-theme-item transition-colors"
+                  title={emoji.desc}
+                >
+                  <img
+                    src={emoji.url}
+                    alt={emoji.desc}
+                    className="w-16 h-16 object-contain"
+                    loading="lazy"
+                  />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 右键菜单 */}
+      {contextMenu && (
+        <EmojiContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          emoji={contextMenu.emoji}
+          onClose={() => setContextMenu(null)}
+          onDelete={handleDelete}
+        />
+      )}
+    </div>
+  )
+}
+
+export default FavEmojiPicker

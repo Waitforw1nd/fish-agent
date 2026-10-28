@@ -1,228 +1,162 @@
-# QQ Agent（桌面端）
-![平台](https://img.shields.io/badge/platform-Windows%20%7C%20Electron-lightgrey)
-![技术栈](https://img.shields.io/badge/stack-Node.js%20%7C%20原生前端-orange)
-![测试](https://img.shields.io/badge/tests-24%20suites%20%E2%80%89620%2B%20assertions-brightgreen)
-一个跑在你自己电脑上的 QQ 群聊机器人：装完双击启动，扫码登录，填个模型 Key 就能用。
-事件驱动 + 无状态会话架构，每次处理的 token 成本恒定可控；所有操作都在图形控制台里完成，不用碰命令行。
-从 [Derpyu520/qq-bridge](https://github.com/Derpyu520/qq-bridge) 彻底改造而来的独立 QQ agent 应用。
-## 能实现什么
-- **像真人一样混群**：被 @ 或被叫到时回话，平时看心情插嘴；会发文字、表情包、戳一戳，会引用、会 @ 人，知道什么时候该闭嘴
-- **记住每个群友**：双向长期记忆——它记得谁是什么风格、爱什么梗、雷点是什么，下次聊天自然带上；记忆页随时可查看、手动编辑
-- **看得懂图、上得了网**：视觉模型直接看消息里的图片；内置 6 家搜索服务（含免 Key 的 Bing 网页解析），还能自己加任意兼容搜索服务
-- **花多少看多少**：每次调用的 token 和成本精确记录，按天 / 按会话 / 按模型三个维度统计，缓存命中率、峰谷分时计价、图片计费口径全标清楚
-- **零编程门槛**：所有配置都在控制台点选——白名单从 QQ 里直接勾选群，模型从模型目录里点选切换，不用查群号、不用写配置
-## 技术架构
-**事件驱动 + 无状态会话（成本控制的核心）**
-1. 群聊消息持续写入本地 JSON 存档（每条带时间与已读状态）
-2. 每次有新消息（或主动机会），**新开一个独立会话**：提示词 = 静态系统提示（人设/规则/策略）+ 存档摘要 + 本次新消息
-3. 会话结束即弃置，LLM 层面零历史——一次处理的成本是恒定小份，不随聊天量膨胀
-4. 处理期间新来的消息只写存档；本次结束后发现未读 → 自动再开新会话，直到清空
-5. 长期信息走记忆工具持久化，跨运行生效
-**整体组成**
-- **协议端**：通过 OneBot v11 正向 WebSocket 接 QQ（默认配 SnowLuma，任何兼容协议端均可换）
-- **大脑**：任意 OpenAI 兼容 API——官方 / 中转站 / 本地网关均可，模型在设置里自选
-- **桌面壳**：Electron，托盘常驻、开机自启、关窗不退出、端口被占自动让位
-- **控制台**：零框架原生 HTML/CSS/JS，明暗双主题 + 跟随系统，带完整设计 token 体系
-- **安全边界**：工具天然绑定会话（模型无法把消息发到别的群）、发送白名单 + 限频、联网抓取带完整 SSRF 防护（DNS 校验 / IP 固定 / 手动跟重定向）、图片地址禁内网
-## 设置项都能做什么
-**模型 API**
-- 多提供商模型目录：填 Base URL + Key，点「获取列表」自动拉模型，选中即切换；中转站返回几百个模型时内置搜索 + 厂商/模型双栏
-- 一键测试：发个 ping 立刻验证地址/Key/模型通不通，显示延迟
-- 成本核算：内置 140 个模型的官方价格表自动匹配；走中转站可关掉官方价自填单价，支持「渠道：模型」两级定价、峰谷分时、图片计费规则提示
-- 视觉开关：模型不支持图片时关掉，看图工具自动从提示词移除
-**聊天设置**
-- **响应档位滑条**（省 token 核心）：0~100 无级调节——1 档仅 @ 响应、2 档 +关键词、3 档按概率随机响应（滑条位置线性决定概率）、4 档全响应；没命中的消息直接标已读，零 token 消耗。触发原因决定上下文条数：被 @ 时永远带最多上下文
-- **表情包积极程度** 0~3 档：不鼓励 / 偶尔 / 较积极 / 表情包爱好者（提示词层面引导，不强制）
-- 人设系统：内置「小鲸鱼」角色卡开箱即用，多套模板一键填充可改；参与度风格（安静/普通/活跃）可调
-- 关键词、每群独立开关、私聊开关、屏蔽名单（被屏蔽者不存档、不触发、不进提示词）
-**记忆**
-- 自动记录对群友的长期印象；可手动触发整理（合并重复、删过时），或对单个群友「更新记忆」
-**搜索服务**
-- 6 家内置（Bing 免 Key / DeepSeek / 智谱 / 博查 / 百度千帆 / 秘塔）+ 自定义添加任意兼容服务，可加多个
-**白名单**
-- 从 QQ 账号拉群列表/好友列表直接勾选；机器人只对名单内的会话工作
-**桌面端**
-- 托盘常驻 / 开机自启 / 关窗不退出；明暗主题；版本更新检查（发现新版本时直接提示）
-**OneBot**
-- 协议端地址可改，适配任何 OneBot v11 实现
-## 界面一览
-- **会话**：每次处理一个会话卡片，完整留档——提示词、思考、工具调用与结果、实际发出的每条消息、用量；运行中实时刷新
-- **存档**：每个群/好友的消息库，未读标记一目了然；可手动唤醒一次处理或全部标已读
-- **记忆**：每个群友一份档案，可编辑、删除、单独更新
-- **用量**：三维度统计 + 下钻明细 + 调用次数明细（内置 28 种工具按类别分组的趣味统计，启用 Skill 后还会更多）
-- **设置**：以上所有
-## 扩展（两型：插件 / Skill）
+# 养鱼 Bot（fish）
 
-扩展分**两型**，按"什么时候该运行"来选，放进对应目录即生效：
+养鱼 Bot 由四个可独立运行的包组成：QQ-Agent 核心、LLBot QQ 协议端、B 站 OneBot 桥接，以及多租户 cloud-manager 与原生 Web panel。各包独立安装依赖；根目录提供 `npm test`、`npm run test:all` 和 `npm run check`。
 
-| 类型 | 放哪 | 靠什么生效 | 谁决定何时执行 |
-|---|---|---|---|
-| **确定性型（插件）** | `plugins/<id>/` | 能力 `providers` / 钩子 `hooks` | **核心代码**：满足条件必然执行，不经过 LLM |
-| **LLM 型（Skill）** | `skills/<id>/` | 工具 `registerTool` + 提示词片段 | **模型**：看工具说明自己判断 |
+> 本文命令以 Windows + Git Bash 为例。真实 QQ、真实 B 站账号和真实上游模型 Relay 不在自动化测试覆盖范围内，当前均未做在线验收。测试中的扫码、消息和模型响应来自 fake，不能据此宣称生产链路已验证。
 
-```
-plugins/my-plugin/            skills/my-skill/
-  plugin.json  清单              skill.json   清单
-  index.js     providers/hooks   index.js     registerTool
+## 产品目标与当前能力
+
+面向用户的最简目标是：**交钱 → 创建实例 → 登录 QQ → 绑定模型 Key → 开始养鱼**。平台应提供默认的“大肥鱼”人设与合理档位，隐藏协议配置和日常运维；用户在开始养鱼时首次选择允许互动的群，不能默认在所有群开口。提供 QQ 号只能指定要登录的账号，仍需本人用手机扫码或确认登录。
+
+这是产品目标，不代表整条流程已经交付或完成真实账号验收。用户面板的“我的鱼”支持多实例、套餐选择、启停及实例详情中的 QQ 号扫码入口；管理员可通过用户管理查看各用户拥有的实例并为其创建实例。扫码依赖平台准备 LLBot 及相应认证，普通用户无需填写协议技术配置。自定义渠道首次配置仍需填写 Base URL、API Key 和模型，充值需管理员审核，并非在线支付自动开通。首次群白名单选择的简化体验、默认人设和档位仍需结合实际产品流程确认。
+
+密钥各有用途：平台会为实例自动签发并配置租户 Relay Key，供 Agent 访问平台 Relay；用户绑定的模型 Key 是自有模型上游的 API Key，当前自定义渠道还需上游地址和模型名。LLBot 的 `auth_token` 则用于 QQ 协议端认证，既不是模型 Key，也不是 Relay Key。平台渠道仍保留现有套餐、额度与 Relay 计费模式；具体配置和充值流程见 [云端管理文档](docs/cloud-manager.md)，QQ 认证见 [协议文档](docs/protocols.md)。
+
+## 文档导航
+
+- [DEVELOPMENT.md](DEVELOPMENT.md)：开发约定、架构、各包命令、二次开发修改地图。
+- [docs/protocols.md](docs/protocols.md)：QQ/Bili `ChannelRouter`、数字虚拟 ID、B 站 OneBot/admin/custom actions、LLBot `auth_token` 与真实扫码流程。
+- [docs/cloud-manager.md](docs/cloud-manager.md)：云端 API、数据目录、端口、密钥、套餐和计费。
+- [docs/extensions.md](docs/extensions.md)：扩展目录、`send.guard`、`message.command`、角色卡安全边界。
+- [docs/testing.md](docs/testing.md)：测试/fake 清单、双租户 E2E、故障排查和修改后验证清单。
+
+## 1. 准备便携 Node 24
+
+仓库自带 Node 24，不需要也不应全局安装 Node：
+
+```bash
+export PATH="/e/bigPeach/fish/.tools/node:$PATH"
+node --version
+npm --version
 ```
 
-判据一句话：**规则能写死 → 插件（`plugins/`）；要理解人话 → 技能（`skills/`）**。
-（完整的定义与三问判断法见两份开发文档的 §0。）
-选错类型的后果是**功能静默失效**（不报错、不崩、就是没反应），所以两份开发文档请先读：
+对应 Windows 目录是 `E:\bigPeach\fish\.tools\node`。每个新终端都要执行上面的 `export`，不要依赖系统 Node。cloud-manager 启动子进程时默认继承当前 `process.execPath`，也可用 `CLOUD_NODE_PATH` 显式指定 Node 可执行文件。
 
-- **确定性型** → [doc/extend_development/plugin-development.md](doc/extend_development/plugin-development.md)
-- **LLM 型** → [doc/extend_development/skill-development.md](doc/extend_development/skill-development.md)
-- 共同机制完整参考 → [doc/extend_development/skill-reference.md](doc/extend_development/skill-reference.md)
+## 2. 安装依赖
 
-其它约定：
+以下命令分别在不同终端或按顺序执行；只写入包内 `node_modules`，不全局安装：
 
-- **开关只有一处**：`config.skills[id].enabled`。关掉一个扩展，它注册的工具、
-  提供的能力、提示词片段、请求改写会**同时**失效 —— 不会出现"界面关了但还在偷偷工作"。
-- **按能力依赖，不按名字**：核心模块问"谁提供 `llm.request-params`"，
-  不 import 具体扩展，所以换实现不用改核心代码。
-- **不可能覆盖安全规则**：扩展的提示词片段优先级被强制压在核心规则之下。
-- **状态可解释**：控制台的「技能」与「插件」两个页签各自直接告诉你为什么某项没生效
-  （未启用 / 依赖缺失 / 加载失败 / 模型不支持），不是笼统的"工具关闭"。
-- **两种清单文件功能等价**：`plugin.json` 与 `skill.json` 走同一条规范化流程，
-  目录只决定语义分类，不限制能用哪些特性。
-- 目录出厂为空：`skills/` 与 `plugins/` 是用户后装扩展的落点，插上就能用、删掉就消失；
-  思考模式等核心能力已内置进 `src/`，不依赖任何扩展。
-- **热重载默认开启**：目录放进去就生效，无需重启（`config.extensions.hotReload` 可关；
-  等价于"任意落地的 JS 会被执行"，共享机器建议关掉）。
-- 架构总览见 [doc/extend_development/skill-system.md](doc/extend_development/skill-system.md)。
-## 安装与使用
-**三步搞定**（推荐）：
 ```bash
-git clone https://github.com/K0nd1us/QQ-agent.git
-cd qq-agent
-npm install
-npm run setup    # 自动下载 SnowLuma + 固定版本便携 QQ
+cd /e/bigPeach/fish/packages/qq-agent-core
+npm ci
+
+cd /e/bigPeach/fish/packages/protocol-bili-bridge
+npm ci
+
+cd /e/bigPeach/fish/packages/cloud-manager
+npm ci
+
+cd /e/bigPeach/fish/packages/protocol-qq-llbot
+corepack yarn install --immutable
 ```
-然后双击 `启动QQ机器人.bat`（或 `npm start`），在 SnowLuma 页签点「启动 QQ」，扫码登录即可。
-**手动安装**（如果 `npm run setup` 下载失败）：
-1. **装协议端**：SnowLuma 是独立第三方项目（自带 EULA，不随本仓库分发），从其官方渠道获取后解压到项目根目录，目录名保持 `snowluma`
-2. **装便携 QQ**（可选）：
-   - **最省事**：机器上已经装过 QQ 的话，**先完全退出 QQ**，直接跑 `npm run setup` ——
-     脚本会从注册表找到已装的 QQ 并复制一份到 `runtime/qq-portable/`（约 1.6 GB，会自动跳过聊天记录）
-   - 否则：下载 <https://www.kondius.cn/netdisk/api/download/QQ_9.9.33_260813_x64_01.exe>
-     （约 300 MB），**正常双击安装一遍**，然后退出 QQ、重跑 `npm run setup`
-   - 为什么不能自动静默安装：QQ 9.9.x 用的是腾讯自研的 **HummerSetup** 安装器，
-     不接受 NSIS/Inno 的静默开关（脚本会识别出来并说明，而不是盲试到超时）
-3. **启动**：双击 `启动QQ机器人.bat`（或 `npm start`），扫码登录 QQ
-4. **配置**：设置页顶部体检卡会告诉你缺什么——填接口地址和 Key → 选模型 → 勾白名单
+
+LLBot 使用 `yarn@4.18.0` 和 `nodeLinker: node-modules`，其 `postinstall` 还会安装 `src/webui/FE` 依赖。panel 是无框架、无构建的静态前端，没有依赖安装或构建步骤。
+
+## 3. 各包最短启动路径
+
+### 3.1 QQ-Agent 核心
+
 ```bash
-npm install          # 装依赖
-npm run setup        # 一键下载 SnowLuma + 便携 QQ（幂等，可重复执行）
-npm run setup:check  # 只检查是否已就绪
-npm start            # 桌面端启动
-npm run server       # headless 模式：浏览器打开 http://127.0.0.1:3210
-npm test              # 全量测试：自测 + Skill 架构 + 工具/Skill 审查 + 链接媒体转发 + 回复抢救 + 技能设置 + 表情上下文 + 技能弹窗 + 渲染 + 滚动 + 用量端到端 + 提示词
-npm run test:coverage # 覆盖测试（模块层 + 全部 HTTP 接口 + 端到端链路 + 静态界面层 + 界面接线）
-npm run test:all      # 两套一起跑
-npm run test:wiring   # 只跑「界面接线」检查（需要可选依赖，见下）
+cd /e/bigPeach/fish/packages/qq-agent-core
+export PATH="/e/bigPeach/fish/.tools/node:$PATH"
+npm run server:headless
 ```
-### 界面接线检查（可选依赖）
-`test/coverage-wiring.mjs` 用 jsdom 加载真实的 `ui/index.html` 并执行 `ui/app.js`，
-然后按用户的真实操作路径（点页签 / 点设置分区 / 打开各弹窗）遍历，断言
-**每一个交互元素（按钮、输入框、下拉框…）都有代码在管**，并回归验证
-「展开全部/收起」这类折叠按钮真的能开合。
-它依赖 jsdom，但 jsdom 不是本项目的依赖 —— 未安装时该测试会打印提示并**自动跳过**，
-不影响其它套件。想启用：
+
+Headless 迁移已落地，入口接入本项目的 QQ/B 站双通道 `ChannelRouter`；上游基线为 ZASENJC `codex/linux-headless-module` 的 0.4（`ca0bec135ec4301b50c50f9279ac96daebedf178`）。Headless 支持 Node 22/24，cloud-manager 本身要求 Node 24；启动前需设置 `QQ_AGENT_TOKEN` 或配置 `server.token`。协议端独立运行，不由 headless 安装或管理。双通道的真实在线表现仍需验收。
+
+默认控制台为 `http://127.0.0.1:3210`。桌面 Electron 入口是 `npm start`，安装/检查便携 QQ 与 SnowLuma 分别用 `npm run setup`、`npm run setup:check`。
+
+首次完整对话还需要：
+
+1. 在控制台填写 OpenAI 兼容 API 的 `baseUrl/apiKey/model`，或使用云端签发的 Relay 配置。
+2. 准备 QQ OneBot 协议端，或启用 B 站桥接。
+3. 配置 `data/config.json` 中的白名单；`allowAllWhenEmpty` 默认是 `false`，空白名单不会自动放开所有会话。
+
+核心默认数据目录是包内 `data/`。可用 `QQ_AGENT_DATA_DIR` 重定向；`QQ_AGENT_PROFILE=2` 使用 `data-2/` 并把默认端口组偏移 `+100`，`QQ_AGENT_PORT` 可单独覆盖控制台端口。
+
+### 3.2 LLBot
+
+先构建，再从专用实例工作目录启动：
+
 ```bash
-npm i -D jsdom      # 装完再跑 npm run test:wiring 即可
+cd /e/bigPeach/fish/packages/protocol-qq-llbot
+export PATH="/e/bigPeach/fish/.tools/node:$PATH"
+npm run build
+
+mkdir -p /e/bigPeach/fish/var/llbot-dev
+cd /e/bigPeach/fish/var/llbot-dev
+node /e/bigPeach/fish/packages/protocol-qq-llbot/dist/llbot.js -q 10001
 ```
-### QQ 怎么来的？（免安装包，推荐）
-QQ 9.9.x 用的是腾讯自研的 **HummerSetup** 安装器，**不支持静默安装**（会弹 GUI）。
-更麻烦的是：**机器上已有更新版本时，根本装不回指定版本**（会拒绝或直接升级掉），
-而且为了做个便携版去覆盖用户日常用的 QQ，代价也不对。
-所以 **QQ 以「免安装包」形式分发**：下载解压即用，**完全不需要安装 QQ**，
-也不触碰系统里已装的任何东西。
+
+`10001` 只是格式示例，应替换为预期登录的 5–12 位 QQ 号。Direct 模式在扫码前需要有效 `data/auth_token.txt`，也可以先启动 WebUI，再通过其 API 录入；完整流程见 [LLBot auth_token 和真实扫码](docs/protocols.md#5-llbot-auth_token-与真实扫码流程)。不要把示例 QQ 号或 token 当作可用凭据。
+
+### 3.3 B 站桥接
+
 ```bash
-npm run setup          # 自动下载免安装包 → 校验 SHA256 → 解压 → 完成
+cd /e/bigPeach/fish/packages/protocol-bili-bridge
+export PATH="/e/bigPeach/fish/.tools/node:$PATH"
+export BILI_BRIDGE_DATA_DIR="E:/bigPeach/fish/var/bili-bridge"
+export BILI_ONEBOT_TOKEN="replace-with-a-long-onebot-token"
+export BILI_ADMIN_TOKEN="replace-with-a-different-admin-token"
+npm start
 ```
-免安装包的特点：
-- **不需要装 QQ**，解压约 1.5 GB，不写注册表、不装服务
-- **不与系统里已装的 QQ 冲突**（启动时带 `--user-data-dir`，数据完全隔离）
-- **不含任何用户数据**（聊天记录、登录态、账号 —— 一个字节都没有）
-- 剥离了运行日志与卸载器（卸载器指向原安装路径，带过去会误导）
-- 保留全部许可文件（`QQLicense.rtf` / `LICENSE.electron.txt` 等）
-#### 自己打包一份
-如果分发地址不可用，或你想用自己机器上的 QQ 版本：
+
+独立桥接默认在 `127.0.0.1:36501` 同端口提供 HTTP action、正向 WebSocket 和 `/admin/*`。`BILI_ONEBOT_TOKEN` 至少 8 字符，`BILI_ADMIN_TOKEN` 至少 12 字符，二者不能相同；未设置 admin token 时管理 API 返回 503。扫码通过 `POST /admin/login/qr` 创建，再由 B 站 App 扫码并轮询状态。
+
+若直接连接核心，核心 `channels.bili.wsUrl` 与 `channels.bili.httpUrl` 必须都指向这个实际端口。核心独立默认的 `3101/3100` 是分离示例端口，不能直接套到桥接的 `36501`；cloud-manager 会为每个租户动态分配同端口并自动写回配置。
+
+### 3.4 cloud-manager + panel
+
+先构建 LLBot，再启动管理器：
+
 ```bash
-npm run pack:qq                    # 打包 runtime/qq-portable → dist/QQ_portable.tar.zst
-npm run pack:qq -- --from D:\QQ    # 或从别处打包
-npm run pack:qq -- --keep-updates  # 保留待安装的更新包（默认剥离）
+cd /e/bigPeach/fish/packages/cloud-manager
+export PATH="/e/bigPeach/fish/.tools/node:$PATH"
+export CLOUD_DATA_DIR="E:/bigPeach/fish/var/cloud"
+export CLOUD_HOST="127.0.0.1"
+export CLOUD_ADMIN_USERNAME="admin"
+export CLOUD_ADMIN_PASSWORD="replace-with-a-strong-password"
+npm start
 ```
-打包脚本会打印出归档的 SHA256 和两行可直接粘贴的配置（`QQ_PORTABLE_URL` / `QQ_PORTABLE_SHA256`）。
-把归档上传到任意可直链下载的地方即可。实测：**1.5 GB → 653 MB（42%），打包 24 秒**。
-> ⚠️ QQ 是腾讯公司的专有软件，版权与许可归腾讯所有。
-> 免安装包只是为了让「免安装」成为可能而做的**复制**，不含任何修改；
-> **再分发前请自行确认符合腾讯的许可条款**。本仓库不随代码分发 QQ 本体。
-#### 目标版本 vs 兜底安装包（两个不同的产物）
-| | 是什么 | 版本 |
-|---|---|---|
-| **目标版本** `QQ_VERSION` | 我们要求协议栈打交道的客户端版本；`EXPECTED_CLIENT_BUILD` 由它推导 | `9.9.33.51802` |
-| **免安装包** | 分发的主体，解压即用 | 里面就是 `9.9.33-51802` |
-| **兜底安装包** `QQ_9.9.33_260813_x64_01.exe` | 只在"免安装包拿不到 + 机器上也没装 QQ"时用（且必须手动双击装） | `260813` |
-兜底安装包的**文件名是写死的，不再由版本号拼接** —— 分发站上现存的就是 260813 那个包。
-用版本号拼的话一旦拼错，兜底下载会 404，而报错只会说"下载失败"，很难联想到是文件名不存在。
-#### 兜底：从机器上已装的 QQ 复制
-免安装包下载失败（比如没网、地址失效）时，会自动退回这条路：
+
+开发默认地址：
+
+- panel/API：`http://127.0.0.1:8080`
+- Relay：`http://127.0.0.1:8790/v1`
+- 健康检查：`GET /healthz` 或 `GET /api/health`
+
+未配置 `CLOUD_ADMIN_PASSWORD` 且数据库没有用户时，首次启动会生成只打印一次的管理员密码。生产环境不要沿用开发回环绑定和 HTTP 配置；默认 `CLOUD_HOST=0.0.0.0`，应显式评估暴露面并配置 HTTPS、域名、Cookie 与反向代理。
+
+云端真实启动还依赖各入口文件：核心 `modules/headless/server.js`、LLBot `dist/llbot.js`、B 站 `src/main.js`。部署时仍需验证入口、双通道接线和真实租户链路。NapCat/SnowLuma 的默认入口目前只是配置路径，是否存在须在目标部署机核查，不能仅凭测试中的 fake 入口认定可用。
+
+## 4. 标准验证命令
+
 ```bash
-# 完全退出 QQ（含托盘）后：
-npm run setup
-# 装在自定义路径时指定：
-npm run setup -- --from "D:\你装到哪"
-# 强制不用免安装包，就走复制：
-npm run setup -- --no-portable
+export PATH="/e/bigPeach/fish/.tools/node:$PATH"
+
+cd /e/bigPeach/fish/packages/qq-agent-core
+npm test
+
+cd /e/bigPeach/fish/packages/protocol-bili-bridge
+npm run check && npm test
+
+cd /e/bigPeach/fish/packages/cloud-manager
+npm test && npm --prefix panel test
+
+cd /e/bigPeach/fish/packages/protocol-qq-llbot
+npm run check && npm test && npm run build
 ```
-脚本按「`--from` 指定 → 注册表/常见路径里**版本匹配**的那份 → 读不到版本的 → 版本不符的（会警告）」
-的顺序选来源，**不会随手拿第一个** —— 机器上同时有 QQ 9.7 和 9.9 时，拿错版本会表现为登录失败，
-排查方向会完全跑偏。
-### 为什么内置固定版 QQ？
-- **版本锁定与对齐**：SnowLuma 协议栈里写死了两处"我是谁"的声明
-  （`CLIENT_BUILD`、`BUILD_VERSION_SHORT`），用来在握手时自称客户端版本。
-  `npm run setup` 会把它们**对齐到你实际运行的 QQ 版本**（当前 `9.9.33-51802`），
-  这样声明与实际一致，也不会再报版本不匹配。
-  - 只是握手自报家门的字段，**不参与任何协议分支选择**（全文只有 2 处引用，都在自定义表情服务里）
-  - 改之前备份成 `snowluma/index.mjs.orig`；需要还原就把它盖回去
-  - 关掉对齐：`set QQ_ALIGN_CLIENT_BUILD=0 && npm run setup`
-  - 之所以做在 setup 里而不是手改：`snowluma/` 是下载来的，重新 setup 会覆盖掉手改的改动
-- **下载源**：从 <https://www.kondius.cn/netdisk/api/download/> 取安装包
-  （不依赖腾讯 CDN 的文件名规则，也不会因 CDN 清档而 404）。
-  目标版本 `9.9.33.51802`（免安装包里的就是这一版）。
-- **完整性校验**：安装包的 SHA256 已固定（`B25C0D3C…EC492`，2026-09-13 实测下载并校验）。
-  换版本/换源时要**同步改掉它**，否则每次 setup 都会以"校验失败"告终；
-  也可以设空 `QQ_X64_SHA256` 临时跳过（跳过后会打印实际哈希，方便重新固定）。
-- **安装器类型**：QQ 9.9.x 用的是腾讯自研 **HummerSetup**（不是 NSIS/Inno），
-  `/s /D=` 这类开关无效。脚本会识别类型，对这类安装器**不去盲试**，
-  而是改用"复制机器上已装的 QQ"这条路（做便携运行靠的是 `--user-data-dir`，不需要干净副本）。
-- **完全隔离**：便携 QQ 使用独立 `--user-data-dir`，与用户日常 QQ 互不干扰
-- **精准控制**：关闭时只杀路径匹配 `runtime/qq-portable` 的进程，绝不碰用户已登录的 QQ
-> ⚠️ **换 QQ 版本前先看这里**：如果登录被拒或接口行为异常，优先怀疑版本不匹配，
-> 而不是网络或账号。setup 的提示里会给出两个方向 ——
-> 换回与协议栈匹配的 QQ 版本，或换一个与当前 QQ 版本匹配的 SnowLuma。
-### 风险与免责声明
-- 本项目通过非官方方式接入 QQ 协议，**账号存在被风控/封禁的风险**，建议使用小号
-- SnowLuma 是独立第三方项目，受其自身 EULA 约束，本项目不分发其代码
-- 用户自行承担使用本项目的所有风险
-### 分发前脱敏
-分享自己的部署副本前执行：
-```bash
-node scripts/sanitize-release.mjs --dry-run   # 先看会清理什么
-node scripts/sanitize-release.mjs             # 清空 Key / 白名单 / 存档 / 登录态
-```
-有点忘了为什么要开发这个了，本来就是看见一个qq机器人的项目，然后自己就去搭建一下拿来玩，不过没想到效果确实还不错，所以也是想到了一些可以优化节省成本的方式，然后就做了，效果至少也还不错。
-改完发现省成本省的的确特别多，然后就拿去评论区装个大b（笑），不过当时也是想着把我用得这个版本里面我使用过的痕迹都删了就可以发出去给大伙用了。
-但插眼的人有点过于多了，如果这个做的太糊弄感觉也不太好，想了想就多做了点东西，然后关注的人还在一直增长，插眼的人越来越多，也有一些的确提意见的，做着做着就越来越膨胀了，实际上核心的功能还是就那么一个机器人，说实话，原来那个项目的提示词写的是效果真好，如果没这个效果的话我大概率也就用两天就扔了。
-其实现在之所以加一个意见收集功能和一个金句上传，其实是有点想做成一个算是社区的东西，毕竟独乐乐不如众乐乐，这种东西大家一起玩才好玩，让大家都看看肥鱼都会说些什么骚话（或者情话。谁知道。）
-最近的确是一直通宵坐在这边搞，一天基本上去除睡觉时间都在做这个东西，毕竟如果做自己都要拿来用的东西的话的确不累，再加上一想到有很多人会用这个，也许他们也会觉得大肥鱼很有趣（至少我的朋友都觉得...吧），那么至少我也做了一份贡献在里面，也会有很多源源不断的灵感，再加上现在目前也是处于一个长久的无业的状态，的确求职也相当的失败的man，因此也需要这么一个东西来让我感觉我暂时还“处于一种有用的活着的状态”。
-于是QQ-agent诞生了。
-以后也会有更多的版本，只要我的灵感和大家的灵感还存在的话。
-我爱你们。
-## 致谢
-- **[Derpyu520/qq-bridge](https://github.com/Derpyu520/qq-bridge)**——本项目由其彻底改造而来，"仿真群友"的思路是这一切的起点
-- **SnowLuma**——QQ 协议端（OneBot v11）提供者，独立第三方项目，受其自身 EULA 约束
-由 **Kondius** 开发与维护。
-## 许可
-本项目以 MIT 许可发布（见 [LICENSE](LICENSE)）。前置依赖 SnowLuma 是独立项目，受其自身许可约束，不受本项目许可覆盖。
+
+最近的本地验证与限制见 [docs/testing.md](docs/testing.md)：根 `check` 和单独执行的核心 coverage 已通过，根 `test:all` 仍因缺少便携 QQ/SnowLuma 组件在核心 setup 检查处失败，后续测试不能据此视为通过。测试期间工作区存在并行修改，最终集成后仍需复验；真实账号、上游及部署环境均待验收。本次 README 文档调整未运行软件测试。
+
+## 5. 数据与秘密不要提交到文档或仓库
+
+重点数据位置：
+
+- 核心：`packages/qq-agent-core/data*/`，或由 `QQ_AGENT_DATA_DIR` 指定的目录。
+- 独立 B 站桥接：默认 `<cwd>/var/bili-bridge/`，或由 `BILI_BRIDGE_DATA_DIR` 指定。
+- cloud-manager：默认仓库 `var/cloud/`，或由 `CLOUD_DATA_DIR` 指定。
+- 云租户：`var/cloud/tenants/<tenant-id>/`。
+- 云数据库与主密钥：`var/cloud/cloud.sqlite`、`var/cloud/master.key`。
+
+文档中的 token、密码、QQ 号均为占位符。不要粘贴真实 Cookie、`SESSDATA`、`refresh_token`、`auth_token`、Relay Key 或主密钥；迁移云数据时必须同时备份数据库、租户目录和 `master.key`。

@@ -1,0 +1,156 @@
+import { Context, Service } from 'cordis'
+import { EmailService, BotInfo } from './emailService.js'
+import { EmailConfigManager } from './emailConfig.js'
+import { selfInfo } from '@/common/globalVars.js'
+import { DATA_DIR } from '@/common/globalVars.js'
+import { watch } from 'node:fs'
+import path from 'node:path'
+
+declare module 'cordis' {
+  interface Context {
+    emailNotification: EmailNotificationService
+  }
+}
+
+export class EmailNotificationService extends Service {
+  static inject = ['qqProtocol']
+
+  private emailService: EmailService
+  private configManager: EmailConfigManager
+  private notificationSent: boolean = false
+  private hasLoggedIn: boolean = false
+  private configPath: string
+  private fileWatcher: ReturnType<typeof watch> | null = null
+  private disconnectId: string | null = null
+  private checkLoginStatus: NodeJS.Timeout | null = null
+
+  constructor(ctx: Context) {
+    super(ctx, 'emailNotification')
+
+    this.configPath = path.join(DATA_DIR, 'email_config.json')
+    this.configManager = new EmailConfigManager(this.configPath, ctx.logger)
+    this.emailService = new EmailService(this.configManager, ctx.logger)
+
+    this.initializeConfig()
+    this.registerEventListeners()
+    this.registerDisconnectCallback()
+  }
+
+  async [Service.init]() {
+    return () => {
+      if (this.checkLoginStatus) {
+        clearInterval(this.checkLoginStatus)
+      }
+      if (this.fileWatcher) {
+        this.fileWatcher.close()
+      }
+      if (this.disconnectId) {
+        this.ctx.qqProtocol.offDisconnect(this.disconnectId)
+      }
+    }
+  }
+
+  private async initializeConfig() {
+    try {
+      await this.configManager.loadConfig()
+      this.watchConfigFile()
+    } catch (error) {
+      this.ctx.logger.error('[EmailNotification] Failed to initialize:', error)
+    }
+  }
+
+  private registerEventListeners() {
+    this.hasLoggedIn = true
+
+    let wasOffline = false
+
+    this.ctx.on('nt/kicked-offline', (data) => {
+      wasOffline = true
+      this.onOffline(data.tipsDesc || data.tipsTitle)
+    })
+
+    this.ctx.on('qq/session-expired', (reason) => {
+      wasOffline = true
+      this.onOffline(reason)
+    })
+
+    this.checkLoginStatus = setInterval(() => {
+      if (wasOffline && selfInfo.online) {
+        this.notificationSent = false
+        wasOffline = false
+      }
+    }, 5000)
+  }
+
+  private watchConfigFile() {
+    try {
+      this.fileWatcher = watch(this.configPath, async (eventType) => {
+        if (eventType === 'change') {
+          await this.configManager.loadConfig()
+          this.ctx.parallel('llbot/email-config-updated', this.configManager.getConfig())
+        }
+      })
+    } catch (error) {
+      this.ctx.logger.error('[EmailNotification] Failed to watch config file:', error)
+    }
+  }
+
+  private registerDisconnectCallback() {
+    this.disconnectId = this.ctx.qqProtocol.onDisconnect(10000, (duration) => {
+      if (!this.notificationSent && this.hasLoggedIn) {
+        this.ctx.logger.warn(`[EmailNotification] QQ connection lost for ${duration}ms`)
+        this.onOffline('可能 QQ 已经有点死了')
+      }
+    })
+  }
+
+  private onOffline(reason?: string) {
+    if (!this.hasLoggedIn) {
+      return
+    }
+
+    if (this.notificationSent) {
+      return
+    }
+
+    this.ctx.logger.info('[EmailNotification] Bot offline, sending notification')
+    this.sendOfflineNotification(reason).catch(e => {
+      this.ctx.logger.error('[EmailNotification] sendOfflineNotification error:', e)
+    })
+  }
+
+  private async sendOfflineNotification(reason?: string) {
+    const config = this.configManager.getConfig()
+
+    if (!config.enabled) {
+      this.ctx.logger.debug('[EmailNotification] Email notifications are disabled')
+      return
+    }
+
+    const botInfo: BotInfo = {
+      uin: selfInfo.uin,
+      uid: selfInfo.uid,
+      nick: selfInfo.nick,
+      timestamp: new Date(),
+    }
+
+    const result = await this.emailService.sendOfflineNotification(botInfo, reason)
+
+    if (result.success) {
+      this.notificationSent = true
+      this.ctx.logger.info('[EmailNotification] Offline notification sent successfully')
+    } else {
+      this.ctx.logger.error('[EmailNotification] Failed to send notification:', result.error)
+    }
+  }
+
+  getEmailService(): EmailService {
+    return this.emailService
+  }
+
+  getConfigManager(): EmailConfigManager {
+    return this.configManager
+  }
+}
+
+export default EmailNotificationService

@@ -1,0 +1,10 @@
+{
+  "name": "fish-cloud-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fish Cloud 平台原生 Web 面板（无构建、无框架）",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

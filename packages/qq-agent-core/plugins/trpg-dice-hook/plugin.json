@@ -1,0 +1,26 @@
+{
+  "id": "trpg-dice-hook",
+  "name": "TRPG 骰子指令",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "category": "utility",
+  "description": "确定性处理 .r / !r 掷骰指令（如 .r 3d6+2），命中后不进入 LLM；其他消息照常交给模型。",
+  "author": "fish-bot-cloud",
+  "capabilities": ["message.command"],
+  "settings": {
+    "defaultDice": "1d100",
+    "maxDice": 100,
+    "maxSides": 10000,
+    "maxTerms": 20,
+    "maxRepeat": 10,
+    "showDetail": true
+  },
+  "configSchema": {
+    "defaultDice": { "type": "string", "label": "默认骰子", "description": "只发 .r 不带公式时使用，例如 1d100。", "default": "1d100" },
+    "maxDice": { "type": "number", "label": "单次最多骰子数", "min": 1, "max": 1000, "step": 1, "default": 100 },
+    "maxSides": { "type": "number", "label": "最大面数", "min": 2, "max": 100000, "step": 1, "default": 10000 },
+    "maxTerms": { "type": "number", "label": "最多加减项", "min": 1, "max": 50, "step": 1, "default": 20 },
+    "maxRepeat": { "type": "number", "label": "最多重复次数", "min": 1, "max": 50, "step": 1, "default": 10 },
+    "showDetail": { "type": "boolean", "label": "显示每颗骰子点数", "default": true }
+  }
+}

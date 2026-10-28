@@ -1,0 +1,37 @@
+.shared/
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+package-lock.json
+node_modules
+dist
+out
+data
+*.tsbuildinfo
+
+.DS_Store
+.idea
+llonebot-dist.tgz
+script/ffmpeg/
+.claude/
+*.stackdump
+
+test/qr-code.png
+test/qq-session.json
+.tmp/
+v2-login-qr.png
+sse-capture.jsonl
+test/fixtures/pmhq-flash/
+
+# 测试时 nohup tsx watch 输出
+logs/
+
+# playwright-cli 运行产物 (console log / 页面快照)
+.playwright-cli/
+
+# SignProxy dev build (npm run build:dev-bot), loaded only with --dev; never commit or ship it
+src/main/qqProtocol/direct-lib/sign-proxy/sign-proxy-dev.*

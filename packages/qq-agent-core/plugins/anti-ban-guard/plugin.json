@@ -1,0 +1,50 @@
+{
+  "id": "anti-ban-guard",
+  "name": "发送风控",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "category": "message",
+  "description": "敏感内容策略、账号预热、夜间静默与频率熔断；通过 send.guard 成为所有出站消息的统一守卫。",
+  "author": "fish-bot-cloud",
+  "enabledByDefault": false,
+  "capabilities": ["send.guard"],
+  "settings": {
+    "nightSilence": true,
+    "nightStart": "23:30",
+    "nightEnd": "07:30",
+    "allowAtNight": true,
+    "warmupDays": 3,
+    "warmupMaxPerMinute": 3,
+    "warmupMaxPerHour": 20,
+    "maxPerMinute": 10,
+    "maxPerHour": 120,
+    "breakerCooldownMs": 180000,
+    "sensitiveAction": "block",
+    "sensitivePatterns": "代开发票|办理证件|办证|博彩|赌博|洗钱|跑分|刷单|返利|裸聊|约炮|毒品|冰毒|海洛因|枪支|弹药|出售外挂|买卖账号"
+  },
+  "configSchema": {
+    "nightSilence": { "type": "boolean", "label": "夜间静默", "description": "在夜间时段内默认不主动发言（被 @ / 引用回复可豁免）。", "default": true },
+    "nightStart": { "type": "string", "label": "静默开始（HH:MM）", "default": "23:30" },
+    "nightEnd": { "type": "string", "label": "静默结束（HH:MM）", "default": "07:30" },
+    "allowAtNight": { "type": "boolean", "label": "夜间允许 @ / 引用回复", "description": "开启时，带 atUserId 或 replyToMessageId 的消息可在夜间发出。", "default": true },
+    "warmupDays": { "type": "number", "label": "账号预热天数", "description": "首次启动后的前 N 天使用更严格的频率上限；0 = 关闭预热。", "min": 0, "max": 30, "step": 1, "default": 3 },
+    "warmupMaxPerMinute": { "type": "number", "label": "预热期每分钟上限", "min": 1, "max": 60, "step": 1, "default": 3 },
+    "warmupMaxPerHour": { "type": "number", "label": "预热期每小时上限", "min": 1, "max": 600, "step": 1, "default": 20 },
+    "maxPerMinute": { "type": "number", "label": "每分钟上限", "min": 1, "max": 120, "step": 1, "default": 10 },
+    "maxPerHour": { "type": "number", "label": "每小时上限", "min": 1, "max": 1200, "step": 1, "default": 120 },
+    "breakerCooldownMs": { "type": "number", "label": "熔断冷却（毫秒）", "min": 1000, "max": 3600000, "step": 1000, "default": 180000 },
+    "sensitiveAction": {
+      "type": "enum",
+      "label": "敏感内容处理",
+      "values": ["block", "warn"],
+      "default": "block"
+    },
+    "sensitivePatterns": {
+      "type": "string",
+      "label": "敏感词正则（每行一个）",
+      "multiline": true,
+      "description": "留空 = 关闭敏感内容检测。命中后按“敏感内容处理”执行。",
+      "default": "代开发票|办理证件|办证|博彩|赌博|洗钱|跑分|刷单|返利|裸聊|约炮|毒品|冰毒|海洛因|枪支|弹药|出售外挂|买卖账号"
+    }
+  }
+}

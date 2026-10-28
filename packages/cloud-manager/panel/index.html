@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#0a1420" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; "
+  />
+  <title>Fish Cloud · 养鱼 Bot 云托管</title>
+  <meta name="description" content="养鱼 Bot 一键云托管平台：QQ 与 B 站双通道、租户托管、Relay 计费。" />
+  <script src="./theme-init.js"></script>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true">
+    <span class="ambient-orb ambient-orb-a"></span>
+    <span class="ambient-orb ambient-orb-b"></span>
+    <span class="ambient-grid"></span>
+  </div>
+
+  <a class="skip-link" href="#view-root">跳到主要内容</a>
+
+  <div id="boot-screen" class="boot-screen">
+    <span class="brand-mark brand-mark-lg" aria-hidden="true"></span>
+    <p class="boot-title">Fish Cloud</p>
+    <p class="boot-sub" id="boot-status">正在连接云平台…</p>
+    <span class="spinner" aria-hidden="true"></span>
+  </div>
+
+  <div id="login-root" class="login-root" hidden></div>
+
+  <div id="app-shell" class="app-shell" hidden>
+    <aside id="sidebar" class="sidebar" aria-label="平台导航">
+      <div class="sidebar-brand">
+        <a class="brand" id="brand-link" href="#/tenants">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-copy">
+            <strong>Fish Cloud</strong>
+            <small>养鱼 Bot 云托管</small>
+          </span>
+        </a>
+      </div>
+
+      <nav class="side-nav" id="platform-nav" aria-label="平台管理">
+        <span class="side-label">平台</span>
+        <a class="side-link" data-nav="tenants" href="#/tenants">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h6v6H4zM14 5.5h6v6h-6zM4 15h6v6H4zM14 15h6v6h-6z" /></svg>
+          <span>租户总览</span>
+        </a>
+        <a class="side-link" data-nav="users" href="#/users"><span>用户管理</span></a>
+        <a class="side-link" id="nav-hosting" data-nav="hosting" href="#/tenants" aria-disabled="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h14v10H5zM8 8.5V6h8v2.5M9 13h6M9 16h4" /></svg>
+          <span>Hosting Center</span>
+        </a>
+        <a class="side-link" id="nav-relay" data-nav="relay" href="#/tenants" aria-disabled="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18V9M9.3 18V5M14.7 18v-6M20 18V7M3 20.5h18" /></svg>
+          <span>Relay &amp; Billing</span>
+        </a>
+      </nav>
+
+      <nav class="side-nav user-nav" id="user-nav" aria-label="用户视图">
+        <span class="side-label">用户视图</span>
+        <a class="side-link" data-nav="userInstances" href="#/user/instances">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.5h14v10H5zM8 8.5V6h8v2.5M9 13h6" /></svg>
+          <span>我的鱼</span>
+        </a>
+        <a class="side-link" data-nav="userChannel" href="#/user/channel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="3" /><path d="M11 12h9M16 12v3M19 12v2" /></svg>
+          <span>渠道 Key</span>
+        </a>
+        <a class="side-link" data-nav="userLogs" href="#/user/logs">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4" /></svg>
+          <span>调用日志</span>
+        </a>
+        <a class="side-link" data-nav="userBilling" href="#/user/billing">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM4 10h16M15 15h2" /></svg>
+          <span>充值</span>
+        </a>
+      </nav>
+
+      <div class="side-tenants" id="side-tenants">
+        <div class="side-label-row">
+          <span class="side-label">我的租户</span>
+          <a class="side-add" href="#/tenants" title="创建或管理租户" aria-label="创建或管理租户">+</a>
+        </div>
+        <div id="tenant-nav" class="tenant-nav">
+          <p class="side-hint">加载中…</p>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <span id="user-avatar" class="avatar" aria-hidden="true">F</span>
+          <span class="user-copy">
+            <strong id="user-name">未登录</strong>
+            <small id="user-role">—</small>
+          </span>
+        </div>
+        <button id="logout-btn" class="icon-btn" type="button" title="退出登录" aria-label="退出登录">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9" /></svg>
+        </button>
+      </div>
+    </aside>
+
+    <button id="sidebar-scrim" class="sidebar-scrim" type="button" aria-label="关闭导航" hidden></button>
+
+    <div class="workspace">
+      <header class="topbar">
+        <button id="sidebar-toggle" class="icon-btn menu-btn" type="button" aria-label="打开导航" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
+        <div class="topbar-titles">
+          <nav id="breadcrumb" class="breadcrumb" aria-label="面包屑"></nav>
+          <h1 id="page-title" class="page-title">租户总览</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="theme-toggle" class="icon-btn theme-toggle" type="button" title="切换深浅主题" aria-label="切换深浅主题">
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8" /></svg>
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2Z" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <main id="view-root" class="view-root" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+  <noscript>
+    <div class="noscript">Fish Cloud 面板需要启用 JavaScript。</div>
+  </noscript>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'tenant-extensions-'));
+const loader=new URL('../src/plugin-loader.js', import.meta.url).href;
+const config=new URL('../src/skills/config.js', import.meta.url).href;
+const manager=new URL('../src/skills/manager.js', import.meta.url).href;
+const fixture=(root,version)=>{ const dir=path.join(root,'trpg-dice-hook'); fs.mkdirSync(dir,{recursive:true}); fs.writeFileSync(path.join(dir,'plugin.json'),JSON.stringify({id:'trpg-dice-hook',version,settings:{value:'default'}})); fs.writeFileSync(path.join(dir,'index.js'),"export const providers = {'message.command':()=>({handled:false})};"); };
+const run=(tenant,action,isolated='1')=>{
+ const data=path.join(tmp,tenant,'data'), plugins=path.join(tmp,tenant,'plugins'), skills=path.join(tmp,tenant,'skills'); fs.mkdirSync(data,{recursive:true}); fs.mkdirSync(plugins,{recursive:true}); fs.mkdirSync(skills,{recursive:true});
+ const script=`const {loadPlugins}=await import(${JSON.stringify(loader)}); const {skillManager}=await import(${JSON.stringify(manager)}); const c=await import(${JSON.stringify(config)}); await loadPlugins({log:()=>{}}); if(${JSON.stringify(action)}==='set'){c.setSkillConfig('trpg-dice-hook',{enabled:false,value:'tenant-a'});} const s=skillManager.status('trpg-dice-hook'); console.log(JSON.stringify({version:s.version,enabled:s.enabled,settings:c.getSkillConfig('trpg-dice-hook')}));`;
+ const result=spawnSync(process.execPath,['--input-type=module','-e',script],{encoding:'utf8',env:{...process.env,QQ_AGENT_DATA_DIR:data,QQ_AGENT_PLUGINS_DIR:plugins,QQ_AGENT_SKILLS_DIR:skills,QQ_AGENT_EXTENSION_ISOLATION_CONFIRMED:isolated}});
+ assert.equal(result.status,0,result.stderr); return JSON.parse(result.stdout.trim().split('\n').at(-1));
+};
+test('two tenants retain config and overrides across restart and packaged baseline',t=>{
+ t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
+ fixture(path.join(tmp,'a','plugins'),'9.0.0');
+ const a=run('a','set'), b=run('b','read');
+ assert.equal(a.version,'9.0.0'); assert.equal(a.enabled,false); assert.equal(a.settings.value,'tenant-a');
+ assert.notEqual(b.version,'9.0.0'); assert.equal(b.enabled,true); assert.notEqual(b.settings.value,'tenant-a');
+ assert.deepEqual(run('a','read'),a); assert.deepEqual(run('b','read'),b);
+ fixture(path.join(tmp,'a','plugins'),'10.0.0'); assert.equal(run('a','read').version,'10.0.0'); assert.deepEqual(run('b','read'),b);
+ const pluginRoot=path.join(tmp,'a','plugins');
+ fs.renameSync(path.join(pluginRoot,'trpg-dice-hook'),path.join(tmp,'a','.plugins-extension-backup-trpg-dice-hook'));
+ fixture(pluginRoot,'11.0.0');
+ assert.equal(run('a','read').version,'10.0.0', 'interrupted replacement restores the backup');
+ const closed=run('a','read','0'); assert.notEqual(closed.version,'10.0.0'); assert.equal(closed.enabled,false);
+});

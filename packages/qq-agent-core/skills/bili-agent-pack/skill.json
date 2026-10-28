@@ -1,0 +1,21 @@
+{
+  "id": "bili-agent-pack",
+  "name": "B 站 Agent 工具包",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "category": "media",
+  "description": "把 B 站视频上下文、用户资料、评论回复和点赞注册为 LLM 工具，按会话路由到 B 站桥接的 custom action。",
+  "author": "fish-bot-cloud",
+  "prompt": {
+    "sections": [
+      {
+        "id": "bili-tools",
+        "title": "B 站工具",
+        "priority": 40,
+        "content": "在 B 站会话里需要视频详情/字幕/封面、用户资料、回复评论或点赞时，使用 bili_* 工具。工具返回失败（未绑定桥接、无字幕、无权限、已删除）时如实说明，绝不编造视频内容。回复评论/点赞属于写操作：只有用户明确要求时才传 confirm=true；评论长度不得超过 2000 字节，不要连续刷评论。"
+      }
+    ]
+  },
+  "settings": {},
+  "configSchema": {}
+}

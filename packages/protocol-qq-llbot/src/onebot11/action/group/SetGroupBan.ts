@@ -1,0 +1,29 @@
+import { BaseAction, Schema } from '../BaseAction'
+import { ActionName } from '../types'
+
+interface Payload {
+  group_id: number | string
+  user_id: number | string
+  duration: number | string
+}
+
+export default class SetGroupBan extends BaseAction<Payload, null> {
+  actionName = ActionName.SetGroupBan
+  payloadSchema = Schema.object({
+    group_id: Schema.union([Number, String]).required(),
+    user_id: Schema.union([Number, String]).required(),
+    duration: Schema.union([Number, String]).default(30 * 60)
+  })
+
+  protected async _handle(payload: Payload) {
+    const uid = await this.ctx.ntUserApi.getUidByUin(+payload.user_id, + payload.group_id)
+    if (!uid) throw new Error('无法获取用户信息')
+    const res = await this.ctx.ntGroupApi.muteGroupMember(+payload.group_id, [
+      { uid, duration: +payload.duration },
+    ])
+    if (res.errorCode !== 0) {
+      throw new Error(res.errorMsg)
+    }
+    return null
+  }
+}

@@ -1,0 +1,34 @@
+import { BaseAction, Schema } from '../../BaseAction'
+import { ActionName } from '../../types'
+import { selfInfo } from '@/common/globalVars'
+import { Dict } from 'cosmokit'
+
+interface Payload {
+  start: number | string
+  count: number | string
+}
+
+interface Response {
+  users: Dict[]
+  nextStart: number
+}
+
+export class GetProfileLikeMe extends BaseAction<Payload, Response> {
+  actionName = ActionName.GetProfileLikeMe
+  payloadSchema = Schema.object({
+    start: Schema.union([Number, String]).default(0), // 从0开始，-1表示获取全部
+    count: Schema.union([Number, String]).default(20) // 最多30一页
+  })
+
+  async _handle(payload: Payload): Promise<Response> {
+    const ret = await this.ctx.ntUserApi.getProfileLikeMe(selfInfo.uid, +payload.start, +payload.count)
+    const users = ret.userLikeInfo.voteInfo.users ?? []
+    for (const item of users) {
+      Object.assign(item, {
+        uin: await this.ctx.ntUserApi.getUinByUid(item.uid),
+        isFriend: await this.ctx.ntFriendApi.isFriend(item.uid)
+      })
+    }
+    return { users, nextStart: ret.start }
+  }
+}
