@@ -1,5 +1,7 @@
 # cloud-manager、panel 与 Relay 开发契约
 
+NapCat P1 当前为本地实现和模拟测试，真实 VPS、QQ 登录、模型消息和 HTTPS 控制台尚未验收。Host 网关使用配置或可信代理提供的 scheme；域名、DNS 和证书需部署者提供。完整切换事务（P2）和全量恢复（P3）尚未交付。
+
 主要源码：`packages/cloud-manager/src/{app,api,config,db,gateway,agent-runtime,qq-service,bili-service,relay/server,billing,plans,ports,crypto}.js`。API 表以 `src/api.js` 为唯一准绳，panel 静态文件由 `src/app.js` 直接托管。
 
 ## 用户旅程：目标与当前实现
@@ -10,7 +12,7 @@
 
 1. **交钱**：没有支付成功校验作为创建或续费的前置条件。用户先有平台账号；用户面板的充值需要选择已有实例，提交后只是 pending 订单，不自动扣款、不代表支付成功，管理员确认后才入钱包。管理员也可直接给钱包充值。支付方式、付款核验和开通规则仍待确定。
 2. **创建实例**：用户面板填写名称并可选择套餐，默认 trial；服务端创建 active 租户、初始钱包额度和本地 Relay Key，并不检查支付。普通用户可创建多实例，数量按本次新建所选套餐限制，详见第 5 节。创建不等于进程已启动，实例页提供启动操作。续费接口由 owner 调用，可延长时长、选择套餐并发放套餐续费额度，同样不检查支付；只有管理员可指定 `creditMicros`。
-3. **登录 QQ**：普通用户从 `#/user/instances` 的实例卡片进入 `#/user/instances/:tenantId`，输入 5–12 位 QQ 号后准备、启动 LLBot 并打开扫码窗口；viewer 只读，owner 和 operator 可操作。普通用户无需提供平台 token；LLBot direct 仍依赖平台预先配置有效授权，缺失或无效时请联系平台管理员。管理员可从 `#/users` 进入 `#/users/:userId/instances` 管理该用户拥有的实例，并进入托管视图。具体可用性依赖部署环境和协议端；桌面模式需要外部独立 QQ 与 PMHQ 组件，平台不自带启动器或注入器。提供 QQ 号本身不等于登录成功，真实 QQ 与 VPS 环境尚未验收。
+3. **登录 QQ**：普通用户从 `#/user/instances` 的实例卡片进入 `#/user/instances/:tenantId`，输入 5–12 位 QQ 号后按实例配置准备、启动 QQ 内核并打开扫码窗口；新实例默认 NapCat，已配置实例保留原内核。viewer 只读，owner 和 operator 可操作。普通用户无需提供平台 token；LLBot direct 仍依赖平台预先配置有效授权，缺失或无效时请联系平台管理员。管理员可从 `#/users` 进入 `#/users/:userId/instances` 管理该用户拥有的实例，并进入托管视图。具体可用性依赖部署环境和协议端；桌面模式需要外部独立 QQ 与 PMHQ 组件，平台不自带启动器或注入器。提供 QQ 号本身不等于登录成功，真实 QQ 与 VPS 环境尚未验收。
 4. **绑定 Key**：创建时已自动签发本平台的租户 Relay Key，Agent 启动或写配置时会使用它。用户渠道页保留“平台 Relay Key”输入框和“绑定平台 Key”按钮，可替换这个本地 Bearer 凭据；本地格式及唯一性校验通过不代表外部上游 Key 有效，也不会验证远端。若用户自带模型服务，应在同页的自定义渠道填写 Base URL、上游 API Key 和模型；当前保存时不提供连接测试，也不会自动修改 Agent 默认模型，实际请求模型必须与自定义模型一致。平台渠道则依赖管理员配置平台上游 URL 和 API Key。
 5. **开始养鱼**：需要租户有效、Agent 和 QQ 协议端可运行且 QQ 已登录，模型渠道和模型可用；平台渠道还需要可用钱包余额。还需按实际场景配置允许互动的对象（空白 allowlist 不默认放行）。这些条件并非由一条已验证的一键开通流程自动保证。
 
@@ -25,7 +27,7 @@
 | panel + 管理 API + 租户 Gateway | `0.0.0.0:8080` | 登录、租户管理、静态 panel，以及 `<slug>.<baseDomain>` 反向代理。 |
 | OpenAI 兼容 Relay | `127.0.0.1:8790` | `/v1/models`、`/v1/chat/completions`，按租户 Key 鉴权和计费。 |
 
-每个租户由 Supervisor 分别管理 `agent`、`qq`、`bili` 子进程。Agent 默认入口是核心 `modules/headless/server.js`（对应 `npm run server:headless`），B 站是桥接 `src/main.js`，LLBot 是 `dist/llbot.js`；NapCat/SnowLuma 入口可用环境变量替换。Headless 已接入核心 `ChannelRouter`，使用 `channels` 配置和数字 ID 路由支持 QQ/B 站双通道；QQ 使用 OneBot 连接，B 站使用 OneBot 客户端，官方 QQBot OpenID 当前不受该路由支持。Headless 不自行管理桌面 QQ 或协议端，QQ/B 站协议进程独立运行。源码接入不等于真实环境验收：仍需在部署环境验证协议服务、实际登录和双通道消息收发。
+每个租户的 Agent、B 站桥和 LLBot 由 Supervisor 管理进程；NapCat 使用独立 Docker 运行管理。Agent 默认入口是核心 `modules/headless/server.js`（对应 `npm run server:headless`），B 站是桥接 `src/main.js`，LLBot 是 `dist/llbot.js`。Headless 已接入核心 `ChannelRouter`，使用 `channels` 配置和数字 ID 路由支持 QQ/B 站双通道；QQ 使用 OneBot 连接，B 站使用 OneBot 客户端，官方 QQBot OpenID 当前不受该路由支持。Headless 不自行管理桌面 QQ 或协议端，QQ/B 站协议进程独立运行。源码接入不等于真实环境验收：仍需在部署环境验证协议服务、实际登录和双通道消息收发。
 
 Supervisor 注入租户专属 `QQ_AGENT_TOKEN`、回环 `QQ_AGENT_HOST`、租约 `QQ_AGENT_PORT` 和 `QQ_AGENT_ALLOWED_HOSTS`。Gateway 根据 Host 识别 `<slug>.<CLOUD_BASE_DOMAIN>`，检查会话、租户成员角色和 active 状态，再注入内部 `x-console-token` 转发到该租户 Agent，并把 Host 和 Origin 改写为对应回环地址。浏览器的 panel Cookie、Origin、CSRF 等不会原样透传。HTTP、SSE 和 WebSocket 都走同一租户隔离逻辑。
 
@@ -141,7 +143,7 @@ Agent 的 `data/config.json` 必须含 Relay Key 才能调用模型，因此该�
 
 | 方法 | 后缀 | 权限/说明 |
 |---|---|---|
-| POST | `/qq/prepare` | 操作员 active；新实例只传 `uin`（别名 `expectedUin`/`qq`）即可默认使用 LLBot direct；也支持 `driver`（别名 `kernel`）、`mode`、`pmhqPort`、`authToken`。desktop 分配专属 PMHQ 端口。 |
+| POST | `/qq/prepare` | 操作员 active；新实例只传 `uin`（别名 `expectedUin`/`qq`）时使用平台默认内核（默认 NapCat），已有实例保留其配置；也支持 `driver`（别名 `kernel`）、`mode`、`pmhqPort`、`authToken`。LLBot desktop 分配专属 PMHQ 端口。 |
 | POST | `/qq/start` | 操作员 active；可按需隐式 prepare。 |
 | POST | `/qq/stop` | 操作员。 |
 | GET | `/qq/status` | 成员。 |

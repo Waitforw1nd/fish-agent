@@ -213,17 +213,21 @@ export function createApi({
     stopTenant(tenantId) {
       return request(tenantPath(tenantId, '/stop'), { method: 'POST' });
     },
-    prepareQQ(tenantId, { kernel, authToken, uin, mode, pmhqPort } = {}) {
+    getQQDrivers() {
+      return request('/api/qq/drivers');
+    },
+    prepareQQ(tenantId, { kernel, uin } = {}) {
       return request(tenantPath(tenantId, '/qq/prepare'), {
-        method: 'POST',
-        body: qqBody(kernel, authToken, uin, mode, pmhqPort)
+        method: 'POST', body: qqBody(kernel, uin)
       });
     },
-    startQQ(tenantId, { kernel, authToken, uin, mode, pmhqPort } = {}) {
+    startQQ(tenantId, { kernel, uin } = {}) {
       return request(tenantPath(tenantId, '/qq/start'), {
-        method: 'POST',
-        body: qqBody(kernel, authToken, uin, mode, pmhqPort)
+        method: 'POST', body: qqBody(kernel, uin)
       });
+    },
+    refreshQQQrcode(tenantId) {
+      return request(tenantPath(tenantId, '/qq/qrcode/refresh'), { method: 'POST' });
     },
     getQQQrcode(tenantId) {
       return request(tenantPath(tenantId, '/qq/qrcode'));
@@ -302,13 +306,9 @@ export function createApi({
   };
 }
 
-function qqBody(kernel, authToken, uin, mode, pmhqPort) {
-  const body = { kernel };
-  if (kernel === 'llbot' && mode) body.mode = mode;
-  if (kernel === 'llbot' && mode === 'desktop' && pmhqPort) body.pmhqPort = Number(pmhqPort);
-  const token = String(authToken ?? '').trim();
-  const qq = String(uin ?? '').trim();
-  if (token) body.authToken = token;
-  if (qq) body.uin = qq;
+function qqBody(kernel, uin) {
+  const body = {};
+  if (kernel) body.kernel = String(kernel);
+  if (uin) body.uin = String(uin).trim();
   return body;
 }

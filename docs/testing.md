@@ -1,5 +1,7 @@
 # 测试、fake、E2E 与故障排查
 
+NapCat P1 本地实现待 P0 真实容器验收，不代表 P1 已完成。`node --test packages/qq-agent-core/test/headless-runtime.test.mjs packages/qq-agent-core/test/headless-transport.test.mjs packages/qq-agent-core/test/napcat-media.test.mjs packages/qq-agent-core/test/napcat-redirect.test.mjs` 验证 headless HTTP/WS fixture：图片工具经下载后首次 action 为 base64，断开和短超时均只请求一次，三个入站路径拒绝宿主读取，超限拒绝；受控 DNS 夹具确认公网首跳实际返回 302 后拒绝私网目标。`node --test packages/cloud-manager/test/headless.test.mjs packages/cloud-manager/test/napcat-agent-contract.test.mjs` 验证配置代际、实际身份、健康缓存和 HTTPS 网关跳转。核心 `npm run test:coverage` 通过；根 `npm test` 因本机缺少 SnowLuma/便携 QQ，`setup-qq-version.mjs` 的 CLIENT_BUILD 检查失败。Windows 不支持 POSIX SIGTERM 的测试跳过。以上模拟测试不证明真实容器或 QQ 可用；VPS SSH 公钥认证失败，真实验收仍受阻，P2/P3 不属于已完成范围。
+
 原则：用真实 HTTP/WS、真实子进程和临时目录验证集成，但外部 QQ/B 站/模型服务使用 fake。编译或 import 成功不能代替场景测试。
 
 统一运行时：
@@ -203,3 +205,12 @@ Windows 本地工作区，Node v24.22.1、npm 11.19.1；其他模块并行修改
 最终 panel 独立测试 75/75 通过，根 `npm run check` 通过。内置浏览器使用隔离 fake fixture 验证了普通用户“我的鱼”→实例详情→二维码弹窗、管理员用户列表及用户实例子页、为指定用户创建实例，以及全局总览中显示实例所属用户 `fixtureuser`。首次残留和新 fixture 临时目录均已确认删除，相应进程已退出、端口无监听，浏览器标签已关闭。
 
 浏览器与 HTTP 测试均使用 fake，尚未验证真实手机 QQ 扫码、真实 LLBot 授权或 VPS 环境。
+
+
+## 11. NapCat P1 本地集成验证与真实验收边界
+
+以下为本次 Windows / Node 24 本地与 fake 验证结果：cloud-manager 后端 46/46、panel 80/80；核心 headless、传输和媒体测试 18 通过、1 项因 Windows 不支持 POSIX SIGTERM 跳过；核心 `npm run test:coverage` 和根 `npm run check` 通过。根 `npm test` 在 `setup-qq-version.mjs` 以 84 通过、1 失败停止，本机缺少 SnowLuma 和便携 QQ，无法报告 CLIENT_BUILD。
+
+浏览器使用 fake 验证了两类实例相关流程，不能代表真实 QQ。核心测试覆盖 NapCat HTTP 图片首发 base64、发送超时与断开后不重发、媒体路径拒绝、下载超限及公网首跳重定向至私网拒绝；Agent 健康和 HTTPS 网关使用本地 fixture 验证。
+
+这些结果不构成 P0 或 P1 真实验收：目标 VPS 的 SSH 返回 `Permission denied (publickey)`，真实 NapCat 容器、扫码、QQ 消息、模型对话及 HTTPS 控制台均未验证。P1 是本地实现待 P0 真实容器及 P1 单实例闭环验收，不能标为完整交付；P2 完整切换事务和 P3 全量恢复尚未完成。

@@ -1,5 +1,5 @@
 const LOCKED_TOP_LEVEL = [
-  'server', 'extensions', 'relay', 'channels', 'snowluma',
+  'server', 'extensions', 'relay', 'channels', 'connection', 'snowluma',
   'providers', 'dshProviderKeys', 'providersSourceYaml', 'providersImported'
 ];
 

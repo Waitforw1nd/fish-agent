@@ -18,6 +18,8 @@ export function openQrFlow({
   toast,
   onConfirmed = null,
   safeMessages = false,
+  capabilities = {},
+  runtimeGeneration = null,
   timers = defaultTimers(),
   nowFn = Date.now
 } = {}) {
@@ -29,6 +31,19 @@ export function openQrFlow({
   let countdownTimer = null;
   let currentQr = null;
   let expireHandled = false;
+  let expectedRuntime = runtimeGeneration;
+  let expectedQr = null;
+  const canRefresh = !isQq || capabilities.qrcodeRefresh === true || capabilities.refreshQrcode === true || capabilities.qrRefresh === true;
+  function matchesRuntime(value) {
+    if (value == null) return true;
+    if (expectedRuntime == null) { expectedRuntime = value; return true; }
+    if (String(value) === String(expectedRuntime)) return true;
+    stopBackground();
+    setPlaceholder('运行实例已变化，请关闭并重新打开二维码。');
+    setState('运行实例已变化', 'danger');
+    refresh.disabled = true;
+    return false;
+  }
 
   const stateDot = h('span', { class: 'status-dot', dataset: { tone: 'warn' }, 'aria-hidden': 'true' });
   const stateText = h('span', {}, '正在获取二维码…');
@@ -42,7 +57,7 @@ export function openQrFlow({
   const error = alertBox('', 'danger', { hidden: true });
   const steps = h('div', { class: 'qr-steps' });
 
-  const refresh = h('button', { class: 'btn btn-soft', type: 'button' }, '刷新二维码');
+  const refresh = h('button', { class: 'btn btn-soft', type: 'button', hidden: !canRefresh }, '刷新二维码');
   const closeButton = h('button', { class: 'btn btn-ghost', type: 'button' }, '关闭');
   const actions = h('div', { class: 'qr-actions' }, refresh);
 
@@ -179,7 +194,7 @@ export function openQrFlow({
     startCountdown(qr);
   }
 
-  async function loadQr() {
+  async function loadQr(refreshRequested = false) {
     if (closed) return;
     const run = ++generation;
     poller?.stop();
@@ -189,7 +204,7 @@ export function openQrFlow({
       countdownTimer = null;
     }
     refresh.disabled = true;
-    refresh.hidden = false;
+    refresh.hidden = !canRefresh;
     refresh.textContent = '获取中…';
     setAlert(error, '', 'info');
     setHidden(overlay, true);
@@ -197,10 +212,24 @@ export function openQrFlow({
     setText(countdown, '');
     setState('正在获取二维码…', 'warn');
     try {
-      const payload = isQq ? await api.getQQQrcode(tenantId) : await api.biliLoginQr(tenantId);
+      let payload;
+      if (isQq) {
+        if (refreshRequested && canRefresh) {
+          await api.refreshQQQrcode(tenantId);
+          if (closed || run !== generation) return;
+        }
+        payload = await api.getQQQrcode(tenantId);
+      } else payload = await api.biliLoginQr(tenantId);
       if (closed || run !== generation) return;
       const qr = normalizeQr(payload, { now: nowFn() });
-      if (isQq && qr.status === 'confirmed') { onSuccess(); return; }
+      if (isQq && !matchesRuntime(qr.runtimeGeneration)) return;
+      if (isQq) expectedQr = qr.qrGeneration;
+      if (isQq && qr.status === 'confirmed') {
+        setPlaceholder('正在确认 QQ 登录状态…', true);
+        setState('正在确认 QQ 登录状态…', 'info');
+        startStatusPolling(run);
+        return;
+      }
       if (!qr.imageSrc && !qr.content && qr.status !== 'expired') {
         setState('等待二维码生成', 'warn');
         setPlaceholder(safeMessages ? '正在等待二维码生成…' : qr.message || '正在等待协议端生成二维码…', true);
@@ -216,7 +245,8 @@ export function openQrFlow({
     } catch (err) {
       if (closed || run !== generation) return;
       setState('获取二维码失败', 'danger');
-      setAlert(error, safeMessages ? '无法获取二维码，请稍后重试。' : apiErrorMessage(err, { fallback: '无法获取二维码，请稍后重试。' }), 'danger');
+      const twoFactor = isQq && err?.code === 'NAPCAT_WEBUI_AUTH_FAILED' && /二次验证|2fa/i.test(String(err?.message || ''));
+      setAlert(error, twoFactor ? 'QQ 登录服务启用了二次验证，请联系平台管理员处理。' : safeMessages ? '无法获取二维码，请稍后重试。' : apiErrorMessage(err, { fallback: '无法获取二维码，请稍后重试。' }), 'danger');
       setPlaceholder('二维码获取失败', false);
       refresh.disabled = false;
       refresh.textContent = '重试';
@@ -234,8 +264,8 @@ export function openQrFlow({
         if (closed || run !== generation) return;
         if (isQq) {
           const status = normalizeQQStatus(await api.getQQStatus(tenantId));
-          if (closed || run !== generation) return;
-          if (status.phase === 'online' || status.loggedIn) {
+          if (closed || run !== generation || !matchesRuntime(status.runtimeGeneration)) return;
+          if (status.loginState === 'online' && status.loggedIn && status.uin && status.expectedUin && status.uin === status.expectedUin) {
             onSuccess({ nickname: status.nickname, mid: status.uin });
           } else if (status.phase === 'waiting_confirm') {
             setState('已扫码，请在手机确认', 'info', '已扫码，请在手机确认');
@@ -245,9 +275,18 @@ export function openQrFlow({
             setAlert(error, safeMessages ? 'QQ 登录服务未运行，请重试。' : 'QQ 进程未运行，请先在 Hosting Center 启动。', 'warning');
           } else {
             const qr = normalizeQr(await api.getQQQrcode(tenantId), { now: nowFn() });
-            if (closed || run !== generation) return;
-            if (qr.status === 'confirmed') onSuccess();
-            else if (qr.expired) markExpired();
+            if (closed || run !== generation || !matchesRuntime(qr.runtimeGeneration)) return;
+            if (expectedQr != null && qr.qrGeneration != null && String(expectedQr) !== String(qr.qrGeneration)) {
+              stopBackground();
+              setPlaceholder('二维码已变化，请关闭并重新打开。');
+              setState('二维码已变化', 'danger');
+              return;
+            }
+            if (expectedQr == null) expectedQr = qr.qrGeneration;
+            if (qr.status === 'confirmed') {
+              setPlaceholder('正在确认 QQ 登录状态…', true);
+              setState('正在确认 QQ 登录状态…', 'info');
+            } else if (qr.expired) markExpired();
             else if (qr.imageSrc || qr.content) showQr(qr);
           }
         } else {
@@ -296,7 +335,7 @@ export function openQrFlow({
     }, 1300);
   }
 
-  refresh.addEventListener('click', () => loadQr());
+  refresh.addEventListener('click', () => { if (canRefresh) void loadQr(true); });
   void loadQr();
 
   return {

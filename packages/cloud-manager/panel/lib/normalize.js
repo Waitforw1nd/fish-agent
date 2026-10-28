@@ -221,7 +221,7 @@ export function normalizeQQPhase(raw, { running, loggedIn, expired } = {}) {
   }
   if (/waiting_confirm|scanned|已扫码|待确认/.test(text)) return 'waiting_confirm';
   if (/waiting_login|waiting_qr|qrcode|qr_code|扫码|待扫码|等待扫码/.test(text)) return 'waiting_login';
-  if (/online|logged_in|loggedin|ready|connected|运行中|在线/.test(text)) return 'online';
+  if (/online|logged_in|loggedin|在线/.test(text)) return 'online';
   if (/^running$|运转|运行/.test(text)) return loggedIn ? 'online' : 'waiting_login';
   if (/prepar|download|安装中|准备中/.test(text)) return 'preparing';
   if (/start|launch|booting|启动中/.test(text)) return 'starting';
@@ -254,6 +254,19 @@ function normalizeAuthTokenStatus(raw) {
   return 'unknown';
 }
 
+export function normalizeQQDrivers(value) {
+  const source = toObject(value);
+  return {
+    defaultDriver: asString(source.defaultDriver),
+    drivers: asArray(source.drivers).filter((item) => isObject(item) && item.allowed === true && asString(item.id)).map((item) => ({
+      id: asString(item.id), label: asString(item.label, asString(item.id)),
+      allowed: true, installed: item.installed === true, available: item.available === true,
+      reasonCode: asString(item.reasonCode), reason: asString(item.reason),
+      capabilities: toObject(item.capabilities)
+    }))
+  };
+}
+
 export function normalizeQQStatus(value) {
   if (value === undefined || value === null) {
     return {
@@ -280,13 +293,18 @@ export function normalizeQQStatus(value) {
   const uin = asString(first(source, ['uin', 'selfId', 'self_id', 'qq', 'accountId']) || loginInfo.uin || loginInfo.selfId);
   const nickname = asString(first(source, ['nickname', 'name', 'displayName']) || loginInfo.nickname || loginInfo.name);
   const phaseRaw = first(source, ['phase', 'state', 'stage', 'loginStatus', 'login_state', 'status']);
-  const phaseText = asString(phaseRaw).trim().toLowerCase();
   const expired = source.qrExpired === true || /expire|过期/i.test(asString(source.qrStatus));
-  const loggedIn = asBool(loggedInRaw, Boolean(uin) || /online|logged_in|loggedin|ready|connected|在线/.test(phaseText));
-  const preliminary = normalizeQQPhase(phaseRaw, { running: false, loggedIn, expired });
-  const running = asBool(runtimeRaw,
+  const runtimeState = asString(source.runtimeState, 'unknown');
+  const loginState = asString(source.loginState, 'unknown');
+  const agentChannelState = asString(source.agentChannelState, 'unknown');
+  const loggedIn = loginState === 'online' || (loginState === 'unknown' && asBool(loggedInRaw));
+  const preliminary = normalizeQQPhase(loginState !== 'unknown' ? loginState : phaseRaw, { running: false, loggedIn, expired });
+  const running = ['starting', 'ready', 'degraded'].includes(runtimeState) || asBool(runtimeRaw,
     ['online', 'preparing', 'starting', 'waiting_login', 'waiting_confirm'].includes(preliminary));
-  const phase = normalizeQQPhase(phaseRaw, { running, loggedIn, expired });
+  const phase = phaseRaw || loginState !== 'unknown' || loggedIn || running
+    ? normalizeQQPhase(loginState !== 'unknown' ? loginState : phaseRaw, { running, loggedIn, expired }) : 'unknown';
+  const expectedUin = asString(first(source, ['expectedUin', 'expected_uin']));
+  const canChat = source.canChat === true && loginState === 'online' && agentChannelState === 'connected' && Boolean(uin && expectedUin && uin === expectedUin);
   const tone = phase === 'online' ? 'ok'
     : phase === 'error' || phase === 'expired' ? 'danger'
       : phase === 'waiting_login' || phase === 'waiting_confirm' ? 'warn'
@@ -307,8 +325,10 @@ export function normalizeQQStatus(value) {
 
   return {
     available: true,
-    kernel: normalizeKernel(first(source, ['kernel', 'driver', 'protocol', 'adapter', 'type'])),
-    kernelLabel: QQ_KERNEL_LABELS[normalizeKernel(first(source, ['kernel', 'driver', 'protocol', 'adapter', 'type']))],
+    kernel: asString(first(source, ['kernel', 'driver', 'protocol', 'adapter', 'type']), 'unknown').toLowerCase(),
+    kernelLabel: QQ_KERNEL_LABELS[normalizeKernel(first(source, ['kernel', 'driver', 'protocol', 'adapter', 'type']))] || '未识别',
+    runtimeState, loginState, agentChannelState, canChat,
+    runtimeGeneration: source.runtimeGeneration ?? null,
     phase,
     phaseLabel: QQ_PHASE_LABELS[phase] || '未知',
     tone,
@@ -379,6 +399,8 @@ export function normalizeQr(value, { now = Date.now() } = {}) {
   const finalStatus = expired ? 'expired' : status;
   return {
     available: Boolean(imageSrc || content || statusRaw),
+    runtimeGeneration: isObject(source) ? source.runtimeGeneration ?? null : null,
+    qrGeneration: isObject(source) ? source.qrGeneration ?? source.generation ?? null : null,
     imageSrc,
     content,
     status: finalStatus,

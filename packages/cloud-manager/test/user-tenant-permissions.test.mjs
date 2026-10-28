@@ -3,7 +3,7 @@ import test from 'node:test';
 import { Client, loginAdmin, startManager, waitFor } from './helpers.mjs';
 
 test('owned instances, roles and QQ operations remain isolated over HTTP', async (t) => {
-  const env = await startManager();
+  const env = await startManager({ defaultQqDriver: 'llbot' });
   t.after(() => env.stop());
   const { manager, config } = env;
   const admin = await loginAdmin(manager);

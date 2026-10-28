@@ -511,6 +511,16 @@ export function normalizeChannelIdRange(raw, fallback, label = 'idRange') {
  * ⚠️ 号段重叠在这里就抛错：重叠意味着同一 ID 可能属于两个平台，路由层无论
  * 怎么选都可能误发。宁可启动失败，也不能带着这个歧义运行。
  */
+function normalizeQqMedia(raw) {
+  const media = raw.media;
+  if (!media && raw.driver !== 'napcat') return null;
+  if (!media || media.mode !== 'inline-base64' || media.incomingLocalPaths !== 'deny'
+      || !Number.isSafeInteger(media.maxImageBytes) || media.maxImageBytes < 1 || media.maxImageBytes > 5242880) {
+    throw new Error('channels.qq.media 配置不合法');
+  }
+  return { mode: media.mode, maxImageBytes: media.maxImageBytes, incomingLocalPaths: 'deny' };
+}
+
 export function resolveChannels(config = getConfig()) {
   const rawChannels = config?.channels && typeof config.channels === 'object' ? config.channels : {};
   const qqRaw = rawChannels.qq && typeof rawChannels.qq === 'object' ? rawChannels.qq : {};
@@ -529,6 +539,9 @@ export function resolveChannels(config = getConfig()) {
     httpAccessToken: firstNonEmpty(qqRaw.httpAccessToken, legacy.httpAccessToken, legacy.accessToken),
     selfUserId: firstNonEmpty(qqRaw.selfUserId),
     selfNickname: firstNonEmpty(qqRaw.selfNickname),
+    driver: String(qqRaw.driver || ''),
+    generation: qqRaw.generation ?? null,
+    media: normalizeQqMedia(qqRaw),
     idRange: normalizeChannelIdRange(qqRaw.idRange, qqDefaults.idRange, 'channels.qq.idRange')
   };
 

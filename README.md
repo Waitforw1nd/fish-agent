@@ -2,13 +2,13 @@
 
 养鱼 Bot 由四个可独立运行的包组成：QQ-Agent 核心、LLBot QQ 协议端、B 站 OneBot 桥接，以及多租户 cloud-manager 与原生 Web panel。各包独立安装依赖；根目录提供 `npm test`、`npm run test:all` 和 `npm run check`。
 
-> 本文命令以 Windows + Git Bash 为例。真实 QQ、真实 B 站账号和真实上游模型 Relay 不在自动化测试覆盖范围内，当前均未做在线验收。测试中的扫码、消息和模型响应来自 fake，不能据此宣称生产链路已验证。
+> 本文命令以 Windows + Git Bash 为例。NapCat P1 本地实现和模拟测试不能代替真实验收：VPS SSH 公钥认证受阻，真实容器、扫码、QQ 消息、模型和公网 HTTPS 尚未验证。P2 切换事务和 P3 全量恢复仍未完成。
 
 ## 产品目标与当前能力
 
 面向用户的最简目标是：**交钱 → 创建实例 → 登录 QQ → 绑定模型 Key → 开始养鱼**。平台应提供默认的“大肥鱼”人设与合理档位，隐藏协议配置和日常运维；用户在开始养鱼时首次选择允许互动的群，不能默认在所有群开口。提供 QQ 号只能指定要登录的账号，仍需本人用手机扫码或确认登录。
 
-这是产品目标，不代表整条流程已经交付或完成真实账号验收。用户面板的“我的鱼”支持多实例、套餐选择、启停及实例详情中的 QQ 号扫码入口；管理员可通过用户管理查看各用户拥有的实例并为其创建实例。扫码依赖平台准备 LLBot 及相应认证，普通用户无需填写协议技术配置。自定义渠道首次配置仍需填写 Base URL、API Key 和模型，充值需管理员审核，并非在线支付自动开通。首次群白名单选择的简化体验、默认人设和档位仍需结合实际产品流程确认。
+这是产品目标，不代表整条流程已经交付或完成真实账号验收。用户面板的“我的鱼”支持多实例、套餐选择、启停及实例详情中的 QQ 号扫码入口；管理员可通过用户管理查看各用户拥有的实例并为其创建实例。新实例默认使用 NapCat，已配置实例保留原内核；NapCat 需管理员准备 Docker 镜像，LLBot Direct 需有效平台授权。普通用户无需填写协议技术配置。自定义渠道首次配置仍需填写 Base URL、API Key 和模型，充值需管理员审核，并非在线支付自动开通。首次群白名单选择的简化体验、默认人设和档位仍需结合实际产品流程确认。
 
 密钥各有用途：平台会为实例自动签发并配置租户 Relay Key，供 Agent 访问平台 Relay；用户绑定的模型 Key 是自有模型上游的 API Key，当前自定义渠道还需上游地址和模型名。LLBot 的 `auth_token` 则用于 QQ 协议端认证，既不是模型 Key，也不是 Relay Key。平台渠道仍保留现有套餐、额度与 Relay 计费模式；具体配置和充值流程见 [云端管理文档](docs/cloud-manager.md)，QQ 认证见 [协议文档](docs/protocols.md)。
 
@@ -107,7 +107,7 @@ npm start
 
 ### 3.4 cloud-manager + panel
 
-先构建 LLBot，再启动管理器：
+启动管理器；使用 LLBot 时需先构建 LLBot，使用默认 NapCat 时需由管理员准备目标 Linux 主机的 Docker 镜像：
 
 ```bash
 cd /e/bigPeach/fish/packages/cloud-manager
@@ -127,7 +127,7 @@ npm start
 
 未配置 `CLOUD_ADMIN_PASSWORD` 且数据库没有用户时，首次启动会生成只打印一次的管理员密码。生产环境不要沿用开发回环绑定和 HTTP 配置；默认 `CLOUD_HOST=0.0.0.0`，应显式评估暴露面并配置 HTTPS、域名、Cookie 与反向代理。
 
-云端真实启动还依赖各入口文件：核心 `modules/headless/server.js`、LLBot `dist/llbot.js`、B 站 `src/main.js`。部署时仍需验证入口、双通道接线和真实租户链路。NapCat/SnowLuma 的默认入口目前只是配置路径，是否存在须在目标部署机核查，不能仅凭测试中的 fake 入口认定可用。
+云端启动依赖核心 `modules/headless/server.js`、B 站 `src/main.js`，选择 LLBot 时还需 `dist/llbot.js`；NapCat 使用管理员准备的 Docker 镜像。目标部署机仍需验证镜像、入口、双通道接线和真实租户链路，不能凭 fake 测试认定可用。
 
 ## 4. 标准验证命令
 

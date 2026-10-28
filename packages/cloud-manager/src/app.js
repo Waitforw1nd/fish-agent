@@ -76,6 +76,7 @@ export class CloudManager {
       db: this.db, config: this.config, allocator: this.allocator, supervisor: this.supervisor,
       secrets: this.secrets, settings: this.settings, logger: this.logger, audit: this.audit
     });
+    this.qq.agentRuntime = this.agent;
     this.bili = new BiliService({
       db: this.db, config: this.config, allocator: this.allocator, supervisor: this.supervisor,
       secrets: this.secrets, logger: this.logger
@@ -116,7 +117,7 @@ export class CloudManager {
 
   async start() {
     this.bootstrap = this.auth.bootstrap();
-    this.hosting.reconcile();
+    await this.hosting.reconcile();
     this.relayServer = this.relay.createServer();
     await new Promise((resolve, reject) => {
       this.relayServer.once('error', reject);
@@ -284,12 +285,14 @@ export class CloudManager {
     for (const timer of this.timers) clearInterval(timer);
     this.timers = [];
     this.gateway.closeAll();
-    try { await this.hosting.shutdown(); } catch (error) { this.logger.error('shutdown failed', error); }
+    let shutdownError;
+    try { await this.hosting.shutdown(); } catch (error) { shutdownError = error; this.logger.error('shutdown failed', error); }
     await Promise.all([
       closeServer(this.server),
       closeServer(this.relayServer)
     ]);
     try { this.db.close(); } catch { /* ignore */ }
+    if (shutdownError) throw shutdownError;
   }
 }
 

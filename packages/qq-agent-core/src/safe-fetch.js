@@ -235,9 +235,10 @@ function readBounded(res, maxBytes, asText) {
       // 只用字节数判断是否超限。原实现还额外判断了 text.length >= maxBytes，
       // 但 text.length 是字符数而 maxBytes 是字节数（UTF-8 下中文 1 字符 = 3 字节），
       // 单位不一致，会让刚好读满的响应被误标成 truncated。
-      if (total >= maxBytes) {
+      if (total > maxBytes || (asText && total >= maxBytes)) {
         try { res.destroy(); } catch { /* ignore */ }
-        finish(resolve, asText ? sliceByCodePoints(text, maxBytes) : Buffer.concat(chunks).subarray(0, maxBytes));
+        if (asText) finish(resolve, sliceByCodePoints(text, maxBytes));
+        else finish(reject, new Error(`文件超过大小上限（${maxBytes} 字节）`));
       }
     });
     res.on('end', () => {
@@ -318,10 +319,10 @@ export async function safeFetch(urlString, { browseLocked = false } = {}) {
 }
 
 /** 下载二进制（图片，≤maxBytes 字节），返回 { buffer, contentType }。 */
-export async function safeFetchBinary(urlString, maxBytes = 12 * 1024 * 1024, { browseLocked = false } = {}) {
+export async function safeFetchBinary(urlString, maxBytes = 12 * 1024 * 1024, { browseLocked = false, denyPrivate = false } = {}) {
   const lock = browseLocked ? checkBrowseLock(urlString) : { enabled: false, allowed: true, host: '' };
   if (!lock.allowed) throw new Error(`浏览锁定：${lock.host || '该地址'} 不在允许的域名清单内`);
-  const allowPrivate = getConfig().security?.allowPrivateImageHosts === true;
+  const allowPrivate = !denyPrivate && getConfig().security?.allowPrivateImageHosts === true;
   let { url, ip } = await validateFetchUrl(urlString, { allowPrivate });
   for (let i = 0; i <= MAX_REDIRECTS; i++) {
     const result = await requestOnce(url, ip, { asBinary: true, maxBytes });

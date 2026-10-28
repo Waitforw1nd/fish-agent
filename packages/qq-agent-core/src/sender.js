@@ -530,7 +530,11 @@ export class SendQueue {
       let data;
       const primary = String(sticker.url || '').trim();
       if (!primary) throw new Error(`表情 ${sticker.id} 没有可发送的图片地址`);
-      try {
+      const media = platform === 'qq' ? getConfig().channels?.qq?.media : null;
+      if (media?.mode === 'inline-base64') {
+        const { inlineImage } = await import('./container-media.js');
+        data = await sendVia(await inlineImage(primary, media.maxImageBytes));
+      } else try {
         data = await sendVia(primary);
       } catch (firstError) {
         if (primary.toLowerCase().startsWith('file:///')) {
@@ -630,7 +634,15 @@ export class SendQueue {
       await sleep((prepared.delayMs || 0) + randInt(500, 1300));   // 发图前真人式的短暂停顿
 
       let data;
-      try {
+      const media = platform === 'qq' ? getConfig().channels?.qq?.media : null;
+      if (media?.mode === 'inline-base64') {
+        const { inlineImage } = await import('./container-media.js');
+        const inline = await inlineImage(dataUrl || file || url, media.maxImageBytes);
+        data = await this.onebot.sendImage(kind, id, inline, {
+          replyToMessageId: options.replyToMessageId ?? null,
+          atUserId: options.atUserId ?? null
+        });
+      } else try {
         data = await this.onebot.sendImage(kind, id, ref, {
           replyToMessageId: options.replyToMessageId ?? null,
           atUserId: options.atUserId ?? null
@@ -691,7 +703,16 @@ export class SendQueue {
       const prepared = await this.guard.beforeSend({
         chatKey, kind, id, action: 'media', platform, segments: segs, surface: options.surface, options
       });
-      const finalSegments = prepared.segments || segs;
+      let finalSegments = prepared.segments || segs;
+      const media = platform === 'qq' ? getConfig().channels?.qq?.media : null;
+      if (media?.mode === 'inline-base64') {
+        const { inlineImage } = await import('./container-media.js');
+        finalSegments = await Promise.all(finalSegments.map(async segment => {
+          if (segment.type === 'image') return { ...segment, data: { ...segment.data, file: await inlineImage(segment.data?.file, media.maxImageBytes) } };
+          if (['video', 'record', 'file'].includes(segment.type)) throw new Error('容器通道暂不支持此媒体类型');
+          return segment;
+        }));
+      }
       await sleep((prepared.delayMs || 0) + randInt(800, 1800));   // 视频/多图体积大，停顿比文字长一点
       const data = await this.onebot.sendSegments(kind, id, finalSegments);
       this.#markSent(chatKey, `__media__${dedupeKey}`);   // 成功后才记账

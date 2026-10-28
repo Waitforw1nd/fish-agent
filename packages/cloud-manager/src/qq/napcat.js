@@ -9,6 +9,42 @@ function fail(status, code, message, extra = {}) {
   return Object.assign(new Error(message), { status, code, ...extra });
 }
 
+const credentials = new Map();
+const qrStates = new Map();
+function qrGeneration(ctx, url) {
+  const key = `${ctx.tenant?.id || ctx.account.webui_port}:${ctx.generation || 0}`;
+  const previous = qrStates.get(key);
+  if (!previous || previous.url !== url) qrStates.set(key, { url, generation: (previous?.generation || 0) + 1 });
+  return qrStates.get(key).generation;
+}
+async function credential(ctx, force = false) {
+  const key = `${ctx.tenant?.id || ctx.account.webui_port}:${ctx.generation || 0}:${createHash('sha256').update(ctx.tokens.webuiPassword).digest('hex')}`;
+  if (force) credentials.delete(key);
+  let entry = credentials.get(key);
+  if (entry && entry.expires > Date.now()) return entry.promise;
+  const hash = createHash('sha256').update(`${ctx.tokens.webuiPassword}.napcat`).digest('hex');
+  const promise = requestJson(`http://127.0.0.1:${ctx.account.webui_port}/api/auth/login`, { method: 'POST', body: { hash } }).then((login) => {
+    const value = login.body?.data?.Credential;
+    if (login.body?.code !== 0 || !value) throw fail(502, 'NAPCAT_WEBUI_AUTH_FAILED', login.body?.data?.require2FA ? 'NapCat WebUI 启用了二次验证' : 'NapCat WebUI 鉴权失败');
+    return value;
+  }).catch((error) => { if (credentials.get(key)?.promise === promise) credentials.delete(key); throw error; });
+  credentials.set(key, { promise, expires: Date.now() + 5 * 60 * 1000 });
+  return promise;
+}
+async function webui(ctx, endpoint) {
+  const base = `http://127.0.0.1:${ctx.account.webui_port}/api`;
+  let token = await credential(ctx);
+  let response = await requestJson(`${base}/${endpoint}`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: {} });
+  if (response.status === 401 || response.body?.code === 401) {
+    const keyPrefix = `${ctx.tenant?.id || ctx.account.webui_port}:${ctx.generation || 0}:`;
+    const current = [...credentials.entries()].find(([key]) => key.startsWith(keyPrefix));
+    if (current && await current[1].promise === token) credentials.delete(current[0]);
+    token = await credential(ctx);
+    response = await requestJson(`${base}/${endpoint}`, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: {} });
+  }
+  return response;
+}
+
 function onebotConfig(ctx) {
   const token = ctx.tokens.onebotToken;
   return {
@@ -16,8 +52,8 @@ function onebotConfig(ctx) {
       websocketServers: [{
         name: 'fish-cloud',
         enable: true,
-        host: '127.0.0.1',
-        port: Number(ctx.account.ob11_port),
+        host: ctx.docker ? '0.0.0.0' : '127.0.0.1',
+        port: ctx.docker ? 3001 : Number(ctx.account.ob11_port),
         messagePostFormat: 'array',
         token,
         reportSelfMessage: false,
@@ -28,8 +64,8 @@ function onebotConfig(ctx) {
       httpServers: [{
         name: 'fish-cloud-http',
         enable: true,
-        host: '127.0.0.1',
-        port: Number(ctx.account.http_port),
+        host: ctx.docker ? '0.0.0.0' : '127.0.0.1',
+        port: ctx.docker ? 3000 : Number(ctx.account.http_port),
         token,
         messagePostFormat: 'array',
         reportSelfMessage: false,
@@ -67,8 +103,9 @@ export const napcatDriver = {
     ensureDir(path.join(ctx.paths.dir, 'config'), 0o700);
     writeJsonPrivate(path.join(ctx.paths.dir, 'config', `onebot11_${ctx.account.expected_uin}.json`), onebotConfig(ctx), 0o600);
     writeJsonPrivate(path.join(ctx.paths.dir, 'config', 'webui.json'), {
-      host: '127.0.0.1',
-      port: Number(ctx.account.webui_port),
+      host: ctx.docker ? '0.0.0.0' : '127.0.0.1',
+      port: ctx.docker ? 6099 : Number(ctx.account.webui_port),
+      prefix: '', loginRate: 3,
       token: ctx.tokens.webuiPassword
     }, 0o600);
     return {
@@ -105,6 +142,10 @@ export const napcatDriver = {
   async status(ctx) {
     if (!ctx.account.http_port) return { online: null, error: '未配置 OneBot HTTP 端口' };
     try {
+      const login = await webui(ctx, 'QQLogin/CheckLoginStatus');
+      if (login.body?.code !== 0) return { online: false, error: 'NapCat 登录状态不可用' };
+      const data = login.body.data || {};
+      if (data.isLogin !== true || data.isOffline === true || data.coreReady !== true) return { online: false, loginState: data.isOffline ? 'offline' : data.loginError ? 'login_failed' : data.qrLoginAccepted || data.loginPhase === 'qrcode_scanned' ? 'waiting_confirm' : data.loginPhase === 'initializing' ? 'initializing' : 'waiting_qr' };
       const response = await requestJson(`http://127.0.0.1:${ctx.account.http_port}/get_login_info`, {
         method: 'POST',
         headers: { authorization: `Bearer ${ctx.tokens.onebotToken}` },
@@ -126,25 +167,17 @@ export const napcatDriver = {
   },
 
   async qrcode(ctx) {
-    const base = `http://127.0.0.1:${ctx.account.webui_port}/api`;
-    const hash = createHash('sha256').update(`${ctx.tokens.webuiPassword}.napcat`).digest('hex');
-    const login = await requestJson(`${base}/auth/login`, { method: 'POST', body: { hash } });
-    const credential = login.body?.data?.Credential;
-    if (login.body?.code !== 0 || !credential) {
-      throw fail(502, 'NAPCAT_WEBUI_AUTH_FAILED', login.body?.data?.require2FA ? 'NapCat WebUI 启用了二次验证，无法自动获取二维码' : 'NapCat WebUI 鉴权失败，请检查版本和配置');
-    }
-    const headers = { authorization: `Bearer ${credential}` };
-    const status = await requestJson(`${base}/QQLogin/CheckLoginStatus`, { method: 'POST', headers, body: {} });
+    const status = await webui(ctx, 'QQLogin/CheckLoginStatus');
     if (status.body?.code !== 0) throw fail(502, 'NAPCAT_LOGIN_STATUS_FAILED', status.body?.message || 'NapCat 登录状态不可用');
     const data = status.body.data || {};
     if (data.isLogin) return { state: 'success' };
-    const qr = await requestJson(`${base}/QQLogin/GetQQLoginQrcode`, { method: 'POST', headers, body: {} });
+    const qr = await webui(ctx, 'QQLogin/GetQQLoginQrcode');
     if (qr.body?.code !== 0 || !qr.body?.data?.qrcode) {
       return { state: 'pending', message: qr.body?.message || '等待 NapCat 生成二维码', pollTimeInterval: 3 };
     }
     const qrcodeUrl = String(qr.body.data.qrcode);
     if (qrcodeUrl.length > 4096) throw fail(502, 'NAPCAT_QRCODE_INVALID', 'NapCat 返回的二维码内容过长');
-    return { state: data.loginPhase === 'qrcode_scanned' ? 'scanned' : 'ready', qrcodeUrl, pngBase64: await QRCode.toDataURL(qrcodeUrl), pollTimeInterval: 3 };
+    return { state: data.loginPhase === 'qrcode_scanned' ? 'scanned' : 'ready', qrcodeUrl, qrGeneration: qrGeneration(ctx, qrcodeUrl), pngBase64: await QRCode.toDataURL(qrcodeUrl), pollTimeInterval: 3 };
   },
 
   async authStatus() {

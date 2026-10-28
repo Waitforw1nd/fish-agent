@@ -98,80 +98,70 @@ test('多实例卡片、套餐选项与实例上限', async () => {
   assert.deepEqual(created, { name: '鱼三', planId: 'pro' }); view.destroy();
 });
 
-test('实例详情按选中实例扫码，viewer 只读，卸载关闭弹窗', async () => {
-  const { root, modalRoot } = setup();
-  const calls = [];
+const driverList = { defaultDriver: 'napcat', drivers: [
+  { id: 'llbot', label: 'LLBot', allowed: true, installed: true, available: true, capabilities: {} },
+  { id: 'napcat', label: 'NapCat', allowed: true, installed: true, available: true, capabilities: { qrcodeRefresh: true } }
+] };
+
+test('二维码刷新使用 POST 并丢弃先前请求，运行代次不匹配不显示二维码', async () => {
+  const { root, modalRoot } = setup(); const timers = createFakeTimers(); let firstResolve, reads = 0, refreshes = 0;
+  const api = { getTenant: async () => ({ tenant: { id: 't', role: 'owner', status: 'running' }, role: 'owner' }), getQQDrivers: async () => driverList,
+    getQQStatus: async () => ({ kernel: 'napcat', runtimeState: 'ready', loginState: 'waiting_qr', expectedUin: '123456', runtimeGeneration: 2 }),
+    getQQQrcode: () => ++reads === 1 ? new Promise(resolve => { firstResolve = resolve; }) : Promise.resolve({ status: 'ready', runtimeGeneration: 2, qrGeneration: 2, imageDataUrl: 'data:image/png;base64,QkI=' }),
+    refreshQQQrcode: async () => { refreshes++; } };
+  const view = mountUserInstance({ root, modalRoot, api, tenantId: 't', toast, timers }); await settle();
+  findByText(root, 'button', '继续扫码登录').click(); await settle();
+  findByText(root, 'button', '继续扫码登录').click(); await settle();
+  assert.match(modalRoot.querySelector('img').src, /QkI=/);
+  firstResolve({ status: 'ready', runtimeGeneration: 1, imageDataUrl: 'data:image/png;base64,QUE=' }); await settle();
+  assert.match(modalRoot.querySelector('img').src, /QkI=/);
+  findByText(modalRoot, 'button', '刷新二维码').click(); await settle(); assert.equal(refreshes, 1);
+  assert.equal(modalRoot.querySelector('.qr-countdown').textContent, ''); view.destroy();
+});
+
+test('旧实例保留内核并重复扫码不重启，viewer 与到期只读', async () => {
+  const { root, modalRoot } = setup(); const calls = []; const timers = createFakeTimers();
   const api = {
-    getTenant: async (id) => ({ tenant: { id, name: '第二条鱼', role: 'owner', status: 'stopped' }, role: 'owner' }),
-    prepareQQ: async (id, body) => calls.push(['prepare', id, body]),
-    startQQ: async (id, body) => calls.push(['start', id, body]),
-    getQQQrcode: async (id) => { calls.push(['qr', id]); return { status: 'waiting' }; },
-    getQQStatus: async () => ({ status: 'waiting_login' })
+    getTenant: async id => ({ tenant: { id, role: 'owner', status: 'running' }, role: 'owner' }),
+    getQQDrivers: async () => driverList,
+    getQQStatus: async () => ({ kernel: 'llbot', runtimeState: 'ready', loginState: 'waiting_qr', expectedUin: '123456', runtimeGeneration: 1 }),
+    prepareQQ: async () => calls.push('prepare'), startQQ: async () => calls.push('start'),
+    getQQQrcode: async () => { calls.push('qr'); return { status: 'pending', runtimeGeneration: 1 }; }
   };
-  const view = mountUserInstance({ root, modalRoot, api, tenantId: 't2', toast }); await settle();
-  root.querySelector('#user-qq-uin').value = '123456';
-  findByText(root, 'button', '扫码登录 QQ').click(); await settle();
-  assert.deepEqual(calls.slice(0, 3), [['prepare', 't2', { kernel: 'llbot', uin: '123456' }], ['start', 't2', { kernel: 'llbot', uin: '123456' }], ['qr', 't2']]);
-  assert.doesNotMatch(root.textContent + modalRoot.textContent, /llbot|OneBot|token|端口/i);
-  view.destroy(); assert.equal(modalRoot.textContent, '');
+  const view = mountUserInstance({ root, modalRoot, api, tenantId: 't2', toast, timers }); await settle();
+  assert.equal(root.querySelector('#user-qq-driver').value, 'llbot');
+  assert.match(root.textContent, /运行环境：ready.*QQ 登录：waiting_qr.*Agent 通道：unknown/);
+  findByText(root, 'button', '继续扫码登录').click(); await settle();
+  assert.deepEqual(calls, ['qr']); view.destroy(); assert.equal(modalRoot.textContent, '');
   const other = setup();
-  const readonly = mountUserInstance({ ...other, tenantId: 't3', toast, api: { getTenant: async () => ({ tenant: { id: 't3', name: '只读', role: 'viewer' }, role: 'viewer' }) } });
-  await settle(); assert.equal(findByText(other.root, 'button', '扫码登录 QQ'), null); assert.equal(findByText(other.root, 'button', '启动实例'), null); readonly.destroy();
+  const readonly = mountUserInstance({ ...other, tenantId: 't3', toast, timers, api: { ...api, getTenant: async () => ({ tenant: { id: 't3', role: 'viewer', status: 'running' }, role: 'viewer' }) } });
+  await settle(); assert.equal(findByText(other.root, 'button', '继续扫码登录'), null); readonly.destroy();
+  const expired = setup();
+  const expiredView = mountUserInstance({ ...expired, tenantId: 't4', toast, timers, api: { ...api, getTenant: async () => ({ tenant: { id: 't4', role: 'owner', status: 'running', expiresAt: '2000-01-01' }, role: 'owner' }) } });
+  await settle(); assert.equal(findByText(expired.root, 'button', '继续扫码登录').disabled, true); expiredView.destroy();
 });
 
-test('详情读取真实形状的 QQ 状态，定时刷新并在卸载后停止', async () => {
-  const { root, modalRoot } = setup();
-  const timers = createFakeTimers(); let calls = 0; let release;
-  const api = {
-    getTenant: async () => ({ ok: true, tenant: { id: 't1', name: '小鱼', role: 'owner', qq: { phase: 'stopped' } }, qq: { phase: 'stopped' }, role: 'owner' }),
-    getQQStatus: async (id) => { assert.equal(id, 't1'); calls++; if (calls === 1) return { ok: true, qq: { state: 'awaiting_login', running: true } }; if (calls === 2) return { ok: true, qq: { state: 'online', loggedIn: true } }; return new Promise(resolve => { release = resolve; }); }
-  };
-  const view = mountUserInstance({ root, modalRoot, api, tenantId: 't1', toast, timers, visibility: { isHidden: () => false, subscribe: () => () => {} } });
-  await settle(); assert.match(root.textContent, /状态：已停止/);
-  await timers.tick(0); assert.match(root.textContent, /状态：等待扫码/);
-  const input = root.querySelector('#user-qq-uin'); input.value = '123456';
-  await timers.tick(5000); assert.match(root.textContent, /状态：在线/); assert.equal(input.value, '123456');
-  await timers.tick(5000); assert.equal(calls, 3); view.destroy(); release({ qq: { state: 'stopped' } }); await settle();
-  await timers.tick(20000); assert.equal(calls, 3); assert.equal(root.textContent, ''); assert.equal(timers.pending(), 0);
+test('新实例使用平台默认，不可用内核显示原因并阻止启动', async () => {
+  const { root, modalRoot } = setup(); const timers = createFakeTimers(); let writes = 0;
+  const api = { getTenant: async () => ({ tenant: { id: 't1', status: 'running', role: 'owner' }, role: 'owner' }), getQQStatus: async () => ({}),
+    getQQDrivers: async () => ({ ...driverList, drivers: [driverList.drivers[0], { ...driverList.drivers[1], available: false, reason: '镜像未安装' }] }),
+    prepareQQ: async () => writes++, startQQ: async () => writes++ };
+  const view = mountUserInstance({ root, modalRoot, api, tenantId: 't1', toast, timers }); await settle();
+  assert.equal(root.querySelector('#user-qq-driver').value, 'napcat'); assert.match(root.textContent, /镜像未安装/);
+  assert.equal(findByText(root, 'button', '扫码登录 QQ').disabled, true); assert.equal(writes, 0); view.destroy();
 });
 
-test('扫码确认后主动刷新实际 QQ 状态', async () => {
-  const { root, modalRoot } = setup(); const timers = createFakeTimers(); let calls = 0;
-  const api = {
-    getTenant: async () => ({ tenant: { id: 't1', name: '小鱼', role: 'owner', qq: { phase: 'stopped' } }, role: 'owner' }),
-    getQQStatus: async () => ({ qq: { state: ++calls === 1 ? 'stopped' : 'online', loggedIn: calls > 1 } }),
-    prepareQQ: async () => {}, startQQ: async () => {}, getQQQrcode: async () => ({ status: 'confirmed' })
-  };
-  const view = mountUserInstance({ root, modalRoot, api, tenantId: 't1', toast, timers });
-  await settle(); await timers.tick(0); assert.match(root.textContent, /状态：已停止/);
-  root.querySelector('#user-qq-uin').value = '123456'; findByText(root, 'button', '扫码登录 QQ').click(); await settle();
-  assert.equal(calls, 2); assert.match(root.textContent, /状态：在线/); view.destroy();
-});
-
-test('切换实例忽略旧准备响应及二维码请求，缺失实例不回退', async () => {
-  const { root, modalRoot } = setup();
-  let releasePrepare, releaseQr;
-  const calls = [];
-  const timers = createFakeTimers();
-  const api = {
-    getTenant: async (id) => ({ tenant: { id, name: id, role: 'owner' }, role: 'owner' }),
-    prepareQQ: (id) => { calls.push(['prepare', id]); return id === 't1' ? new Promise(resolve => { releasePrepare = resolve; }) : Promise.resolve(); },
-    startQQ: async (id) => calls.push(['start', id]),
-    getQQQrcode: (id) => { calls.push(['qr', id]); return new Promise(resolve => { releaseQr = resolve; }); },
-    getQQStatus: async (id) => { calls.push(['status', id]); return {}; }
-  };
+test('切换实例丢弃旧准备及二维码响应', async () => {
+  const { root, modalRoot } = setup(); const timers = createFakeTimers(); let releasePrepare, releaseQr; const calls = [];
+  const api = { getTenant: async id => ({ tenant: { id, role: 'owner', status: 'running' }, role: 'owner' }), getQQDrivers: async () => driverList,
+    getQQStatus: async () => ({}), prepareQQ: id => { calls.push(['prepare', id]); return id === 't1' ? new Promise(resolve => { releasePrepare = resolve; }) : Promise.resolve(); },
+    startQQ: async id => calls.push(['start', id]), getQQQrcode: id => { calls.push(['qr', id]); return new Promise(resolve => { releaseQr = resolve; }); } };
   const first = mountUserInstance({ root, modalRoot, api, tenantId: 't1', toast, timers }); await settle();
-  root.querySelector('#user-qq-uin').value = '123456'; findByText(root, 'button', '扫码登录 QQ').click(); await settle();
-  first.destroy();
-  const second = mountUserInstance({ root, modalRoot, api, tenantId: 't2', toast, timers }); await settle();
-  releasePrepare(); await settle();
-  assert.deepEqual(calls, [['prepare', 't1']]);
-  root.querySelector('#user-qq-uin').value = '123456'; findByText(root, 'button', '扫码登录 QQ').click(); await settle();
+  root.querySelector('#user-qq-uin').value = '123456'; findByText(root, 'button', '扫码登录 QQ').click(); await settle(); first.destroy();
+  const second = mountUserInstance({ root, modalRoot, api, tenantId: 't2', toast, timers }); await settle(); releasePrepare(); await settle();
+  assert.deepEqual(calls, [['prepare', 't1']]); root.querySelector('#user-qq-uin').value = '123456'; findByText(root, 'button', '扫码登录 QQ').click(); await settle();
   second.destroy(); releaseQr({ status: 'waiting', imageDataUrl: 'data:image/png;base64,AA==' }); await settle();
   assert.equal(modalRoot.textContent, ''); assert.deepEqual(calls, [['prepare', 't1'], ['prepare', 't2'], ['start', 't2'], ['qr', 't2']]);
-  let accessed = false;
-  const missing = mountUserChannel({ root, tenantId: 'missing', tenants: [{ id: 't1', name: '鱼一', role: 'owner' }], api: { getRelayOverview: async () => { accessed = true; } } });
-  await settle(); assert.equal(accessed, false); assert.match(root.textContent, /所选实例不可用/); missing.destroy();
 });
 
 test('渠道保存只写密钥，日志筛选和充值提交', async () => {

@@ -68,7 +68,7 @@ export class BotConnection {
     const source = config[config.type];
     const keys = config.type === 'qqbot'
       ? ['appId', 'appSecret', 'sandbox', 'intents']
-      : ['mode', 'apiTransport', 'wsUrl', 'httpUrl', 'reversePath', 'accessToken', 'httpAccessToken'];
+      : ['mode', 'apiTransport', 'wsUrl', 'httpUrl', 'reversePath', 'accessToken', 'httpAccessToken', 'selfUserId', 'selfNickname'];
     const options = Object.fromEntries(keys.map(key => [key, source[key]]));
     this.client = config.type === 'qqbot'
       ? new QQBotClient({ ...options, onEvent: this.onEvent })

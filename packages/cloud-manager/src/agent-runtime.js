@@ -13,6 +13,7 @@ export class AgentRuntime {
     this.logger = logger;
     this.linksResolver = null;
     this.healthCache = new Map();
+    this.healthEpoch = new Map();
   }
 
   setLinksResolver(fn) { this.linksResolver = fn; }
@@ -67,6 +68,21 @@ export class AgentRuntime {
       allow: existing.allow || { groups: [], private: [] },
       allowAllWhenEmpty: false,
       tools: { ...(existing.tools || {}), crossChatSend: false },
+      connection: {
+        ...(existing.connection || {}),
+        enabled: Boolean(links.qq?.enabled),
+        type: 'onebot',
+        onebot: {
+          ...(existing.connection?.onebot || {}),
+          mode: 'forward',
+          apiTransport: links.qq?.apiTransport || 'http',
+          wsUrl: links.qq?.wsUrl || 'ws://127.0.0.1:3001',
+          httpUrl: links.qq?.httpUrl || 'http://127.0.0.1:3000',
+          accessToken: links.qq?.accessToken || '',
+          httpAccessToken: links.qq?.httpAccessToken || links.qq?.accessToken || '',
+          selfUserId: links.qq?.uin ? String(links.qq.uin) : ''
+        }
+      },
       channels: {
         ...(existing.channels || {}),
         qq: links.qq ? {
@@ -78,7 +94,9 @@ export class AgentRuntime {
           accessToken: links.qq.accessToken || '',
           httpAccessToken: links.qq.httpAccessToken || links.qq.accessToken || '',
           driver: links.qq.driver || '',
-          ...(links.qq.uin ? { selfUserId: String(links.qq.uin) } : {})
+          generation: links.qq.generation ?? null,
+          media: links.qq.media || null,
+          selfUserId: links.qq.uin ? String(links.qq.uin) : ''
         } : { ...(existing.channels?.qq || {}), enabled: false },
         bili: links.bili ? {
           ...(existing.channels?.bili || {}),
@@ -101,6 +119,10 @@ export class AgentRuntime {
     };
     ensureDir(this.dataDir(tenant), 0o700);
     writeJsonPrivate(this.configPath(tenant), base, 0o600);
+    if (JSON.stringify(existing.channels) !== JSON.stringify(base.channels)) {
+      this.healthCache.delete(tenant.id);
+      this.healthEpoch.set(tenant.id, (this.healthEpoch.get(tenant.id) || 0) + 1);
+    }
     return base;
   }
 
@@ -192,6 +214,7 @@ export class AgentRuntime {
     const cached = this.healthCache.get(tenant.id);
     if (cached && Date.now() - cached.at < 3000) return cached.value;
     const token = this.secrets.get(tenant.id, 'agent.console_token', '');
+    const epoch = this.healthEpoch.get(tenant.id) || 0;
     const value = await new Promise((resolve) => {
       const req = http.request({
         host: '127.0.0.1',
@@ -211,6 +234,7 @@ export class AgentRuntime {
             ok: res.statusCode >= 200 && res.statusCode < 300,
             status: res.statusCode,
             onebot: parsed?.onebot || null,
+            channels: parsed?.onebot?.channels || null,
             error: res.statusCode >= 200 && res.statusCode < 300 ? null : `HTTP ${res.statusCode}`
           });
         });
@@ -219,6 +243,7 @@ export class AgentRuntime {
       req.on('error', (error) => resolve({ ok: false, error: String(error?.message || error) }));
       req.end();
     });
+    if ((this.healthEpoch.get(tenant.id) || 0) !== epoch) return { ok: false, error: 'agent configuration changed during health check' };
     this.healthCache.set(tenant.id, { at: Date.now(), value });
     return value;
   }

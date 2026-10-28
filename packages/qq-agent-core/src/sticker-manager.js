@@ -327,7 +327,7 @@ export class StickerManager {
     if (file) {
       try {
         const ret = await this.onebot.call('get_image', { file: String(file) });
-        const srcPath = ret?.file && fs.existsSync(String(ret.file)) ? String(ret.file) : '';
+        const srcPath = getConfig().channels?.qq?.media?.incomingLocalPaths !== 'deny' && ret?.file && fs.existsSync(String(ret.file)) ? String(ret.file) : '';
         if (srcPath) {
           const buf = fs.readFileSync(srcPath);
           if (buf.length) return buf;

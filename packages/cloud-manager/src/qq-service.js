@@ -4,6 +4,7 @@ import { randomToken, now, readJsonFile } from './util.js';
 import { llbotDriver } from './qq/llbot.js';
 import { napcatDriver } from './qq/napcat.js';
 import { snowlumaDriver } from './qq/snowluma.js';
+import { DockerRuntime } from './qq/docker-runtime.js';
 
 const DRIVERS = {
   llbot: llbotDriver,
@@ -26,6 +27,18 @@ export class QQService {
     this.logger = logger;
     this.audit = audit;
     this.onLinksChanged = null;
+    this.docker = new DockerRuntime({ db, config });
+    this.locks = new Map();
+    this.qrRequests = new Map();
+    this.statusRequests = new Map();
+    this.agentRuntime = null;
+  }
+
+  async serial(tenantId, fn) {
+    const prior = this.locks.get(tenantId) || Promise.resolve();
+    const current = prior.catch(() => {}).then(fn);
+    this.locks.set(tenantId, current);
+    try { return await current; } finally { if (this.locks.get(tenantId) === current) this.locks.delete(tenantId); }
   }
 
   driver(id) {
@@ -34,6 +47,20 @@ export class QQService {
 
   capabilities(driverId = 'llbot') {
     return DRIVERS[driverId]?.capabilities || null;
+  }
+
+  async drivers() {
+    return Promise.all(Object.values(DRIVERS).map(async (driver) => {
+      const allowed = (this.config.qqDrivers || []).includes(driver.id);
+      let installed = this.entryExists(driver.id), reasonCode = '', reason = '';
+      if (driver.id === 'napcat') {
+        try { await this.docker.preflight(); installed = true; }
+        catch (error) { installed = false; reasonCode = error.code; reason = error.message; }
+      } else if (!installed) { reasonCode = 'DRIVER_NOT_INSTALLED'; reason = '协议端尚未安装'; }
+      if (driver.id === 'llbot' && installed && !this.platformAuthToken()) { reasonCode = 'AUTH_TOKEN_REQUIRED'; reason = '平台未配置 LLBot 登录授权'; }
+      if (!allowed) { reasonCode = 'DRIVER_NOT_ALLOWED'; reason = '平台未允许此协议端'; }
+      return { id: driver.id, label: driver.label, allowed, installed, available: allowed && installed && !reasonCode, reasonCode: reasonCode || null, reason: reason || null, capabilities: driver.capabilities };
+    }));
   }
 
   account(tenantId) {
@@ -91,37 +118,50 @@ export class QQService {
 
   paths(tenant, driverId) {
     return {
-      dir: path.join(tenant.data_dir, 'qq', driverId),
+      dir: driverId === 'napcat' ? path.join(tenant.data_dir, 'qq', 'napcat', 'accounts', String(this.account(tenant.id)?.expected_uin || '')) : path.join(tenant.data_dir, 'qq', driverId),
       authTokenFile: path.join(tenant.data_dir, 'qq', driverId, 'data', 'auth_token.txt')
     };
   }
 
-  async ensurePorts(tenant, driverId, existing = null, { reset = false } = {}) {
+  async ensurePorts(tenant, driverId, existing = null, { reset = false, excludePorts = [] } = {}) {
     if (reset) for (const purpose of ['qq.webui', 'qq.ob11', 'qq.http', 'qq.pmhq']) this.allocator.release(tenant.id, purpose);
-    const webui = await this.allocator.allocate(tenant.id, 'qq.webui', {
-      preferredPort: existing?.webui_port, host: '127.0.0.1'
-    });
-    const ob11 = await this.allocator.allocate(tenant.id, 'qq.ob11', {
-      preferredPort: existing?.ob11_port, host: '127.0.0.1'
-    });
-    let http = null;
-    if (driverId !== 'llbot') {
-      http = await this.allocator.allocate(tenant.id, 'qq.http', {
-        preferredPort: existing?.http_port, host: '127.0.0.1'
-      });
+    const created = [];
+    const allocate = async (purpose, preferredPort) => {
+      const before = this.allocator.find(tenant.id, purpose);
+      const lease = await this.allocator.allocate(tenant.id, purpose, { preferredPort, host: '127.0.0.1', excludePorts });
+      if (!before) created.push(lease.id);
+      return lease;
+    };
+    try {
+      const webui = await allocate('qq.webui', existing?.webui_port);
+      const ob11 = await allocate('qq.ob11', existing?.ob11_port);
+      const http = driverId !== 'llbot' ? await allocate('qq.http', existing?.http_port) : null;
+      return { webuiPort: webui.port, ob11Port: ob11.port, httpPort: http?.port ?? null };
+    } catch (error) {
+      for (const lease of created) this.allocator.releaseLease(lease);
+      throw error;
     }
-    return { webuiPort: webui.port, ob11Port: ob11.port, httpPort: http?.port ?? null };
   }
 
-  async prepare(tenant, options = {}) {
+  async prepare(tenant, options = {}) { return this.serial(tenant.id, () => this.prepareUnlocked(tenant, options)); }
+
+  async prepareUnlocked(tenant, options = {}) {
+    const pending = this.statusRequests.get(tenant.id);
+    if (pending) await pending;
     const current = this.account(tenant.id);
-    const process = this.supervisor.status(tenant.id, 'qq');
+    const process = await this.runtimeStatus(tenant, current);
+    if (process.state === 'degraded') throw fail(503, 'QQ_RUNTIME_UNCONFIRMED', '无法确认当前 QQ 运行状态');
+    const oldRuntime = this.docker.row(tenant.id);
+    if (current?.driver === 'napcat' && (oldRuntime?.container_id || oldRuntime?.network_id) && process.state === 'crashed') await this.docker.stop(tenant.id);
+    const requested = String(options.driver || current?.driver || this.config.defaultQqDriver || 'napcat').toLowerCase();
     if (['running', 'starting', 'restarting'].includes(process.state)) {
+      const requestedUin = String(options.uin || options.expectedUin || current?.expected_uin || '').trim();
+      if (requested === current?.driver && requestedUin === current?.expected_uin && options.mode === undefined && options.pmhqPort === undefined && options.authToken === undefined) return this.status(tenant);
       throw fail(409, 'QQ_ALREADY_RUNNING', 'QQ 协议端正在运行，请先停止再修改配置');
     }
-    const driverId = String(options.driver || current?.driver || 'llbot').toLowerCase();
+    const driverId = requested;
     const driver = this.driver(driverId);
-    if (!driver) throw fail(400, 'UNKNOWN_DRIVER', '未知 QQ 协议端驱动');
+    if (!driver || !(this.config.qqDrivers || []).includes(driverId)) throw fail(400, 'UNKNOWN_DRIVER', '未知或未允许的 QQ 协议端驱动');
     const expectedUin = String(options.uin || options.expectedUin || current?.expected_uin || '').trim();
     if (!/^\d{5,12}$/.test(expectedUin)) throw fail(400, 'INVALID_UIN', '请填写 5-12 位 QQ 号');
 
@@ -131,6 +171,7 @@ export class QQService {
     if (!['direct', 'desktop'].includes(mode)) throw fail(400, 'INVALID_LLBOT_MODE', 'LLBot 模式必须是 direct 或 desktop');
     const preparedOptions = { ...options };
     let newPmhqLeaseId = null;
+    const existingLeases = new Set(['qq.webui', 'qq.ob11', 'qq.http'].map((purpose) => this.allocator.find(tenant.id, purpose)?.id).filter(Boolean));
     let prepared;
     try {
       if (mode === 'desktop') {
@@ -152,8 +193,8 @@ export class QQService {
         tenant_id: tenant.id,
         driver: driverId,
         expected_uin: expectedUin,
-        uin: driverChanged ? null : current?.uin || null,
-        nickname: driverChanged ? null : current?.nickname || null,
+        uin: driverChanged || current?.expected_uin !== expectedUin ? null : current?.uin || null,
+        nickname: driverChanged || current?.expected_uin !== expectedUin ? null : current?.nickname || null,
         state: 'prepared',
         webui_port: ports.webuiPort,
         ob11_port: ports.ob11Port,
@@ -165,6 +206,10 @@ export class QQService {
       this.upsertAccount(account);
     } catch (error) {
       if (newPmhqLeaseId) this.allocator.releaseLease(newPmhqLeaseId);
+      for (const purpose of ['qq.webui', 'qq.ob11', 'qq.http']) {
+        const lease = this.allocator.find(tenant.id, purpose);
+        if (lease && !existingLeases.has(lease.id)) this.allocator.releaseLease(lease.id);
+      }
       throw error;
     }
     if (mode !== 'desktop') this.allocator.release(tenant.id, 'qq.pmhq');
@@ -182,7 +227,9 @@ export class QQService {
       config: this.config,
       tenant,
       account,
-      paths: this.paths(tenant, driverId),
+      paths: driverId === 'napcat' ? { ...this.paths(tenant, driverId), dir: path.join(tenant.data_dir, 'qq', 'napcat', 'accounts', String(account.expected_uin)) } : this.paths(tenant, driverId),
+      docker: driverId === 'napcat',
+      generation: this.docker.row(tenant.id)?.generation || 0,
       tokens,
       driver: driver || this.driver(driverId),
       logger: this.logger
@@ -210,15 +257,39 @@ export class QQService {
     this.upsertAccount({ ...current, ...patch, tenant_id: tenantId });
   }
 
-  async start(tenant) {
+  async start(tenant) { return this.serial(tenant.id, () => this.startUnlocked(tenant)); }
+
+  async prepareAndStart(tenant, options = {}) {
+    return this.serial(tenant.id, async () => {
+      const pending = this.statusRequests.get(tenant.id);
+      if (pending) await pending;
+      const account = this.account(tenant.id);
+      const status = account ? await this.status(tenant, { probe: false }) : null;
+      const driver = options.driver || account?.driver;
+      const uin = options.uin || account?.expected_uin;
+      const changed = !account || (driver && driver !== account.driver) || (uin && String(uin) !== account.expected_uin)
+        || (options.mode !== undefined && options.mode !== status?.mode)
+        || (options.pmhqPort !== undefined && Number(options.pmhqPort) !== status?.ports?.pmhq);
+      if (changed) await this.prepareUnlocked(tenant, { ...options, driver, uin });
+      else if (String(options.authToken || '').trim()) await this.setAuthToken(tenant, options.authToken);
+      return this.startUnlocked(tenant);
+    });
+  }
+
+  async startUnlocked(tenant) {
+    const pending = this.statusRequests.get(tenant.id);
+    if (pending) await pending;
     const account = this.account(tenant.id);
     if (!account) throw fail(409, 'QQ_NOT_PREPARED', '请先准备 QQ 协议端配置');
     const driver = this.driver(account.driver);
     if (!driver) throw fail(400, 'UNKNOWN_DRIVER', '未知 QQ 协议端驱动');
-    const process = this.supervisor.status(tenant.id, 'qq');
+    const process = await this.runtimeStatus(tenant, account);
+    if (process.state === 'degraded') throw fail(503, 'QQ_RUNTIME_UNCONFIRMED', '无法确认当前 QQ 运行状态');
     if (['running', 'starting', 'restarting'].includes(process.state)) {
       return this.status(tenant);
     }
+    if (account.driver === 'napcat') await this.docker.preflight();
+    const existingLeases = new Set(['qq.webui', 'qq.ob11', 'qq.http'].map((purpose) => this.allocator.find(tenant.id, purpose)?.id).filter(Boolean));
     const ports = await this.ensurePorts(tenant, account.driver, account);
     if (account.driver === 'llbot') {
       const runtime = readJsonFile(path.join(this.paths(tenant, 'llbot').dir, 'runtime.json'), {});
@@ -238,26 +309,63 @@ export class QQService {
       state: 'starting',
       last_error: null
     };
-    await driver.prepare(this.driverContext(tenant, updated, account.driver, tokens, driver));
-    this.upsertAccount(updated);
     try {
-      const launch = await driver.launch(this.driverContext(tenant, updated, account.driver, tokens, driver));
-      await this.supervisor.start({
-        tenantId: tenant.id,
-        kind: 'qq',
-        command: launch.command,
-        args: launch.args,
-        cwd: launch.cwd,
-        env: launch.env || {},
-        logFile: path.join(this.config.logDir, 'tenants', `${tenant.id}.qq.log`),
-        ready: launch.readyOptional ? null : {
-          host: launch.readyHost || '127.0.0.1',
-          port: Number(launch.readyPort),
-          timeoutMs: this.config.processStartTimeoutMs
-        },
-        restart: true
-      });
+      await driver.prepare(this.driverContext(tenant, updated, account.driver, tokens, driver));
+      this.upsertAccount(updated);
+      if (account.driver === 'napcat') {
+        const excludedPorts = [];
+        for (let attempt = 0; ; attempt += 1) {
+          try {
+            await this.docker.start(tenant, updated, this.driverContext(tenant, updated, account.driver, tokens, driver).paths.dir);
+            break;
+          } catch (error) {
+            if (error.code !== 'NAPCAT_PORT_CONFLICT' || attempt >= 2) throw error;
+            const runtime = this.docker.row(tenant.id);
+            if (runtime?.container_id || runtime?.network_id) throw fail(503, 'NAPCAT_CLEANUP_UNCONFIRMED', 'NapCat 清理未确认，禁止重试');
+            for (const purpose of ['qq.webui', 'qq.ob11', 'qq.http']) {
+              const lease = this.allocator.find(tenant.id, purpose);
+              if (lease) { excludedPorts.push(Number(lease.port)); this.allocator.releaseLease(lease.id); }
+            }
+            const replacement = await this.ensurePorts(tenant, account.driver, null, { excludePorts: excludedPorts });
+            Object.assign(updated, { webui_port: replacement.webuiPort, ob11_port: replacement.ob11Port, http_port: replacement.httpPort });
+            await driver.prepare(this.driverContext(tenant, updated, account.driver, tokens, driver));
+            this.upsertAccount(updated);
+          }
+        }
+        const deadline = Date.now() + this.config.processStartTimeoutMs;
+        let ready = false;
+        while (Date.now() < deadline) {
+          try { await driver.qrcode(this.driverContext(tenant, updated, account.driver, tokens, driver)); ready = true; break; } catch { await new Promise((resolve) => setTimeout(resolve, 500)); }
+        }
+        if (!ready) { await this.docker.stop(tenant.id); throw fail(503, 'NAPCAT_READY_TIMEOUT', 'NapCat WebUI 未在时限内就绪'); }
+        const runtime = this.docker.row(tenant.id);
+        runtime.state = 'running'; runtime.updated_at = Date.now(); this.docker.save(runtime);
+      } else {
+        const launch = await driver.launch(this.driverContext(tenant, updated, account.driver, tokens, driver));
+        await this.supervisor.start({
+          tenantId: tenant.id,
+          kind: 'qq',
+          command: launch.command,
+          args: launch.args,
+          cwd: launch.cwd,
+          env: launch.env || {},
+          logFile: path.join(this.config.logDir, 'tenants', `${tenant.id}.qq.log`),
+          ready: launch.readyOptional ? null : {
+            host: launch.readyHost || '127.0.0.1',
+            port: Number(launch.readyPort),
+            timeoutMs: this.config.processStartTimeoutMs
+          },
+          restart: true
+        });
+      }
     } catch (error) {
+      const runtime = this.docker.row(tenant.id);
+      if (account.driver !== 'napcat' || !runtime?.container_id) {
+        for (const purpose of ['qq.webui', 'qq.ob11', 'qq.http']) {
+          const lease = this.allocator.find(tenant.id, purpose);
+          if (lease && !existingLeases.has(lease.id)) this.allocator.releaseLease(lease.id);
+        }
+      }
       this.updateAccount(tenant.id, { state: 'failed', last_error: String(error?.message || error) });
       throw error;
     }
@@ -268,10 +376,17 @@ export class QQService {
     return this.status(tenant, { probe: true });
   }
 
-  async stop(tenant, { releasePorts = false } = {}) {
+  async stop(tenant, options = {}) { return this.serial(tenant.id, () => this.stopUnlocked(tenant, options)); }
+
+  async stopUnlocked(tenant, { releasePorts = false } = {}) {
+    const pending = this.statusRequests.get(tenant.id);
+    if (pending) await pending;
+    if (this.account(tenant.id)?.driver === 'napcat' && this.agentRuntime) await this.agentRuntime.stop(tenant, { force: true });
+    if (this.docker.row(tenant.id)) await this.docker.stop(tenant.id);
     await this.supervisor.stop(tenant.id, 'qq', { force: true });
     if (releasePorts) for (const purpose of ['qq.webui', 'qq.ob11', 'qq.http', 'qq.pmhq']) this.allocator.release(tenant.id, purpose);
     if (this.account(tenant.id)) this.updateAccount(tenant.id, { state: 'prepared' });
+    await this.onLinksChanged?.(tenant, { reason: 'qq.stop' });
     return this.status(tenant, { probe: false });
   }
 
@@ -321,10 +436,30 @@ export class QQService {
     };
   }
 
+  async runtimeStatus(tenant, account = this.account(tenant.id)) {
+    if (account?.driver !== 'napcat') return this.supervisor.status(tenant.id, 'qq');
+    const row = this.docker.row(tenant.id);
+    if (!row?.container_id) return { state: row?.network_id || row?.desired_state === 'running' ? 'degraded' : row?.state === 'failed' ? 'crashed' : 'stopped', pid: null };
+    try {
+      const actual = await this.docker.inspect(row);
+      return { state: actual.State?.Running ? (row.desired_state === 'running' ? 'running' : 'degraded') : 'crashed', pid: null };
+    } catch { return { state: 'degraded', pid: null }; }
+  }
+
   async status(tenant, { probe = true } = {}) {
+    if (!probe) return this.statusUnlocked(tenant, { probe });
+    const existing = this.statusRequests.get(tenant.id);
+    if (existing) return existing;
+    const pending = this.statusUnlocked(tenant, { probe });
+    this.statusRequests.set(tenant.id, pending);
+    try { return await pending; } finally { if (this.statusRequests.get(tenant.id) === pending) this.statusRequests.delete(tenant.id); }
+  }
+
+  async statusUnlocked(tenant, { probe = true } = {}) {
     const account = this.account(tenant.id);
     if (!account) {
       return {
+        runtimeState: 'stopped', loginState: 'offline', agentChannelState: 'disconnected', runtimeGeneration: 0, canChat: false,
         driver: null,
         kernel: 'unknown',
         driverLabel: null,
@@ -350,7 +485,8 @@ export class QQService {
       };
     }
     const driver = this.driver(account.driver);
-    let process = this.supervisor.status(tenant.id, 'qq');
+    let process = await this.runtimeStatus(tenant, account);
+    const observedGeneration = account.driver === 'napcat' ? this.docker.row(tenant.id)?.generation : null;
     let probeResult = null;
     if (probe && ['running', 'restarting'].includes(process.state)) {
       try {
@@ -359,23 +495,32 @@ export class QQService {
         probeResult = { error: String(error?.message || error), code: 'DRIVER_PROBE_FAILED' };
       }
     }
-    let state = account.state;
-    let lastError = account.last_error;
-    let uin = account.uin;
-    let nickname = account.nickname;
+    const latest = this.account(tenant.id);
+    const runtime = account.driver === 'napcat' ? this.docker.row(tenant.id) : null;
+    if (latest?.driver !== account.driver || latest?.expected_uin !== account.expected_uin || (account.driver === 'napcat' && (runtime?.generation !== observedGeneration || (probeResult && runtime?.desired_state !== 'running')))) return this.statusUnlocked(tenant, { probe: false });
+    let state = latest.state;
+    let lastError = latest.last_error;
+    let uin = latest.uin;
+    let nickname = latest.nickname;
     if (probeResult?.uinMismatch) {
       lastError = `实际登录 QQ (${probeResult.uin}) 与配置 (${account.expected_uin}) 不一致，已停止协议端`;
-      await this.supervisor.stop(tenant.id, 'qq', { force: true });
-      process = this.supervisor.status(tenant.id, 'qq');
+      this.updateAccount(tenant.id, { state: 'uin_mismatch', last_error: lastError });
+      try { if (this.agentRuntime) await this.agentRuntime.stop(tenant, { force: true }); }
+      finally {
+        if (account.driver === 'napcat') await this.docker.stop(tenant.id);
+        else await this.supervisor.stop(tenant.id, 'qq', { force: true });
+      }
+      await this.onLinksChanged?.(tenant, { reason: 'qq.uin_mismatch' });
+      process = await this.runtimeStatus(tenant, account);
       state = 'uin_mismatch';
       probeResult.online = false;
       this.logger?.warn?.('qq uin mismatch', { tenantId: tenant.id, expected: account.expected_uin, actual: probeResult.uin });
-    } else if (probeResult?.online) {
+    } else if (probeResult?.online && probeResult?.uin === account.expected_uin) {
       state = 'online';
       uin = probeResult.uin || uin;
       nickname = probeResult.nickname || nickname;
       lastError = null;
-    } else if (process.state === 'running') {
+    } else if (process.state === 'running' && probe) {
       const desktop = account.driver === 'llbot' && readJsonFile(path.join(this.paths(tenant, 'llbot').dir, 'runtime.json'), {}).mode === 'desktop';
       state = !desktop && account.auth_source === 'none' && driver?.capabilities.authToken ? 'auth_required' : 'awaiting_login';
       if (probeResult?.error) lastError = probeResult.error;
@@ -385,7 +530,7 @@ export class QQService {
       state = account.state === 'online' || account.state === 'awaiting_login' ? 'prepared' : account.state;
     }
     if (probeResult?.error && process.state !== 'running') lastError = probeResult.error;
-    const authToken = process.state === 'running'
+    const authToken = probe && process.state === 'running'
       ? await this.authStatus(tenant)
       : this.localAuthStatus(tenant, account, driver);
     if (authToken.applicable && !authToken.hasToken && process.state === 'running' && state !== 'uin_mismatch') {
@@ -395,8 +540,18 @@ export class QQService {
     const authTokenStatus = this.panelAuthTokenStatus(authToken);
     authToken.status = authTokenStatus;
     this.updateAccount(tenant.id, { state, last_error: lastError || null, uin, nickname });
-    const online = Boolean(probeResult?.online);
+    if (account.driver === 'napcat' && state !== account.state && (state === 'online' || account.state === 'online')) await this.onLinksChanged?.(tenant, { reason: state === 'online' ? 'qq.identity_verified' : 'qq.disconnected' });
+    const online = Boolean(probeResult?.online && probeResult?.uin && probeResult.uin === account.expected_uin);
+    const runtimeGeneration = account.driver === 'napcat' ? this.docker.row(tenant.id)?.generation || 0 : 0;
+    const health = probe && this.agentRuntime ? await this.agentRuntime.health(tenant) : null;
+    const channel = health?.channels?.qq || (health?.onebot?.platform === 'qq' ? health.onebot : null);
+    const onebotConnected = Boolean(health?.ok && channel?.connected === true && channel.generation != null && Number(channel.generation) === runtimeGeneration && String(channel.selfId || '') === String(account.expected_uin));
     return {
+      runtimeState: process.state === 'running' ? (account.driver === 'napcat' && this.docker.row(tenant.id)?.state === 'starting' ? 'starting' : 'ready') : process.state,
+      loginState: online ? 'online' : state === 'uin_mismatch' ? 'login_failed' : process.state === 'running' ? probeResult?.loginState || 'waiting_qr' : 'offline',
+      agentChannelState: onebotConnected ? 'connected' : 'disconnected',
+      runtimeGeneration,
+      canChat: online && onebotConnected,
       driver: account.driver,
       kernel: account.driver,
       driverLabel: driver?.label || account.driver,
@@ -428,7 +583,7 @@ export class QQService {
       authTokenStatus,
       authTokenMessage: authToken.message || authToken.loginError || '',
       qrAvailable: Boolean(driver?.capabilities?.qrcode) && process.state === 'running' && !online,
-      onebotConnected: online,
+      onebotConnected,
       onebotPort: account.ob11_port ?? null,
       onebotTokenConfigured: true,
       error: lastError || null,
@@ -465,17 +620,30 @@ export class QQService {
   }
 
   async qrcode(tenant) {
+    const existing = this.qrRequests.get(tenant.id);
+    if (existing) return existing;
+    const pending = this.qrcodeUnlocked(tenant);
+    this.qrRequests.set(tenant.id, pending);
+    try { return await pending; } finally { if (this.qrRequests.get(tenant.id) === pending) this.qrRequests.delete(tenant.id); }
+  }
+
+  async qrcodeUnlocked(tenant) {
     const account = this.account(tenant.id);
     if (!account) throw fail(409, 'QQ_NOT_PREPARED', '请先准备 QQ 协议端配置');
-    const process = this.supervisor.status(tenant.id, 'qq');
+    const process = await this.runtimeStatus(tenant, account);
     if (!['running', 'restarting'].includes(process.state)) {
       throw fail(409, 'QQ_NOT_RUNNING', 'QQ 协议端未运行，请先启动');
     }
     const driver = this.driver(account.driver);
     const tokens = this.tokens(tenant, account);
+    const runtimeGeneration = account.driver === 'napcat' ? this.docker.row(tenant.id)?.generation || 0 : 0;
     const qr = await driver.qrcode(this.driverContext(tenant, account, account.driver, tokens, driver));
+    const latest = this.account(tenant.id);
+    if (latest?.driver !== account.driver || latest?.expected_uin !== account.expected_uin || (account.driver === 'napcat' && (this.docker.row(tenant.id)?.generation !== runtimeGeneration || this.docker.row(tenant.id)?.desired_state !== 'running'))) throw fail(409, 'QRCODE_STALE', 'QQ 运行状态已改变，请重新获取二维码');
     return {
       ...qr,
+      runtimeGeneration,
+      qrGeneration: qr.qrGeneration || 0,
       driver: account.driver,
       expectedUin: account.expected_uin,
       pollTimeInterval: qr.pollTimeInterval || 3
@@ -507,10 +675,12 @@ export class QQService {
 
   async describeChannels(tenant) {
     const account = this.account(tenant.id);
-    if (!account || account.state === 'unprepared') return null;
+    if (!account || ['unprepared', 'uin_mismatch'].includes(account.state) || (account.driver === 'napcat' && (account.state !== 'online' || account.uin !== account.expected_uin || this.docker.row(tenant.id)?.desired_state !== 'running'))) return null;
     const tokens = this.tokens(tenant, account);
     return {
       enabled: true,
+      generation: account.driver === 'napcat' ? this.docker.row(tenant.id)?.generation || 0 : 0,
+      ...(account.driver === 'napcat' ? { media: { mode: 'inline-base64', maxImageBytes: 5242880, incomingLocalPaths: 'deny' } } : {}),
       driver: account.driver,
       apiTransport: account.driver === 'llbot' ? 'ws' : 'http',
       uin: account.uin || account.expected_uin,
@@ -521,8 +691,19 @@ export class QQService {
     };
   }
 
-  logs(tenant, limit = 100) {
-    return this.supervisor.logs(tenant.id, 'qq', limit);
+  async logs(tenant, limit = 100) {
+    const account = this.account(tenant.id);
+    if (account?.driver !== 'napcat') return this.supervisor.logs(tenant.id, 'qq', limit);
+    const row = this.docker.row(tenant.id);
+    if (!row?.container_id) return [];
+    await this.docker.inspect(row);
+    const text = await this.docker.command(['logs', '--tail', String(Math.max(1, Math.min(500, Number(limit) || 100))), row.container_id]);
+    const tokens = this.tokens(tenant, account);
+    return text.split(/\r?\n/).filter(Boolean).map((line) => {
+      let safe = line.replace(/https?:\/\/\S+/g, '[url]');
+      for (const secret of [tokens.webuiPassword, tokens.onebotToken]) if (secret) safe = safe.split(secret).join('[redacted]');
+      return safe;
+    });
   }
 
   async remove(tenant) {

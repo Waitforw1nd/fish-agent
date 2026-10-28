@@ -124,7 +124,7 @@ test('所有面板端点使用约定方法与同源路径', async () => {
   });
 
   assert.deepEqual(JSON.parse(calls[2].init.body), { name: 'A', slug: 'a' });
-  assert.deepEqual(JSON.parse(calls[6].init.body), { kernel: 'llbot', authToken: 'token-abc', uin: '10001' });
+  assert.deepEqual(JSON.parse(calls[6].init.body), { kernel: 'llbot', uin: '10001' });
   assert.deepEqual(JSON.parse(calls[7].init.body), { kernel: 'napcat', uin: '10002' });
   assert.deepEqual(JSON.parse(calls[14].init.body), {
     subscriptions: { mentions: true, upVideos: false, privateMessages: true, liveRoom: true }
@@ -137,17 +137,25 @@ test('QQ prepare/start 未提供 uin 时保持原有请求体，不注入空字�
   const api = createApi({ fetchImpl });
   await api.prepareQQ('t', { kernel: 'llbot', authToken: 'abc' });
   await api.startQQ('t', { kernel: 'llbot' });
-  assert.deepEqual(JSON.parse(calls[0].init.body), { kernel: 'llbot', authToken: 'abc' });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { kernel: 'llbot' });
   assert.deepEqual(JSON.parse(calls[1].init.body), { kernel: 'llbot' });
 });
 
-test('QQ 桌面模式与 PMHQ 端口传给 prepare 和 start', async () => {
+test('QQ 驱动清单与刷新二维码的路径及 CSRF', async () => {
+  const { fetchImpl, calls } = recorder(() => jsonResponse(200, { ok: true }));
+  const api = createApi({ fetchImpl }); api.setCsrfToken('csrf');
+  await api.getQQDrivers(); await api.refreshQQQrcode('t/1');
+  assert.equal(calls[0].path, '/api/qq/drivers'); assert.equal(calls[0].init.method, 'GET');
+  assert.equal(calls[1].path, '/api/tenants/t%2F1/qq/qrcode/refresh'); assert.equal(calls[1].init.method, 'POST'); assert.equal(calls[1].init.headers['X-CSRF-Token'], 'csrf');
+});
+
+test('QQ 请求不透传运行参数或密钥', async () => {
   const { fetchImpl, calls } = recorder(() => jsonResponse(200, { ok: true }));
   const api = createApi({ fetchImpl });
   await api.prepareQQ('t', { kernel: 'llbot', uin: '12345', mode: 'desktop', pmhqPort: '32001' });
   await api.startQQ('t', { kernel: 'llbot', mode: 'desktop', pmhqPort: '32001' });
-  assert.deepEqual(JSON.parse(calls[0].init.body), { kernel: 'llbot', uin: '12345', mode: 'desktop', pmhqPort: 32001 });
-  assert.deepEqual(JSON.parse(calls[1].init.body), { kernel: 'llbot', mode: 'desktop', pmhqPort: 32001 });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { kernel: 'llbot', uin: '12345' });
+  assert.deepEqual(JSON.parse(calls[1].init.body), { kernel: 'llbot' });
 });
 
 test('createTenant 省略空 slug；updateRelayKey 省略空字段', async () => {

@@ -312,13 +312,13 @@ export class VideoReader {
   /** 把视频落地为本地文件路径（OneBot 缓存 → 下载 url）。 */
   async #localize(media) {
     // 路径 0：消息里直接给了本地 path
-    if (media.path && fs.existsSync(String(media.path))) return String(media.path);
+    if (getConfig().channels?.qq?.media?.incomingLocalPaths !== 'deny' && media.path && fs.existsSync(String(media.path))) return String(media.path);
     // 路径 1：OneBot get_video / get_file 拿缓存
     if (media.file) {
       for (const action of ['get_video', 'get_file', 'get_image']) {
         try {
           const ret = await this.onebot.call(action, { file: String(media.file) });
-          const p = ret?.file && fs.existsSync(String(ret.file)) ? String(ret.file) : '';
+          const p = getConfig().channels?.qq?.media?.incomingLocalPaths !== 'deny' && ret?.file && fs.existsSync(String(ret.file)) ? String(ret.file) : '';
           if (p) return p;
           if (ret?.url) {
             const dl = await this.#download(String(ret.url));

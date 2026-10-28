@@ -6,6 +6,7 @@ import {
   normalizeTenant,
   normalizeTenantList,
   normalizeQQStatus,
+  normalizeQQDrivers,
   normalizeQr,
   normalizeSubscriptions,
   normalizeBiliConfig,
@@ -21,6 +22,26 @@ import {
 
 const NOW = Date.parse('2026-10-28T08:00:00Z');
 const PNG = `data:image/png;base64,${'A'.repeat(96)}`;
+
+test('QQ 状态三层缺失时未知，只有身份一致且通道连通才能显示可对话', () => {
+  const unknown = normalizeQQStatus({ uin: '12345', phase: 'ready' });
+  assert.equal(unknown.loggedIn, false); assert.notEqual(unknown.phase, 'online');
+  assert.equal(unknown.runtimeState, 'unknown'); assert.equal(unknown.loginState, 'unknown'); assert.equal(unknown.agentChannelState, 'unknown'); assert.equal(unknown.canChat, false);
+  const status = { runtimeState: 'ready', loginState: 'online', agentChannelState: 'connected', runtimeGeneration: 7, canChat: true, uin: '12345', expectedUin: '12345' };
+  assert.equal(normalizeQQStatus(status).canChat, true);
+  assert.equal(normalizeQQStatus({ ...status, expectedUin: '98765' }).canChat, false);
+  assert.equal(normalizeQQStatus({ ...status, agentChannelState: 'unknown' }).canChat, false);
+  assert.equal(normalizeQQStatus(status).runtimeGeneration, 7);
+  const zero = normalizeQQStatus({ qq: { ...status, runtimeGeneration: 0 } });
+  assert.equal(zero.runtimeGeneration, 0); assert.equal(zero.canChat, true);
+  const unknownChannel = normalizeQQStatus({ qq: { ...status, runtimeGeneration: 0, agentChannelState: 'unknown', canChat: false } });
+  assert.equal(unknownChannel.agentChannelState, 'unknown'); assert.equal(unknownChannel.canChat, false);
+});
+
+test('QQ 内核清单仅包含平台许可的内核', () => {
+  const result = normalizeQQDrivers({ defaultDriver: 'napcat', drivers: [{ id: 'napcat', allowed: true, available: false, installed: false, reason: '未安装' }, { id: 'private', allowed: false }] });
+  assert.equal(result.defaultDriver, 'napcat'); assert.equal(result.drivers.length, 1); assert.equal(result.drivers[0].reason, '未安装');
+});
 
 test('账单归一化保留会话、估算和含图片请求成本', () => {
   const billing = normalizeBilling({ usage: { byChat: [{ date: '2026-10-28', model: 'm', platform: 'bili', chatKey: 'group:4503599627370500', costMicros: 12, visionRequests: 1, visionRequestCostMicros: 12, usageSources: { estimated: 1 } }], usageSources: { estimated: 1 }, visionRequests: 1, visionRequestCostMicros: 12 } });

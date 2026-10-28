@@ -1,5 +1,7 @@
 # QQ / Bili 协议与身份契约
 
+新实例默认 NapCat，已有实例保留已配置内核。NapCat P1 本地实现待 P0 真实容器验收，通道采用正向 WS 收事件、HTTP action；媒体策略为 `inline-base64`、图片上限 5 MiB、拒绝读取容器本地路径。容器模式图片和表情在首次发送前转换为 base64，超限报错；视频交换目录尚未实现。LLBot 保留原传输与媒体行为。状态中的 generation 对应当前配置，登录身份来自实际协议响应。真实 NapCat 容器和 QQ 尚未验收。
+
 对应源码：
 
 - `packages/qq-agent-core/src/{channel-router,config,onebot,sender}.js`

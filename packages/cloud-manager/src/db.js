@@ -271,6 +271,22 @@ const MIGRATIONS = [
       ALTER TABLE ledger ADD COLUMN usage_source TEXT NOT NULL DEFAULT 'unknown';
       CREATE INDEX idx_ledger_attribution ON ledger(tenant_id, platform, chat_key, created_at);
     `
+  },
+  {
+    version: 5,
+    sql: `
+      CREATE TABLE qq_runtimes (
+        tenant_id TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+        runtime_id TEXT NOT NULL, driver TEXT NOT NULL, generation INTEGER NOT NULL,
+        container_id TEXT, network_id TEXT, image TEXT, desired_state TEXT NOT NULL,
+        state TEXT NOT NULL, updated_at INTEGER NOT NULL
+      );
+    `
+  },
+  {
+    version: 6,
+    sql: `ALTER TABLE qq_runtimes ADD COLUMN image_id TEXT;
+          ALTER TABLE qq_runtimes ADD COLUMN spec_json TEXT;`
   }
 ];
 

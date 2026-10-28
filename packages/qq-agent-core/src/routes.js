@@ -1522,7 +1522,7 @@ export function createRoutes(deps) {
             let dataUrl = null;
             try {
               const ret = await onebot.call('get_image', { file: String(it?.file || '') });
-              if (ret?.file && fs.existsSync(String(ret.file))) dataUrl = fileToDataUrl(String(ret.file));
+              if (getConfig().channels?.qq?.media?.incomingLocalPaths !== 'deny' && ret?.file && fs.existsSync(String(ret.file))) dataUrl = fileToDataUrl(String(ret.file));
               if (!dataUrl && ret?.url) dataUrl = await safeToDataUrl(ret.url);
             } catch { /* 缓存没有 / 地址不可信就走下一条 */ }
             if (!dataUrl && it?.url) {

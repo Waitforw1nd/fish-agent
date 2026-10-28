@@ -369,10 +369,11 @@ export class ChannelRouter {
   channelStatus(platform) {
     const record = this.channels.get(normalizePlatform(platform));
     if (!record) return null;
-    const selfId = String(record.client?.selfId || record.config.selfUserId || record.status.selfId || '');
+    const selfId = String(record.client?.selfInfo?.user_id || '');
     const nickname = String(record.client?.selfNickname || record.config.selfNickname || record.status.nickname || '');
     return {
       platform: record.platform,
+      generation: record.config.generation ?? null,
       enabled: record.enabled,
       connected: record.status.connected === true,
       everConnected: record.status.everConnected === true,

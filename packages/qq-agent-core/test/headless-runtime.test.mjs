@@ -317,3 +317,77 @@ test('shutdown wins over an overlapping connection reconfiguration', async t => 
   assert.equal(app.orchestrator.aborted, true, 'late configuration completion must not resume a stopped app');
   assert.equal(app.orchestrator.reminderTimer, null);
 });
+
+
+test('NapCat headless sends inline media once and rejects container cache paths', async t => {
+  const calls = [];
+  const secret = path.join(temp, 'host-secret.bin');
+  fs.writeFileSync(secret, 'host-only-secret');
+  let disconnect = false;
+  let timeout = false;
+  let redirects = 0;
+  const png = Buffer.from('89504e470d0a1a0a00000000', 'hex');
+  const protocol = http.createServer(async (req, res) => {
+    if (req.method === 'GET' && req.url === '/image') { res.writeHead(200, { 'content-type': 'image/png' }); res.end(png); return; }
+    if (req.method === 'GET' && req.url === '/oversize') { res.end(Buffer.alloc(6)); return; }
+    if (req.method === 'GET' && req.url === '/redirect') { redirects++; res.writeHead(302, { location: `http://127.0.0.1:${port}/private` }); res.end(); return; }
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = chunks.length ? JSON.parse(Buffer.concat(chunks)) : {};
+    calls.push({ action: req.url, body });
+    if (req.url === '/send_group_msg' && disconnect) { req.socket.destroy(); return; }
+    if (req.url === '/send_group_msg' && timeout) return;
+    const data = req.url === '/get_login_info' ? { user_id: 888, nickname: 'actual' }
+      : req.url === '/get_image' || req.url === '/get_video' || req.url === '/get_file' ? { file: secret }
+      : req.url === '/add_custom_face' ? {} : { message_id: 777 };
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ status: 'ok', retcode: 0, data }));
+  });
+  const port = await new Promise(resolve => protocol.listen(0, '127.0.0.1', () => resolve(protocol.address().port)));
+  const ws = new WebSocketServer({ server: protocol });
+  t.after(() => { for (const client of ws.clients) client.terminate(); ws.close(); protocol.closeAllConnections(); protocol.close(); });
+  const media = { mode: 'inline-base64', maxImageBytes: 5242880, incomingLocalPaths: 'deny' };
+  const { app, request } = await boot(t, {
+    sticker: { collectEnabled: true }, allow: { groups: ['456'] },
+    channels: { qq: { enabled: true, driver: 'napcat', generation: 23, media, selfUserId: '999', wsUrl: `ws://127.0.0.1:${port}`, httpUrl: `http://127.0.0.1:${port}` } },
+    connection: { enabled: true, type: 'onebot', onebot: { mode: 'forward', apiTransport: 'http', wsUrl: `ws://127.0.0.1:${port}`, httpUrl: `http://127.0.0.1:${port}` } }
+  });
+  await waitFor(() => app.onebot.channelStatus('qq')?.selfId === '888', 'actual identity');
+  const status = await (await request('/api/status')).json();
+  assert.equal(status.onebot.channels.qq.generation, 23);
+  assert.equal(status.onebot.channels.qq.selfId, '888');
+  await app.sender.sendImage('group:456', { dataUrl: 'base64://aW1hZ2U=' });
+  const sent = calls.filter(c => c.action === '/send_group_msg');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].body.message.find(s => s.type === 'image').data.file, 'base64://aW1hZ2U=');
+  disconnect = true;
+  await assert.rejects(app.sender.sendImage('group:456', { dataUrl: 'base64://b3RoZXI=' }));
+  assert.equal(calls.filter(c => c.action === '/send_group_msg').length, 2);
+  disconnect = false;
+  timeout = true;
+  const transport = app.onebot.channel('qq').client.client;
+  const originalCall = transport.call.bind(transport);
+  transport.call = (action, params, ms) => originalCall(action, params, action === 'send_group_msg' ? 75 : ms);
+  await assert.rejects(app.sender.sendImage('group:456', { dataUrl: 'base64://dGltZW91dA==' }), /timeout|timed out/i);
+  assert.equal(calls.filter(c => c.action === '/send_group_msg').length, 3);
+  timeout = false;
+  transport.call = originalCall;
+  const { safeFetchBinary } = await import('../src/safe-fetch.js');
+  app.updateConfig({ security: { allowPrivateImageHosts: true, imageSend: { requirePreview: false } } });
+  await assert.rejects(safeFetchBinary(`http://127.0.0.1:${port}/oversize`, 5), /上限/);
+  const { buildToolDefs, executeTool } = await import('../src/tools.js');
+  const ctx = { chatKey: 'group:456', sender: app.sender, session: { id: 'image-fixture', sent: [] }, emit() {} };
+  const resultTool = await executeTool(buildToolDefs(), ctx, 'send_image', JSON.stringify({ url: `http://127.0.0.1:${port}/image` }));
+  assert.equal(JSON.parse(resultTool.content).sent, true);
+  const imageSend = calls.filter(c => c.action === '/send_group_msg').at(-1);
+  assert.equal(imageSend.body.message.find(s => s.type === 'image').data.file, `base64://${png.toString('base64')}`);
+  assert.equal(calls.filter(c => c.action === '/send_group_msg').length, 4);
+  const result = await (await request('/api/media-data', { method: 'POST', body: JSON.stringify({ items: [{ file: 'container-image' }] }) })).json();
+  assert.deepEqual(result.results, [null]);
+  const collected = await app.stickers.collect('fixture', { file: 'container-image' });
+  assert.equal(collected.localFile, '');
+  assert.notEqual(calls.find(c => c.action === '/add_custom_face')?.body.file, `base64://${Buffer.from('host-only-secret').toString('base64')}`);
+  const { VideoReader } = await import('../src/video-reader.js');
+  const video = await new VideoReader(app.onebot).probe({ path: secret, file: 'container-video' });
+  assert.equal(video.sizeBytes, undefined);
+});

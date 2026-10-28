@@ -50,3 +50,48 @@ test('tenant starts real headless and gateway authenticates', async (t) => {
   const rejected = await client.call('/api/status', { headers: { origin: 'http://untrusted.example' } });
   assert.equal(rejected.status, 403);
 });
+
+
+test('written NapCat generation and actual login identity reach health; changed config invalidates cache', async t => {
+  const http = await import('node:http');
+  const { WebSocketServer } = await import('../../qq-agent-core/node_modules/ws/wrapper.mjs');
+  const protocol = http.createServer(async (req, res) => {
+    for await (const _chunk of req) { /* drain */ }
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ status: 'ok', retcode: 0, data: req.url === '/get_login_info' ? { user_id: 888, nickname: 'actual' } : {} }));
+  });
+  const port = await new Promise(resolve => protocol.listen(0, '127.0.0.1', () => resolve(protocol.address().port)));
+  const ws = new WebSocketServer({ server: protocol });
+  t.after(() => { for (const client of ws.clients) client.terminate(); ws.close(); protocol.closeAllConnections(); protocol.close(); });
+  const env = await startManager({ agentEntry: entry });
+  t.after(() => env.stop());
+  const { manager } = env;
+  const admin = await loginAdmin(manager);
+  const created = await admin.createTenant({ name: 'Health', slug: 'healthcheck', planId: 'starter' });
+  const tenant = manager.tenants.row(created.json.tenant.id);
+  let generation = 10;
+  manager.agent.setLinksResolver(async () => ({ qq: { enabled: true, driver: 'napcat', generation, media: { mode: 'inline-base64', maxImageBytes: 5242880, incomingLocalPaths: 'deny' }, apiTransport: 'http', uin: '999', wsUrl: `ws://127.0.0.1:${port}`, httpUrl: `http://127.0.0.1:${port}` }, bili: null }));
+  await manager.agent.start(tenant);
+  let health;
+  for (let i = 0; i < 100; i++) {
+    manager.agent.healthCache.delete(tenant.id);
+    health = await manager.agent.health(tenant);
+    if (health.channels?.qq?.selfId === '888') break;
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+  assert.equal(health.channels.qq.selfId, '888');
+  assert.equal(health.channels.qq.generation, 10);
+  assert.equal(health.channels.qq.connected, true);
+  generation = 11;
+  await manager.agent.writeConfig(tenant);
+  assert.equal(manager.agent.healthCache.has(tenant.id), false);
+  await manager.agent.restart(tenant);
+  for (let i = 0; i < 100; i++) {
+    manager.agent.healthCache.delete(tenant.id);
+    health = await manager.agent.health(tenant);
+    if (health.channels?.qq?.selfId === '888' && health.channels.qq.generation === 11) break;
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+  assert.equal(health.channels.qq.selfId, '888');
+  assert.equal(health.channels.qq.generation, 11);
+});

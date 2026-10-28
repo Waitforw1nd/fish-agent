@@ -5,6 +5,7 @@ import { confirmDialog } from '../lib/modal.js';
 import {
   normalizeTenant,
   normalizeQQStatus,
+  normalizeQQDrivers,
   normalizeBiliStatus,
   normalizeBiliConfig
 } from '../lib/normalize.js';
@@ -40,20 +41,6 @@ import {
 import { openQrFlow } from './qr.js';
 import { validateUin } from '../lib/validate.js';
 
-const KERNELS = [
-  { id: 'llbot', name: 'LLBot', tag: '推荐', desc: 'Direct 登录，需 auth token' },
-  { id: 'napcat', name: 'NapCat', tag: '', desc: 'QQ 客户端注入，扫码登录' },
-  { id: 'snowluma', name: 'SnowLuma', tag: '', desc: '兼容旧版配置' }
-];
-
-const AUTH_TOKEN_LABELS = {
-  missing: '未配置 auth token',
-  invalid: 'auth token 无效或已过期',
-  quota: 'auth token 配额或限流异常',
-  ok: 'auth token 状态正常',
-  unknown: 'auth token 状态未知'
-};
-
 export function mountHosting({
   root,
   api,
@@ -74,7 +61,9 @@ export function mountHosting({
   let poller = null;
   let qrFlow = null;
 
-  let selectedKernel = 'llbot';
+  let selectedKernel = '';
+  let drivers = { defaultDriver: '', drivers: [] };
+  const selectedDriver = () => drivers.drivers.find((item) => item.id === selectedKernel);
   let kernelTouched = false;
   let uinTouched = false;
   let tenantBusy = false;
@@ -111,10 +100,11 @@ export function mountHosting({
       api.getTenant(tenantId),
       api.getQQStatus(tenantId),
       api.getBiliStatus(tenantId),
-      api.getBiliConfig(tenantId)
+      api.getBiliConfig(tenantId),
+      api.getQQDrivers()
     ]);
     if (!active) return;
-    const [tenantResult, qqResult, biliResult, configResult] = results;
+    const [tenantResult, qqResult, biliResult, configResult, driversResult] = results;
     if (tenantResult.status === 'rejected') {
       renderFatal(apiErrorMessage(tenantResult.reason, { fallback: '无法加载租户信息。' }));
       return;
@@ -129,9 +119,9 @@ export function mountHosting({
     config = configResult.status === 'fulfilled' ? normalizeBiliConfig(configResult.value) : null;
     qqLoadError = qqResult.status === 'rejected' ? apiErrorMessage(qqResult.reason, { fallback: 'QQ 状态加载失败。' }) : '';
     biliLoadError = biliResult.status === 'rejected' ? apiErrorMessage(biliResult.reason, { fallback: 'B 站状态加载失败。' }) : '';
-    if (qqResult.status === 'fulfilled' && qq.available) {
-      selectedKernel = qq.kernel !== 'unknown' ? qq.kernel : 'llbot';
-    }
+    drivers = driversResult.status === 'fulfilled' ? normalizeQQDrivers(driversResult.value) : { defaultDriver: '', drivers: [] };
+    if (driversResult.status === 'rejected') qqLoadError = '无法读取平台允许的 QQ 内核。';
+    selectedKernel = qq.kernel !== 'unknown' ? qq.kernel : drivers.defaultDriver;
     subscriptions = resolveSubscriptions(config, bili);
     savedSubscriptions = { ...subscriptions };
     subsDirty = false;
@@ -278,7 +268,7 @@ export function mountHosting({
 
     const kernelInputs = [];
     const kernelGrid = h('div', { class: 'kernel-grid' });
-    for (const kernel of KERNELS) {
+    for (const kernel of drivers.drivers) {
       const input = h('input', {
         type: 'radio',
         name: 'qq-kernel',
@@ -290,6 +280,7 @@ export function mountHosting({
               selectedKernel = kernel.id;
               kernelTouched = true;
               updateKernelSelection();
+              updateQQ();
             }
           }
         }
@@ -297,8 +288,8 @@ export function mountHosting({
       const label = h('label', { class: 'kernel-option', dataset: { kernel: kernel.id } },
         input,
         h('span', { class: 'kernel-body' },
-          h('span', { class: 'kernel-name' }, kernel.name, kernel.tag ? h('span', { class: 'kernel-tag' }, kernel.tag) : null),
-          h('span', { class: 'kernel-desc' }, kernel.desc)
+          h('span', { class: 'kernel-name' }, kernel.label),
+          h('span', { class: 'kernel-desc' }, kernel.available ? '可使用' : kernel.reason || '当前不可用')
         )
       );
       kernelInputs.push({ input, label });
@@ -339,38 +330,6 @@ export function mountHosting({
       uinError
     );
 
-    const modeInput = h('select', { class: 'input', id: 'qq-mode', on: { change: () => { modeInput.dataset.touched = '1'; updateKernelSelection(); } } },
-      h('option', { value: 'direct' }, 'Direct'),
-      h('option', { value: 'desktop' }, '桌面 QQ / PMHQ'));
-    modeInput.value = qq?.mode || 'direct';
-    const pmhqInput = h('input', { class: 'input', id: 'qq-pmhq-port', type: 'number', min: 1, max: 65535, placeholder: '留空自动分配', value: qq?.pmhqPort || '', on: { input: () => { pmhqInput.dataset.touched = '1'; } } });
-    const modeBlock = h('div', { class: 'field mt-14' },
-      h('label', { class: 'field-label', for: 'qq-mode' }, 'LLBot 运行模式'), modeInput,
-      h('label', { class: 'field-label', for: 'qq-pmhq-port' }, 'PMHQ 端口（桌面模式）'), pmhqInput,
-      h('p', { class: 'field-hint' }, '桌面模式需要已部署的独立 QQ 和 PMHQ 注入组件；留空由平台分配端口。'));
-
-    const tokenInput = h('input', {
-      class: 'input',
-      id: 'qq-auth-token',
-      name: 'authToken',
-      type: 'password',
-      autocomplete: 'off',
-      spellcheck: false,
-      placeholder: '租户自带 auth token（留空使用平台配置）'
-    });
-    const tokenStatus = h('p', { class: 'field-hint' }, '');
-    const tokenBlock = h('div', { class: 'auth-token-block' },
-      h('div', { class: 'field' },
-        h('div', { class: 'label-row' },
-          h('label', { class: 'field-label', for: 'qq-auth-token' }, 'LLBot auth token'),
-          h('span', { class: 'field-hint' }, '可选 · 仅随请求发送')
-        ),
-        tokenInput,
-        tokenStatus
-      ),
-      h('p', { class: 'note mt-14' }, 'LLBot Direct 登录必须配置 auth token。平台可代管平台级 token；此处填写会覆盖为租户自有 token，留空则沿用平台配置。')
-    );
-
     const prepareButton = h('button', { class: 'btn btn-soft', type: 'button' }, '准备内核');
     const startQqButton = h('button', { class: 'btn btn-primary', type: 'button' }, '启动 QQ 并扫码');
     const actionRow = h('div', { class: 'inline-buttons mt-14' }, prepareButton, startQqButton);
@@ -387,6 +346,10 @@ export function mountHosting({
       kernel: statusRow('当前内核', '—'),
       uin: statusRow('UIN', '—', { mono: true }),
       nickname: statusRow('昵称', '—'),
+      runtime: statusRow('运行环境', 'unknown'),
+      login: statusRow('QQ 登录', 'unknown'),
+      channel: statusRow('Agent 通道', 'unknown'),
+      chat: statusRow('对话状态', '未知'),
       onebot: statusRow('OneBot', '—'),
       version: statusRow('版本对齐', '—'),
       updated: statusRow('最近更新', '—'),
@@ -396,6 +359,7 @@ export function mountHosting({
       status.kernel.row,
       status.uin.row,
       status.nickname.row,
+      status.runtime.row, status.login.row, status.channel.row, status.chat.row,
       status.onebot.row,
       status.version.row,
       status.updated.row,
@@ -409,12 +373,10 @@ export function mountHosting({
       qqAlert,
       kernelBlock,
       uinBlock,
-      modeBlock,
-      tokenBlock,
       actionRow,
       qrBlock,
       statusList,
-      note('准备会校验 QQ 号、内核与 auth token；启动后二维码有效期由协议端返回，过期可重新获取。')
+      note('二维码有效期以协议端返回为准。运行中的内核不能直接切换。')
     );
 
     prepareButton.addEventListener('click', () => { void prepareQq(); });
@@ -431,12 +393,6 @@ export function mountHosting({
         uinBlock,
         uinInput,
         uinError,
-        modeBlock,
-        modeInput,
-        pmhqInput,
-        tokenBlock,
-        tokenInput,
-        tokenStatus,
         prepareButton,
         startQqButton,
         qrBlock,
@@ -456,10 +412,6 @@ export function mountHosting({
       input.checked = selected;
       label.classList.toggle('is-selected', selected);
     }
-    const desktop = nodes.modeInput?.value === 'desktop';
-    if (nodes.modeBlock) setHidden(nodes.modeBlock, selectedKernel !== 'llbot');
-    if (nodes.pmhqInput) nodes.pmhqInput.disabled = !desktop;
-    if (nodes.tokenBlock) setHidden(nodes.tokenBlock, selectedKernel !== 'llbot' || desktop);
   }
 
   function updateQQ() {
@@ -473,13 +425,20 @@ export function mountHosting({
       setStatusValue(nodes.qqStatus.version.value, '—');
       setStatusValue(nodes.qqStatus.updated.value, qqLoadError || '—');
       setStatusValue(nodes.qqStatus.error.value, qqLoadError || '—', { tone: qqLoadError ? 'danger' : '' });
-      setAlert(nodes.qqAlert, qqLoadError, 'danger');
+      nodes.prepareButton.disabled = true;
+      nodes.startQqButton.disabled = true;
+      nodes.qrButton.disabled = true;
+      setAlert(nodes.qqAlert, qqLoadError || 'QQ 状态未知，无法执行操作。', 'danger');
       return;
     }
     setBadge(nodes.qqBadge, qq.phaseLabel, qq.tone);
     setStatusValue(nodes.qqStatus.kernel.value, qq.kernelLabel, { mono: true });
     setStatusValue(nodes.qqStatus.uin.value, qq.uin || qq.expectedUin || '—', { mono: true });
     setStatusValue(nodes.qqStatus.nickname.value, qq.nickname || '—');
+    setStatusValue(nodes.qqStatus.runtime.value, qq.runtimeState || 'unknown');
+    setStatusValue(nodes.qqStatus.login.value, qq.loginState || 'unknown');
+    setStatusValue(nodes.qqStatus.channel.value, qq.agentChannelState || 'unknown');
+    setStatusValue(nodes.qqStatus.chat.value, qq.canChat ? '可对话' : '尚不可确认可对话');
     const onebotText = qq.onebotConnected
       ? `已连接${qq.onebotPort ? ` · :${qq.onebotPort}` : ''}`
       : qq.loggedIn ? '登录成功，等待连接' : '未连接';
@@ -502,8 +461,6 @@ export function mountHosting({
     if (!kernelTouched && qq.kernel !== 'unknown') {
       selectedKernel = qq.kernel;
     }
-    if (nodes.modeInput && !nodes.modeInput.dataset.touched && qq.mode) nodes.modeInput.value = qq.mode;
-    if (nodes.pmhqInput && !nodes.pmhqInput.dataset.touched && qq.pmhqPort) nodes.pmhqInput.value = String(qq.pmhqPort);
     updateKernelSelection();
     if (!uinTouched && nodes.uinInput) {
       const expected = qq.expectedUin || qq.uin;
@@ -516,19 +473,9 @@ export function mountHosting({
       input.disabled = locked;
       label.classList.toggle('is-disabled', locked);
     }
-    if (nodes.tokenInput) nodes.tokenInput.disabled = qqBusy;
-    if (nodes.tokenStatus) {
-      const status = qq.authTokenStatus || 'unknown';
-      const text = AUTH_TOKEN_LABELS[status] || AUTH_TOKEN_LABELS.unknown;
-      nodes.tokenStatus.textContent = text;
-      nodes.tokenStatus.dataset.tone = status === 'ok' ? 'ok' : status === 'invalid' || status === 'quota' ? 'danger' : 'warn';
-      nodes.tokenStatus.style.color = status === 'ok' ? 'var(--ok)'
-        : status === 'invalid' || status === 'quota' ? 'var(--danger)' : 'var(--warn)';
-    }
-
-    const canAct = Boolean(tenant?.running) && tenant?.expiry?.state !== 'expired';
+    const canAct = Boolean(tenant?.running) && tenant?.expiry?.state !== 'expired' && Boolean(selectedDriver()?.available);
     if (nodes.prepareButton) {
-      nodes.prepareButton.disabled = qqBusy;
+      nodes.prepareButton.disabled = qqBusy || !canAct || qq.running;
       nodes.prepareButton.classList.toggle('is-loading', qqBusy);
     }
     if (nodes.startQqButton) {
@@ -915,21 +862,14 @@ export function mountHosting({
   }
 
   async function prepareQq() {
-    if (qqBusy || !active) return;
+    if (qqBusy || !active || !selectedDriver()?.available || tenant?.expiry?.state === 'expired' || !tenant?.running || qq?.running) return;
     const uin = readUin();
     if (!uin) return;
     qqBusy = true;
     setBusy(nodes.prepareButton, true);
     updateQQ();
     try {
-      await api.prepareQQ(tenantId, {
-        kernel: selectedKernel,
-        uin,
-        mode: nodes.modeInput?.value,
-        pmhqPort: nodes.pmhqInput?.value,
-        authToken: nodes.tokenInput?.value || ''
-      });
-      if (nodes.tokenInput) nodes.tokenInput.value = '';
+      await api.prepareQQ(tenantId, { kernel: selectedKernel, uin });
       toast?.show?.(`${kernelName(selectedKernel)} 准备完成`, { tone: 'success' });
       await refreshStatusesQuiet();
     } catch (error) {
@@ -944,9 +884,15 @@ export function mountHosting({
   }
 
   async function startQq() {
-    if (qqBusy || !active) return;
+    if (qqBusy || !active || !selectedDriver()?.available || tenant?.expiry?.state === 'expired') return;
     const uin = readUin();
     if (!uin) return;
+    if (qq?.running) {
+      if ((qq.kernel !== 'unknown' && qq.kernel !== selectedKernel) || (qq.expectedUin && qq.expectedUin !== uin)) {
+        setAlert(nodes.qqAlert, 'QQ 正在运行，请先停止后再更改内核或账号。', 'danger');
+      } else openQqQr();
+      return;
+    }
     if (!tenant?.running) {
       toast?.show?.('请先启动租户托管，再启动 QQ。', { tone: 'warn' });
       return;
@@ -955,14 +901,7 @@ export function mountHosting({
     setBusy(nodes.startQqButton, true);
     updateQQ();
     try {
-      await api.startQQ(tenantId, {
-        kernel: selectedKernel,
-        uin,
-        mode: nodes.modeInput?.value,
-        pmhqPort: nodes.pmhqInput?.value,
-        authToken: nodes.tokenInput?.value || ''
-      });
-      if (nodes.tokenInput) nodes.tokenInput.value = '';
+      await api.startQQ(tenantId, { kernel: selectedKernel, uin });
       toast?.show?.('QQ 启动中，正在获取登录二维码', { tone: 'success' });
       const latest = await refreshStatusesQuiet();
       if (active && (latest.qq?.phase === 'waiting_login' || latest.qq?.phase === 'waiting_confirm' || latest.qq?.qrAvailable || latest.qq?.phase === 'starting')) {
@@ -990,6 +929,8 @@ export function mountHosting({
       tenantId,
       kind: 'qq',
       toast,
+      capabilities: selectedDriver()?.capabilities,
+      runtimeGeneration: qq?.runtimeGeneration,
       timers: timers || undefined,
       onConfirmed: async () => {
         await refreshStatusesQuiet();
@@ -1140,7 +1081,7 @@ export function mountHosting({
   }
 
   function kernelName(id) {
-    return KERNELS.find((item) => item.id === id)?.name || id;
+    return drivers.drivers.find((item) => item.id === id)?.label || id;
   }
 
   // ── 生命周期 ──────────────────────────────────────────

@@ -284,7 +284,7 @@ export function createApiRouter(deps) {
 
   router.get('/api/tenants/:id/logs', async (ctx) => {
     const { tenant } = tenantCtx(ctx, 'operator');
-    const logs = hosting.logs(tenant, ctx.url.searchParams.get('kind') || 'all', Number(ctx.url.searchParams.get('limit')) || 100);
+    const logs = await hosting.logs(tenant, ctx.url.searchParams.get('kind') || 'all', Number(ctx.url.searchParams.get('limit')) || 100);
     sendJson(ctx.res, 200, { ok: true, logs });
   });
 
@@ -314,6 +314,14 @@ export function createApiRouter(deps) {
   });
 
   // QQ protocol driver
+  router.get('/api/qq/drivers', async (ctx) => {
+    auth.require(ctx.req);
+    sendJson(ctx.res, 200, { ok: true, defaultDriver: config.defaultQqDriver || 'napcat', drivers: await qq.drivers() });
+  });
+  router.post('/api/tenants/:id/qq/qrcode/refresh', async (ctx) => {
+    activeTenant(ctx);
+    throw httpError(501, 'QRCODE_REFRESH_UNSUPPORTED', '当前发行版尚未验证二维码刷新接口');
+  });
   router.post('/api/tenants/:id/qq/prepare', async (ctx) => {
     const { tenant } = activeTenant(ctx);
     const body = await readBody(ctx);
@@ -332,24 +340,13 @@ export function createApiRouter(deps) {
     const { tenant } = activeTenant(ctx);
     let body = {};
     try { body = await readBody(ctx); } catch { body = {}; }
-    const wantedDriver = body.driver || body.kernel;
-    const wantedUin = body.uin || body.expectedUin || body.qq;
-    const account = qq.account(tenant.id);
-    const existingStatus = account ? await qq.status(tenant, { probe: false }) : null;
-    const settingsChanged = (body.mode !== undefined && body.mode !== existingStatus?.mode)
-      || (body.pmhqPort !== undefined && Number(body.pmhqPort) !== existingStatus?.ports?.pmhq);
-    if (!account || (wantedDriver && account.driver !== wantedDriver) || (wantedUin && account.expected_uin !== String(wantedUin)) || settingsChanged) {
-      await qq.prepare(tenant, {
-        driver: wantedDriver || account?.driver || 'llbot',
-        uin: wantedUin || account?.expected_uin,
-        mode: body.mode,
-        pmhqPort: body.pmhqPort,
-        authToken: body.authToken
-      });
-    } else if (Object.hasOwn(body, 'authToken') && String(body.authToken || '').trim()) {
-      await qq.setAuthToken(tenant, body.authToken);
-    }
-    const result = await qq.start(tenant);
+    const result = await qq.prepareAndStart(tenant, {
+      driver: body.driver || body.kernel,
+      uin: body.uin || body.expectedUin || body.qq,
+      mode: body.mode,
+      pmhqPort: body.pmhqPort,
+      authToken: body.authToken
+    });
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.start', detail: { driver: result.driver }, ip: ctx.ip });
     sendJson(ctx.res, 200, { ok: true, qq: result });
   });
@@ -405,7 +402,7 @@ export function createApiRouter(deps) {
 
   router.get('/api/tenants/:id/qq/logs', async (ctx) => {
     const { tenant } = tenantCtx(ctx, 'operator');
-    sendJson(ctx.res, 200, { ok: true, logs: qq.logs(tenant, Number(ctx.url.searchParams.get('limit')) || 100) });
+    sendJson(ctx.res, 200, { ok: true, logs: await qq.logs(tenant, Number(ctx.url.searchParams.get('limit')) || 100) });
   });
 
   // Bilibili bridge

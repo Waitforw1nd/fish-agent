@@ -12,7 +12,7 @@ import { ApiError } from '../lib/api.js';
 
 const METHODS = [
   'login', 'logout', 'me', 'listTenants', 'createTenant', 'getTenant',
-  'startTenant', 'stopTenant', 'prepareQQ', 'startQQ', 'getQQQrcode', 'getQQStatus',
+  'startTenant', 'stopTenant', 'prepareQQ', 'startQQ', 'getQQQrcode', 'getQQStatus', 'getQQDrivers', 'refreshQQQrcode',
   'biliLoginQr', 'getBiliLoginStatus', 'getBiliStatus', 'getBiliConfig',
   'updateBiliConfig', 'getRelayOverview', 'getRelayModels', 'updateRelayKey'
 ];
@@ -23,7 +23,7 @@ function makeApi(handlers = {}) {
   for (const method of METHODS) {
     api[method] = (...args) => {
       calls.push({ name: method, args });
-      return Promise.resolve().then(() => (handlers[method] ? handlers[method](...args) : {}));
+      return Promise.resolve().then(() => (handlers[method] ? handlers[method](...args) : method === 'getQQDrivers' ? { defaultDriver: 'napcat', drivers: [{ id: 'llbot', label: 'LLBot', allowed: true, installed: true, available: true }, { id: 'napcat', label: 'NapCat', allowed: true, installed: true, available: true }] } : {}));
     };
   }
   return {
@@ -218,21 +218,12 @@ test('Hosting 渲染状态、保存 B 站四类订阅、准备内核与启动托
 
   const napcat = [...root.querySelectorAll('input[name="qq-kernel"]')].find((input) => input.value === 'napcat');
   assert.ok(napcat);
-  napcat.checked = true;
-  fire(napcat, 'change');
+  assert.equal(napcat.disabled, true);
   const prepare = findByText(root, 'button', '准备内核');
+  assert.equal(prepare.disabled, true);
   prepare.click();
   await settle(4);
-  assert.equal(callsOfCall(calls, 'prepareQQ').length, 1);
-  assert.equal(callsOfCall(calls, 'prepareQQ')[0].args[1].kernel, 'napcat');
-  assert.equal(callsOfCall(calls, 'prepareQQ')[0].args[1].uin, '10001');
-
-  uinInput.value = '1234';
-  fire(uinInput, 'input');
-  prepare.click();
-  await settle(2);
-  assert.equal(callsOfCall(calls, 'prepareQQ').length, 1);
-  assert.match(root.textContent, /5-12 位数字/);
+  assert.equal(callsOfCall(calls, 'prepareQQ').length, 0);
 
   const startTenant = findByText(root, 'button', '启动托管');
   assert.ok(startTenant);
@@ -317,6 +308,16 @@ test('Relay 展示脱敏 Key、额度与按日账单，保存新 Key/模型', as
   view.destroy();
 });
 
+test('QQ 二次验证错误使用安全且可操作的提示', async () => {
+  const { modalRoot } = setup();
+  const { api } = makeApi({ getQQQrcode: async () => { throw new ApiError(502, 'NAPCAT_WEBUI_AUTH_FAILED', 'NapCat WebUI 启用了二次验证 token=fixture-secret'); } });
+  const flow = openQrFlow({ modalRoot, api, tenantId: 't1', safeMessages: true, timers: createFakeTimers() });
+  await settle();
+  assert.match(modalRoot.textContent, /二次验证，请联系平台管理员/);
+  assert.doesNotMatch(modalRoot.textContent, /fixture-secret/);
+  flow.close();
+});
+
 test('QQ 扫码弹窗轮询成功后回调并自动关闭', async () => {
   const { document, modalRoot } = setup();
   const timers = createFakeTimers();
@@ -325,7 +326,7 @@ test('QQ 扫码弹窗轮询成功后回调并自动关闭', async () => {
   const dataUrl = `data:image/png;base64,${'A'.repeat(96)}`;
   const { api } = makeApi({
     getQQQrcode: async () => ({ qrcode: dataUrl, expiresAt: new Date(Date.now() + 120_000).toISOString() }),
-    getQQStatus: async () => ({ phase: 'online', loggedIn: true, nickname: '小号', uin: '10001' })
+    getQQStatus: async () => ({ qq: { phase: 'online', runtimeState: 'ready', loginState: 'online', agentChannelState: 'disconnected', runtimeGeneration: 0, canChat: false, loggedIn: true, nickname: '小号', uin: '10001', expectedUin: '10001' } })
   });
   const flow = openQrFlow({
     modalRoot,
@@ -464,9 +465,8 @@ test('QQ 启动请求透传 UIN，并在等待扫码时打开二维码', async (
   assert.ok(startQq);
   startQq.click();
   await settle(6);
-  assert.equal(callsOfCall(calls, 'startQQ').length, 1);
-  assert.equal(callsOfCall(calls, 'startQQ')[0].args[1].uin, '10001');
-  assert.equal(callsOfCall(calls, 'startQQ')[0].args[1].kernel, 'llbot');
+  assert.equal(callsOfCall(calls, 'startQQ').length, 0);
+  assert.equal(callsOfCall(calls, 'prepareQQ').length, 0);
   assert.ok(modalRoot.querySelector('img') || modalRoot.querySelector('.modal-backdrop'));
   view.destroy();
 });

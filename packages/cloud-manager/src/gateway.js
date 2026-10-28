@@ -147,7 +147,7 @@ export class Gateway {
     };
     if (status === 500) this.logger?.error?.('gateway error', error);
     if (String(req.headers.accept || '').includes('text/html')) {
-      const home = tenant ? `http://${tenant.slug}.${this.config.baseDomain}` : '/';
+      const home = tenant ? `${schemeOf(this.config, req)}://${req.headers.host}` : '/';
       sendHtml(res, status, `<!doctype html><meta charset="utf-8"><title>${status}</title>
 <body style="font-family:system-ui;padding:3rem;max-width:40rem;margin:auto">
 <h1>${status}</h1><p>${escapeHtml(payload.error)}</p>
@@ -172,7 +172,7 @@ export class Gateway {
     const auth = this.auth.resolve(req);
     if (!auth) {
       if (String(req.headers.accept || '').includes('text/html')) {
-        const next = encodeURIComponent(`http://${req.headers.host}${req.url}`);
+        const next = encodeURIComponent(`${schemeOf(this.config, req)}://${req.headers.host}${req.url}`);
         res.writeHead(302, { location: `${this.panelLoginUrl(req)}?next=${next}`, 'cache-control': 'no-store' });
         res.end();
       } else {

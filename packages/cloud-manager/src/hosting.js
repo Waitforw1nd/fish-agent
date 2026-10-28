@@ -118,8 +118,16 @@ export class HostingService {
     }
   }
 
-  reconcile() {
+  async reconcile() {
     const ts = Date.now();
+    for (const runtime of this.db.prepare("SELECT * FROM qq_runtimes WHERE driver = 'napcat' AND (container_id IS NOT NULL OR network_id IS NOT NULL)").all()) {
+      const tenant = this.tenants.row(runtime.tenant_id);
+      try {
+        if (!tenant || tenant.status !== 'active' || tenant.expires_at <= ts || runtime.desired_state !== 'running') await this.qq.docker.stop(runtime.tenant_id);
+        else if (runtime.container_id) await this.qq.docker.inspect(runtime);
+        else await this.qq.docker.stop(runtime.tenant_id);
+      } catch (error) { this.logger?.error?.('NapCat reconcile failed', { tenantId: runtime.tenant_id, error: error.message }); }
+    }
     this.db.prepare(`
       UPDATE process_runs SET status = 'interrupted', stopped_at = ?
       WHERE status IN ('starting', 'running', 'restarting')
@@ -137,19 +145,26 @@ export class HostingService {
     this.logger?.info?.('startup reconcile complete');
   }
 
-  logs(tenant, kind, limit = 100) {
+  async logs(tenant, kind, limit = 100) {
     if (kind === 'qq') return this.qq.logs(tenant, limit);
     if (kind === 'bili') return this.bili.logs(tenant, limit);
     if (kind === 'agent') return this.agent.logs(tenant, limit);
     return [
       ...this.agent.logs(tenant, limit),
-      ...this.qq.logs(tenant, limit),
+      ...await this.qq.logs(tenant, limit),
       ...this.bili.logs(tenant, limit)
     ].slice(-limit);
   }
 
   async shutdown() {
     this.gateway?.closeAll();
-    await this.supervisor.shutdown();
+    const failures = [];
+    try { await this.supervisor.shutdown(); } catch (error) { failures.push(error); }
+    const rows = this.db.prepare("SELECT tenant_id FROM qq_runtimes WHERE driver = 'napcat' AND (container_id IS NOT NULL OR network_id IS NOT NULL)").all();
+    for (const row of rows) {
+      try { await this.qq.serial(row.tenant_id, () => this.qq.docker.stop(row.tenant_id)); }
+      catch (error) { failures.push(error); this.logger?.error?.('NapCat shutdown failed', { tenantId: row.tenant_id, error: error.message }); }
+    }
+    if (failures.length) throw new AggregateError(failures, '部分运行资源停止失败');
   }
 }

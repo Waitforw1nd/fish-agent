@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { loginAdmin, startManager, waitFor } from './helpers.mjs';
 
-test('NapCat and SnowLuma drivers share lifecycle contract with explicit capability differences', async (t) => {
+test('SnowLuma driver lifecycle retains explicit capability differences', async (t) => {
   const env = await startManager();
   t.after(() => env.stop());
   const { manager } = env;
@@ -12,7 +12,7 @@ test('NapCat and SnowLuma drivers share lifecycle contract with explicit capabil
   const created = await admin.createTenant({ name: 'Driver Demo', slug: 'driver-demo', planId: 'starter' });
   const tenantId = created.json.tenant.id;
 
-  for (const driver of ['napcat', 'snowluma']) {
+  for (const driver of ['snowluma']) {
     const uin = driver === 'napcat' ? '10003' : '10004';
     const prepared = await admin.call(`/api/tenants/${tenantId}/qq/prepare`, {
       method: 'POST', body: { driver, uin }

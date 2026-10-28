@@ -31,6 +31,14 @@ function defaultEntry(env, name, fallback) {
   return path.resolve(String(env[name] || fallback));
 }
 
+function resourceInt(env, name, fallback, min, max) {
+  const raw = env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < min || value > max) throw new Error(`${name} must be an integer between ${min} and ${max}`);
+  return value;
+}
+
 export function loadConfig(env = process.env, overrides = {}) {
   const dataDir = path.resolve(String(env.CLOUD_DATA_DIR || path.join(REPO_ROOT, 'var', 'cloud')));
   const publicScheme = String(env.CLOUD_PUBLIC_SCHEME || 'http').toLowerCase() === 'https' ? 'https' : 'http';
@@ -75,7 +83,17 @@ export function loadConfig(env = process.env, overrides = {}) {
     agentEntry: defaultEntry(env, 'CLOUD_AGENT_ENTRY', path.join(REPO_ROOT, 'packages', 'qq-agent-core', 'modules', 'headless', 'server.js')),
     llbotEntry: defaultEntry(env, 'CLOUD_LLBOT_ENTRY', path.join(REPO_ROOT, 'packages', 'protocol-qq-llbot', 'dist', 'llbot.js')),
     llbotDesktopQqVersion: String(env.CLOUD_LLBOT_DESKTOP_QQ_VERSION || '').trim(),
-    napcatEntry: defaultEntry(env, 'CLOUD_NAPCAT_ENTRY', path.join(REPO_ROOT, 'packages', 'protocol-qq-llbot', 'napcat-entry.js')),
+    napcatEntry: String(env.CLOUD_NAPCAT_ENTRY || ''),
+    napcatImage: String(env.CLOUD_NAPCAT_IMAGE || '').trim(),
+    napcatMemoryMb: resourceInt(env, 'CLOUD_NAPCAT_MEMORY_MB', 2048, 256, 65536),
+    napcatCpuMillis: resourceInt(env, 'CLOUD_NAPCAT_CPU_MILLIS', 2000, 100, 64000),
+    napcatPids: resourceInt(env, 'CLOUD_NAPCAT_PIDS', 512, 64, 8192),
+    napcatShmMb: resourceInt(env, 'CLOUD_NAPCAT_SHM_MB', 512, 64, 8192),
+    napcatLogMb: resourceInt(env, 'CLOUD_NAPCAT_LOG_MB', 10, 1, 1024),
+    napcatLogFiles: resourceInt(env, 'CLOUD_NAPCAT_LOG_FILES', 3, 1, 20),
+    dockerPath: String(env.CLOUD_DOCKER_PATH || 'docker'),
+    deploymentId: String(env.CLOUD_DEPLOYMENT_ID || 'fish-cloud'),
+    defaultQqDriver: String(env.CLOUD_DEFAULT_QQ_DRIVER || 'napcat').toLowerCase(),
     snowlumaEntry: defaultEntry(env, 'CLOUD_SNOWLUMA_ENTRY', path.join(REPO_ROOT, 'packages', 'qq-agent-core', 'snowluma', 'index.mjs')),
     biliEntry: defaultEntry(env, 'CLOUD_BILI_BRIDGE_ENTRY', path.join(REPO_ROOT, 'packages', 'protocol-bili-bridge', 'src', 'main.js')),
     nodePath: String(env.CLOUD_NODE_PATH || process.execPath),

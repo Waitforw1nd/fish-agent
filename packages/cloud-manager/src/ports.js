@@ -39,23 +39,24 @@ export class PortAllocator {
     return new Set(rows.map((row) => Number(row.port)));
   }
 
-  async allocate(tenantId, purpose, { preferredPort = null, host = '127.0.0.1', meta = null } = {}) {
+  async allocate(tenantId, purpose, { preferredPort = null, host = '127.0.0.1', meta = null, excludePorts = [] } = {}) {
     const existing = this.find(tenantId, purpose);
     if (existing) return this.publicLease(existing);
     const start = this.config.portRangeStart;
     const end = this.config.portRangeEnd;
     if (end < start) throw new Error('invalid port range');
 
-    for (let attempt = 0; attempt < 64; attempt += 1) {
+    const excluded = new Set(excludePorts.map(Number));
+    for (let attempt = 0; attempt < end - start + 1; attempt += 1) {
       const candidate = immediateTransaction(this.db, () => {
         const taken = this.activeSet();
-        if (preferredPort && !taken.has(Number(preferredPort)) && this._inRange(Number(preferredPort))) {
+        if (preferredPort && !taken.has(Number(preferredPort)) && !excluded.has(Number(preferredPort)) && this._inRange(Number(preferredPort))) {
           return Number(preferredPort);
         }
         const offset = Math.abs(hashCode(`${tenantId}:${purpose}`)) % (end - start + 1);
         for (let i = 0; i < end - start + 1; i += 1) {
           const port = start + ((offset + i) % (end - start + 1));
-          if (!taken.has(port)) return port;
+          if (!taken.has(port) && !excluded.has(port)) return port;
         }
         return null;
       });
@@ -63,20 +64,24 @@ export class PortAllocator {
       // Check both loopback and wildcard conflicts before committing the lease.
       const free = await isPortFree(candidate, host) && await isPortFree(candidate, '0.0.0.0');
       if (!free) {
+        excluded.add(candidate);
         if (preferredPort) preferredPort = null;
         continue;
       }
       try {
         const leaseId = id('prt');
-        immediateTransaction(this.db, () => {
+        const committed = immediateTransaction(this.db, () => {
+          const same = this.find(tenantId, purpose);
+          if (same) return same.id;
           const taken = this.db.prepare('SELECT 1 AS ok FROM port_leases WHERE port = ? AND released_at IS NULL').get(candidate);
           if (taken) throw Object.assign(new Error('port race'), { code: 'PORT_RACE' });
           this.db.prepare(`
             INSERT INTO port_leases (id, tenant_id, purpose, host, port, created_at, released_at, meta)
             VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
           `).run(leaseId, tenantId, purpose, host, candidate, now(), meta ? JSON.stringify(meta) : null);
+          return leaseId;
         });
-        return this.publicLease(this.db.prepare('SELECT * FROM port_leases WHERE id = ?').get(leaseId));
+        return this.publicLease(this.db.prepare('SELECT * FROM port_leases WHERE id = ?').get(committed));
       } catch (error) {
         if (error.code !== 'PORT_RACE') throw error;
       }
