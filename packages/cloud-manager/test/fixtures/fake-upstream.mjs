@@ -2,7 +2,8 @@ import http from 'node:http';
 
 export const UPSTREAM_KEY = 'test-upstream-key';
 
-export function startFakeUpstream({ port = 0, host = '127.0.0.1' } = {}) {
+export function startFakeUpstream({ port = 0, host = '127.0.0.1',
+  models = ['deepseek-chat', 'deepseek-reasoner', 'gpt-4o-mini', 'upstream-only-model'] } = {}) {
   const stats = { requests: [], models: 0 };
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
@@ -17,7 +18,7 @@ export function startFakeUpstream({ port = 0, host = '127.0.0.1' } = {}) {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({
         object: 'list',
-        data: ['deepseek-chat', 'deepseek-reasoner', 'gpt-4o-mini', 'upstream-only-model'].map((id) => ({ id, object: 'model' }))
+        data: models.map((id) => ({ id, object: 'model' }))
       }));
       return;
     }

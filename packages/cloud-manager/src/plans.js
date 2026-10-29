@@ -22,6 +22,38 @@ export const MODEL_CATALOG = {
     outputPerMillion: 4_000_000,
     contextWindow: 128_000,
     maxOutputTokens: 8_192
+  },
+  'deepseek-flash': {
+    label: 'DeepSeek Flash',
+    inputPerMillion: 2_000_000,
+    cachedInputPerMillion: 500_000,
+    outputPerMillion: 8_000_000,
+    contextWindow: 64_000,
+    maxOutputTokens: 8_192
+  },
+  'deepseek-v4-flash': {
+    label: 'DeepSeek V4 Flash',
+    inputPerMillion: 2_000_000,
+    cachedInputPerMillion: 500_000,
+    outputPerMillion: 8_000_000,
+    contextWindow: 64_000,
+    maxOutputTokens: 8_192
+  },
+  'deepseek-v4-flash-vision': {
+    label: 'DeepSeek V4 Flash Vision',
+    inputPerMillion: 2_000_000,
+    cachedInputPerMillion: 500_000,
+    outputPerMillion: 8_000_000,
+    contextWindow: 64_000,
+    maxOutputTokens: 8_192
+  },
+  'deepseek-v4.1-flash': {
+    label: 'DeepSeek V4.1 Flash',
+    inputPerMillion: 2_000_000,
+    cachedInputPerMillion: 500_000,
+    outputPerMillion: 8_000_000,
+    contextWindow: 64_000,
+    maxOutputTokens: 8_192
   }
 };
 

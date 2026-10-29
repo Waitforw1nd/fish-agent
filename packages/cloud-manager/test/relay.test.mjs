@@ -3,6 +3,67 @@ import http from 'node:http';
 import test from 'node:test';
 import { loginAdmin, startManager, waitFor } from './helpers.mjs';
 import { startFakeUpstream, UPSTREAM_KEY } from './fixtures/fake-upstream.mjs';
+import { listModels, listPlans, planAllowsModel } from '../src/plans.js';
+import { calculateCostMicros } from '../src/pricing.js';
+
+const FLASH_MODELS = ['deepseek-flash', 'deepseek-v4-flash', 'deepseek-v4-flash-vision', 'deepseek-v4.1-flash'];
+
+test('preserved Flash models have explicit platform prices and remain available to existing plans', () => {
+  const catalog = listModels();
+  for (const model of FLASH_MODELS) {
+    assert.ok(catalog.some(entry => entry.id === model));
+    assert.ok(listPlans().every(plan => planAllowsModel(plan, model)));
+    assert.equal(calculateCostMicros(model, {
+      prompt_tokens: 1000, cached_tokens: 200, completion_tokens: 100
+    }), 2500);
+  }
+  assert.equal(calculateCostMicros('unconfigured-model', { prompt_tokens: 1000 }), null);
+  assert.ok(listPlans().every(plan => !planAllowsModel(plan, 'unconfigured-model')));
+});
+
+test('Flash default, panel models, Relay models and billed requests agree', async (t) => {
+  const upstream = await startFakeUpstream({ models: [...FLASH_MODELS, 'upstream-only-model'] });
+  t.after(() => upstream.close());
+  const env = await startManager({ defaultModel: 'deepseek-flash' });
+  t.after(() => env.stop());
+  const { manager } = env;
+  const admin = await loginAdmin(manager);
+  const saved = await admin.call('/api/admin/upstream', {
+    method: 'PUT', body: { baseUrl: upstream.baseUrl, apiKey: UPSTREAM_KEY }
+  });
+  assert.equal(saved.status, 200, saved.text);
+  const created = await admin.createTenant({ name: 'Flash models', slug: 'flash-models', planId: 'starter' });
+  assert.equal(created.status, 201, created.text);
+  const tenantId = created.json.tenant.id;
+  assert.equal(manager.tenants.row(tenantId).default_model, 'deepseek-flash');
+  const key = manager.relayKeys.plaintext(tenantId);
+  const relayBase = `http://127.0.0.1:${manager.config.relayPort}`;
+  const panel = await admin.call(`/api/tenants/${tenantId}/relay/models`);
+  assert.equal(panel.status, 200, panel.text);
+  assert.equal(panel.json.platformModel, 'deepseek-flash');
+  assert.deepEqual(panel.json.models.map(entry => entry.id).sort(), [...FLASH_MODELS].sort());
+  const models = await callRelay(relayBase, 'GET', '/v1/models', null, key);
+  assert.equal(models.status, 200, models.text);
+  assert.deepEqual(models.json.data.map(entry => entry.id).sort(), [...FLASH_MODELS].sort());
+
+  for (const model of FLASH_MODELS) {
+    const chat = await callRelay(relayBase, 'POST', '/v1/chat/completions', {
+      model, messages: [{ role: 'user', content: 'catalog regression' }], max_tokens: 16
+    }, key);
+    assert.equal(chat.status, 200, chat.text);
+    assert.equal(chat.json.model, model);
+    const usage = chat.json.usage;
+    const expectedCost = Math.ceil(
+      (usage.prompt_tokens - usage.prompt_tokens_details.cached_tokens) * 2
+      + usage.prompt_tokens_details.cached_tokens * 0.5 + usage.completion_tokens * 8);
+    const ledger = manager.db.prepare('SELECT model, cost_micros FROM ledger WHERE request_id = ?')
+      .get(chat.headers['x-fish-request-id']);
+    assert.equal(ledger.model, model);
+    assert.equal(ledger.cost_micros, expectedCost);
+    assert.equal(Number(chat.headers['x-fish-cost-micros']), expectedCost);
+    assert.equal(manager.billing.wallet(tenantId).heldMicros, 0);
+  }
+});
 
 test('relay models, chat completions, streaming and billing', async (t) => {
   const upstream = await startFakeUpstream();
