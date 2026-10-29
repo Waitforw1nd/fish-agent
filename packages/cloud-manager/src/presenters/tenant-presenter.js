@@ -3,40 +3,40 @@ import fs from 'node:fs';
 
 export function createTenantPresenter(deps) {
   const { tenants, qq, bili, relayKeys, customUpstreams, billing, agent, relay } = deps;
-  const qqPhase = (state, processState) => {
-    if (state === 'online') return 'online';
-    if (['uin_mismatch', 'crashed', 'failed'].includes(state)) return 'error';
-    if (['starting', 'restarting'].includes(processState) || state === 'starting') return 'starting';
-    if (['running', 'restarting'].includes(processState)) return 'waiting_login';
-    if (['awaiting_login', 'auth_required', 'running'].includes(state)) return 'waiting_login';
-    return 'stopped';
-  };
-  const qqSummary = (tenant) => {
-    const row = qq.account(tenant.id);
-    if (!row) return { available: false, phase: 'stopped', kernel: 'unknown', state: 'unprepared', running: false, loggedIn: false };
-    const process = deps.supervisor.status(tenant.id, 'qq');
-    const phase = qqPhase(row.state, process.state);
-    const caps = qq.capabilities(row.driver);
-    const hasToken = row.auth_source && row.auth_source !== 'none';
+  const qqSummary = (status) => {
+    const loggedIn = Boolean(status.loggedIn && status.running);
+    const phase = status.state === 'switching' ? 'switching'
+      : status.phase === 'online' && !loggedIn
+        ? (status.running ? 'waiting_login' : status.runtimeState === 'degraded' ? 'error' : 'stopped')
+        : status.phase;
     return {
-      available: true,
-      kernel: row.driver,
-      driver: row.driver,
-      state: row.state,
+      available: status.state !== 'unprepared',
+      kernel: status.kernel || 'unknown',
+      driver: status.driver,
+      state: status.state,
       phase,
-      running: ['running', 'starting', 'restarting'].includes(process.state),
-      loggedIn: row.state === 'online',
-      online: row.state === 'online',
-      uin: row.uin || '',
-      nickname: row.nickname || '',
-      authTokenStatus: caps?.authToken ? (hasToken ? 'ok' : 'missing') : 'ok',
-      authTokenMessage: '',
-      qrAvailable: Boolean(caps?.qrcode) && process.state === 'running' && row.state !== 'online',
-      onebotConnected: row.state === 'online',
-      onebotPort: row.ob11_port ?? null,
-      onebotTokenConfigured: true,
-      error: row.last_error || '',
-      message: row.last_error || ''
+      running: Boolean(status.running),
+      loggedIn,
+      online: loggedIn,
+      uin: status.uin || '',
+      expectedUin: status.expectedUin || '',
+      nickname: status.nickname || '',
+      authTokenStatus: status.authTokenStatus,
+      authTokenMessage: status.authTokenMessage || '',
+      qrAvailable: Boolean(status.qrAvailable),
+      onebotConnected: Boolean(status.running && status.onebotConnected),
+      onebotPort: status.onebotPort ?? null,
+      onebotTokenConfigured: Boolean(status.onebotTokenConfigured),
+      runtimeState: status.runtimeState,
+      loginState: status.loginState,
+      agentChannelState: status.agentChannelState,
+      runtimeGeneration: status.runtimeGeneration,
+      canChat: Boolean(loggedIn && status.canChat),
+      activeOperationId: status.activeOperationId,
+      latestOperationId: status.latestOperationId,
+      revision: status.revision,
+      error: status.error || '',
+      message: status.message || ''
     };
   };
   const biliSummary = (tenant) => {
@@ -73,7 +73,8 @@ export function createTenantPresenter(deps) {
       billing: { ...wallet, currency: 'CNY' }
     };
   };
-  const summary = (tenant, role) => {
+  const summary = async (tenant, role, qqStatus = null) => {
+    const qqView = qqSummary(qqStatus || await qq.summaryStatus(tenant));
     const agentStatus = deps.supervisor.status(tenant.id, 'agent');
     const subscriptionStatus = tenant.status;
     const running = ['running', 'starting', 'restarting', 'stopping'].includes(agentStatus.state) || agentStatus.state === 'running';
@@ -83,7 +84,6 @@ export function createTenantPresenter(deps) {
           : agentStatus.state === 'stopping' ? 'stopping' : 'stopped')
       : subscriptionStatus;
     const serialized = tenants.serialize(tenant, { role });
-    const qqView = qqSummary(tenant);
     const biliView = biliSummary(tenant);
     const relayView = relaySummary(tenant);
     let allow = {};
@@ -123,8 +123,19 @@ export function createTenantPresenter(deps) {
     };
   };
 
-  const listSummaries = (user) => tenants.listForUser(user)
-    .map((item) => summary(tenants.row(item.id), item.role));
+  const summaries = async (items) => {
+    const result = new Array(items.length);
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(items.length, 8) }, async () => {
+      while (next < items.length) {
+        const index = next++;
+        const item = items[index];
+        result[index] = await summary(tenants.row(item.id), item.role);
+      }
+    }));
+    return result;
+  };
+  const listSummaries = (user) => summaries(tenants.listForUser(user));
 
-  return { summary, listSummaries };
+  return { summary, summaries, listSummaries };
 }

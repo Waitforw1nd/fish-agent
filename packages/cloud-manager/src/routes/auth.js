@@ -20,7 +20,7 @@ export function registerAuthRoutes(router, deps) {
       user: result.user,
       csrfToken: result.csrfToken,
       expiresAt: result.expiresAt,
-      tenants: listSummaries(result.user)
+      tenants: await listSummaries(result.user)
     });
   });
 
@@ -38,7 +38,7 @@ export function registerAuthRoutes(router, deps) {
       user: authed.user,
       csrfToken: authed.csrfToken,
       expiresAt: authed.expiresAt,
-      tenants: listSummaries(authed.user)
+      tenants: await listSummaries(authed.user)
     });
   });
 

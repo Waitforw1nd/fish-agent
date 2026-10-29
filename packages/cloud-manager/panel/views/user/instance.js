@@ -10,19 +10,61 @@ import { readinessChecklist } from './shared.js';
 
 export function mountUserInstance({ root, api, toast, tenantId, modalRoot, onSelectTenant, timers, visibility, section = 'overview', user } = {}) {
   let active = true, tenant = null, rawTenant = null, serial = 0, children = [], tabs = null, busy = false;
+  let summary = null, sectionSerial = 0, summarySerial = 0;
+  let observedQQ = null, appliedQQ = null, pendingQQ = null;
   let current = ['overview', 'whitelist', 'persona', 'behavior', 'runtime'].includes(section) ? section : 'overview';
   const content = h('div', { class: 'workspace-stack' });
   root.replaceChildren(pageHead({ title: '我的鱼', sub: '管理实例、接入和机器人设置。', actions: h('a', { class: 'btn btn-ghost', href: '#/user/instances' }, '返回我的鱼') }), content);
   const writable = () => ['owner', 'operator', 'admin'].includes(tenant?.role) || user?.role === 'admin';
   const hasUnsavedChanges = () => children.some((view) => view.hasUnsavedChanges?.());
-  function clearChildren() { for (const view of children) view.destroy?.(); children = []; }
+  function clearChildren() {
+    sectionSerial++; summarySerial++;
+    observedQQ = null; appliedQQ = null; pendingQQ = null;
+    for (const view of children) view.destroy?.();
+    children = [];
+  }
+  function onQQStatus(qq, sectionVersion) {
+    if (!active || sectionVersion !== sectionSerial) return;
+    const key = JSON.stringify([qq.running, qq.loggedIn, qq.runtimeState, qq.loginState, qq.agentChannelState, qq.uin, qq.expectedUin, qq.runtimeGeneration, qq.activeOperationId]);
+    if (key !== observedQQ) {
+      observedQQ = key;
+      summarySerial++;
+      pendingQQ = null;
+    }
+    if (key === appliedQQ || key === pendingQQ) return;
+    const request = ++summarySerial;
+    const loadVersion = serial;
+    pendingQQ = key;
+    void (async () => {
+      try {
+        const payload = await api.getTenant(tenantId);
+        if (!active || sectionVersion !== sectionSerial || loadVersion !== serial || request !== summarySerial) return;
+        const nextRaw = payload?.tenant || payload;
+        const next = normalizeTenant(payload);
+        if (next.id !== String(tenantId)) { pendingQQ = null; return; }
+        next.role = String(payload?.role || nextRaw?.role || tenant.role || (user?.role === 'admin' ? 'admin' : '')).toLowerCase();
+        const qqStep = next.readiness?.steps.find((step) => step.id === 'qqOnline');
+        const qqMatches = !next.qq.available || (next.qq.running === qq.running && next.qq.loggedIn === qq.loggedIn);
+        const readinessMatches = !qqStep || qqStep.ready === Boolean(qq.running && qq.loggedIn);
+        tenant = next;
+        rawTenant = { ...nextRaw, role: tenant.role };
+        pendingQQ = null;
+        appliedQQ = qqMatches && readinessMatches ? key : null;
+        renderSummary();
+      } catch {
+        if (active && sectionVersion === sectionSerial && loadVersion === serial && request === summarySerial) pendingQQ = null;
+      }
+    })();
+  }
   function renderSection() {
     if (!active || !tenant) return;
     clearChildren();
     const body = content.querySelector('.user-workspace-body');
     if (!body) return;
     body.replaceChildren();
-    const context = { api, tenantId, tenant: rawTenant, toast, modalRoot, timers, visibility, user, readOnly: !writable() };
+    const sectionVersion = sectionSerial;
+    const context = { api, tenantId, tenant: rawTenant, toast, modalRoot, timers, visibility, user, readOnly: !writable(),
+      onQQStatus: (qq) => onQQStatus(qq, sectionVersion) };
     if (current === 'overview') {
       const qqRoot = h('div', {}); body.appendChild(qqRoot);
       children.push(mountQQPanel(qqRoot, context));
@@ -57,8 +99,8 @@ export function mountUserInstance({ root, api, toast, tenantId, modalRoot, onSel
       children.push(mountAgentStudio(body, { ...context, section: current }));
     }
   }
-  function render() {
-    if (!active || !tenant) return;
+  function renderSummary() {
+    if (!active || !tenant || !summary) return;
     const running = tenant.status === 'running';
     const transitional = ['starting', 'stopping', 'provisioning'].includes(tenant.status);
     const toggle = h('button', { class: 'btn btn-soft', type: 'button', disabled: !writable() || transitional || (!running && tenant.expiry?.state === 'expired') }, running ? '停止实例' : '启动实例');
@@ -77,16 +119,22 @@ export function mountUserInstance({ root, api, toast, tenantId, modalRoot, onSel
       finally { busy = false; if (active) setBusy(restart, false); }
     } } }, '重启实例');
     const consoleUrl = safeLink(tenant.consoleUrl);
+    const checklist = readinessChecklist(tenant, { onStart: writable() && !running ? () => toggle.click() : null, onSection: (next) => tabs.select(next), onSelectTenant });
+    summary.replaceChildren(h('h2', {}, tenant.name), badge(tenant.statusLabel, tenant.statusTone),
+      h('div', { class: 'inline-buttons' }, writable() ? toggle : null, writable() && typeof api.restartTenant === 'function' ? restart : null,
+        writable() && consoleUrl ? h('a', { class: 'btn btn-ghost', href: consoleUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Bot 控制台 ↗') : null,
+        h('a', { class: 'btn btn-ghost', href: '#/user/channel', on: { click: () => onSelectTenant?.(tenantId) } }, '渠道配置')));
+    if (checklist) summary.appendChild(checklist);
+  }
+  function render() {
+    if (!active || !tenant) return;
     tabs = createTabs({ tabs: [
       { id: 'overview', label: '概览与扫码接入' }, { id: 'whitelist', label: '群聊与白名单' },
       { id: 'persona', label: '人设与角色卡' }, { id: 'behavior', label: '响应档位与能力' },
       { id: 'runtime', label: '会话、记忆与备份' }
     ], selected: current, isDirty: hasUnsavedChanges, onSelect: (next) => { current = next; renderSection(); } });
-    const summary = h('section', { class: 'card card-pad' }, h('h2', {}, tenant.name), badge(tenant.statusLabel, tenant.statusTone),
-      h('div', { class: 'inline-buttons' }, writable() ? toggle : null, writable() && typeof api.restartTenant === 'function' ? restart : null,
-        writable() && consoleUrl ? h('a', { class: 'btn btn-ghost', href: consoleUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Bot 控制台 ↗') : null,
-        h('a', { class: 'btn btn-ghost', href: '#/user/channel', on: { click: () => onSelectTenant?.(tenantId) } }, '渠道配置')),
-      readinessChecklist(tenant, { onStart: writable() && !running ? () => toggle.click() : null, onSection: (next) => tabs.select(next), onSelectTenant }));
+    summary = h('section', { class: 'card card-pad' });
+    renderSummary();
     content.replaceChildren(summary, tabs.node, h('div', { class: 'user-workspace-body workspace-stack', role: 'tabpanel' }));
     renderSection();
   }

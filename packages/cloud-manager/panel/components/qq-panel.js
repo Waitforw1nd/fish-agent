@@ -7,18 +7,24 @@ import { button, field, input, panel, perform } from './common.js';
 
 export function mountQQPanel(root, ctx = {}) {
   const { api, tenantId, toast, modalRoot, timers, visibility } = ctx;
-  let active = true, qr = null, busy = false, serial = 0, tenant = ctx.tenant || null;
+  let active = true, qr = null, busy = false, serial = 0, statusSerial = 0, tenant = ctx.tenant || null;
   let drivers = { defaultDriver: '', drivers: [] }, selected = '', statusNode, driverSelect, login, reason, switchButton;
   const switcher = createSwitchController({ api, tenantId, modalRoot, toast, timers, onChange: updateStatus });
   const poller = createPoller({ intervalMs: 5000, timers, visibility, task: async () => {
+    if (busy) return;
+    const current = ++statusSerial;
     const value = await api.getQQStatus(tenantId);
-    if (!active || !tenant) return;
-    tenant.qq = normalizeQQStatus(value);
+    if (!active || !tenant || current !== statusSerial) return;
+    applyStatus(value);
     void switcher.restore(tenant.qq.activeOperationId || tenant.qq.latestOperationId);
     updateStatus();
   } });
   const writable = () => !ctx.readOnly && (ctx.admin || ctx.mode === 'admin' || ['owner', 'operator', 'admin'].includes(tenant?.role));
   const chosen = () => drivers.drivers.find((driver) => driver.id === selected);
+  function applyStatus(value) {
+    tenant.qq = normalizeQQStatus(value);
+    ctx.onQQStatus?.(tenant.qq);
+  }
   function updateStatus() {
     if (!active || !tenant || !statusNode) return;
     const qq = tenant.qq || {};
@@ -27,8 +33,8 @@ export function mountQQPanel(root, ctx = {}) {
     if (driverSelect) driverSelect.disabled = !writable() || busy || switcher.busy;
     if (reason) reason.textContent = driver ? (driver.available ? '' : driver.reason || '此内核当前不可用') : '无法读取允许的内核，请联系管理员。';
     if (login) {
-      login.disabled = !writable() || busy || switcher.busy || !driver?.available || tenant.expiry?.state === 'expired' || !tenant.running;
-      login.textContent = qq.running ? '继续扫码登录' : '扫码登录 QQ';
+      login.disabled = !writable() || busy || switcher.busy || !driver?.available || tenant.expiry?.state === 'expired' || !tenant.running || qq.loggedIn;
+      login.textContent = qq.loggedIn ? 'QQ 已登录' : qq.running ? '继续扫码登录' : '扫码登录 QQ';
     }
     if (switchButton) switchButton.disabled = !writable() || busy || switcher.busy || !driver?.available || !tenant.running;
   }
@@ -42,21 +48,24 @@ export function mountQQPanel(root, ctx = {}) {
     reason = h('p', { class: 'note' });
     statusNode = h('p', { class: 'note', 'aria-live': 'polite' });
     login = button('扫码登录 QQ', async () => {
-      if (!active || !writable() || busy || switcher.busy || !chosen()?.available || tenant.expiry?.state === 'expired' || !tenant.running) return;
+      if (!active || !writable() || busy || switcher.busy || !chosen()?.available || tenant.expiry?.state === 'expired' || !tenant.running || tenant.qq?.loggedIn) return;
       const account = uin.value.trim();
       if (!/^\d{5,12}$/.test(account)) { toast?.show?.('请输入有效的 QQ 号。', { tone: 'danger' }); return; }
       const q = tenant.qq || {};
       if (q.kernel !== 'unknown' && q.kernel !== selected) { toast?.show?.('请使用切换内核按钮。', { tone: 'danger' }); return; }
       if (q.running && q.expectedUin && q.expectedUin !== account) { toast?.show?.('QQ 正在运行，请先停止后再更改账号。', { tone: 'danger' }); return; }
-      busy = true; setBusy(login, true); updateStatus();
+      busy = true; statusSerial++; setBusy(login, true); updateStatus();
       try {
         if (!q.running) {
           await api.prepareQQ(tenantId, { kernel: selected, uin: account });
           if (!active) return;
           await api.startQQ(tenantId, { kernel: selected, uin: account });
           if (!active) return;
-          tenant.qq = normalizeQQStatus(await api.getQQStatus(tenantId));
-          if (!active) return;
+          const current = ++statusSerial;
+          const value = await api.getQQStatus(tenantId);
+          if (!active || current !== statusSerial) return;
+          applyStatus(value);
+          if (tenant.qq.loggedIn) { toast?.show?.('QQ 已登录', { tone: 'success' }); return; }
         }
         qr?.close();
         qr = openQrFlow({ modalRoot, api, tenantId, toast, timers, safeMessages: ctx.mode !== 'admin', capabilities: chosen().capabilities, runtimeGeneration: tenant.qq.runtimeGeneration, onConfirmed: () => { void poller.refreshNow(); } });
@@ -89,26 +98,30 @@ export function mountQQPanel(root, ctx = {}) {
   }
   async function reload() {
     const current = ++serial;
+    const currentStatus = ++statusSerial;
+    poller.stop();
     try {
       const [tenantPayload, driverPayload, statusPayload] = await Promise.all([
         ctx.tenant ? Promise.resolve(ctx.tenant) : api.getTenant(tenantId),
         api.getQQDrivers(), api.getQQStatus(tenantId)
       ]);
-      if (!active || current !== serial) return;
+      if (!active || current !== serial || currentStatus !== statusSerial) return;
       tenant = normalizeTenant(tenantPayload);
       tenant.role = String(tenantPayload?.role || tenantPayload?.tenant?.role || ctx.tenant?.role || (ctx.admin ? 'admin' : '')).toLowerCase();
-      tenant.qq = normalizeQQStatus(statusPayload);
+      applyStatus(statusPayload);
       switcher.setWritable(writable());
       void switcher.restore(tenant.qq.activeOperationId || tenant.qq.latestOperationId);
       drivers = normalizeQQDrivers(driverPayload);
       selected = tenant.qq.kernel !== 'unknown' ? tenant.qq.kernel : drivers.defaultDriver;
       render();
-      if (!poller.isRunning()) poller.start(); else void poller.refreshNow();
+      poller.start();
     } catch (error) {
-      if (active && current === serial) root.replaceChildren(panel('QQ 登录', h('p', { class: 'note' }, error?.message || '无法读取 QQ 配置。'), button('重试', reload)));
+      if (active && current === serial && currentStatus === statusSerial) root.replaceChildren(panel('QQ 登录', h('p', { class: 'note' }, error?.message || '无法读取 QQ 配置。'), button('重试', reload)));
+    } finally {
+      if (active && current === serial && currentStatus !== statusSerial && !poller.isRunning()) poller.start();
     }
   }
   void reload();
   return { reload, refresh: reload, hasUnsavedChanges: () => false, canLeave: () => true,
-    destroy() { active = false; serial++; poller.stop(); qr?.close(); switcher.destroy(); root.replaceChildren(); } };
+    destroy() { active = false; serial++; statusSerial++; poller.stop(); qr?.close(); switcher.destroy(); root.replaceChildren(); } };
 }

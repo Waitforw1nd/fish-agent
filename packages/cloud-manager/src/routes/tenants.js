@@ -12,7 +12,7 @@ export function registerTenantsRoutes(router, deps) {
 
   router.get('/api/tenants', async (ctx) => {
     const authed = auth.require(ctx.req);
-    const list = tenants.listForUser(authed.user).map((tenant) => summary(tenants.row(tenant.id), tenant.role));
+    const list = await listSummaries(authed.user);
     sendJson(ctx.res, 200, { ok: true, tenants: list });
   });
 
@@ -45,13 +45,13 @@ export function registerTenantsRoutes(router, deps) {
       ip: ctx.ip
     });
     const role = tenants.roleFor(authed.user, tenant.id);
-    sendJson(ctx.res, 201, { ok: true, tenant: summary(tenants.row(tenant.id), role) });
+    sendJson(ctx.res, 201, { ok: true, tenant: await summary(tenants.row(tenant.id), role) });
   });
 
   router.get('/api/tenants/:id', async (ctx) => {
     const { tenant, role } = tenantCtx(ctx);
     const runtime = await hosting.status(tenant);
-    const tenantView = summary(tenant, role);
+    const tenantView = await summary(tenant, role, runtime.qq);
     sendJson(ctx.res, 200, {
       ok: true,
       tenant: tenantView,
@@ -69,25 +69,25 @@ export function registerTenantsRoutes(router, deps) {
     const { tenant, role } = tenantCtx(ctx, 'owner');
     const body = await readBody(ctx);
     const updated = tenants.update(tenant.id, body, { actor: ctx.auth.user, ip: ctx.ip });
-    sendJson(ctx.res, 200, { ok: true, tenant: summary(tenants.row(updated.id), role) });
+    sendJson(ctx.res, 200, { ok: true, tenant: await summary(tenants.row(updated.id), role) });
   });
 
   router.post('/api/tenants/:id/start', async (ctx) => {
     const { tenant, role } = activeTenant(ctx);
     const runtime = await hosting.start(tenants.row(tenant.id));
-    sendJson(ctx.res, 200, { ok: true, runtime, tenant: summary(tenants.row(tenant.id), role) });
+    sendJson(ctx.res, 200, { ok: true, runtime, tenant: await summary(tenants.row(tenant.id), role, runtime.qq) });
   });
 
   router.post('/api/tenants/:id/stop', async (ctx) => {
     const { tenant, role } = tenantCtx(ctx, 'operator');
     const runtime = await hosting.stop(tenant, { reason: 'api' });
-    sendJson(ctx.res, 200, { ok: true, runtime, tenant: summary(tenants.row(tenant.id), role) });
+    sendJson(ctx.res, 200, { ok: true, runtime, tenant: await summary(tenants.row(tenant.id), role, runtime.qq) });
   });
 
   router.post('/api/tenants/:id/restart', async (ctx) => {
     const { tenant, role } = activeTenant(ctx);
     const runtime = await hosting.restart(tenants.row(tenant.id));
-    sendJson(ctx.res, 200, { ok: true, runtime, tenant: summary(tenants.row(tenant.id), role) });
+    sendJson(ctx.res, 200, { ok: true, runtime, tenant: await summary(tenants.row(tenant.id), role, runtime.qq) });
   });
 
   router.post('/api/tenants/:id/renew', async (ctx) => {
@@ -101,7 +101,7 @@ export function registerTenantsRoutes(router, deps) {
       actor: ctx.auth.user,
       ip: ctx.ip
     });
-    sendJson(ctx.res, 200, { ok: true, tenant: summary(tenants.row(updated.id), 'owner') });
+    sendJson(ctx.res, 200, { ok: true, tenant: await summary(tenants.row(updated.id), 'owner') });
   });
 
   router.post('/api/tenants/:id/suspend', async (ctx) => {
@@ -109,14 +109,14 @@ export function registerTenantsRoutes(router, deps) {
     const { tenant } = tenantCtx(ctx, 'owner');
     await hosting.stop(tenant, { reason: 'suspend' });
     const updated = tenants.setStatus(tenant.id, 'suspended', { actor: ctx.auth.user, ip: ctx.ip });
-    sendJson(ctx.res, 200, { ok: true, tenant: summary(tenants.row(updated.id), 'admin') });
+    sendJson(ctx.res, 200, { ok: true, tenant: await summary(tenants.row(updated.id), 'admin') });
   });
 
   router.post('/api/tenants/:id/resume', async (ctx) => {
     if (ctx.auth.user.role !== 'admin') throw httpError(403, 'FORBIDDEN', '仅管理员可恢复租户');
     const { tenant } = tenantCtx(ctx, 'owner');
     const updated = tenants.setStatus(tenant.id, 'active', { actor: ctx.auth.user, ip: ctx.ip });
-    sendJson(ctx.res, 200, { ok: true, tenant: summary(tenants.row(updated.id), 'admin') });
+    sendJson(ctx.res, 200, { ok: true, tenant: await summary(tenants.row(updated.id), 'admin') });
   });
 
   router.get('/api/tenants/:id/logs', async (ctx) => {

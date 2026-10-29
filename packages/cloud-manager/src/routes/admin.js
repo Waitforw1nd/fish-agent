@@ -4,11 +4,11 @@ import { httpError, parseQueryInt } from '../contracts/http.js';
 import { redactSecrets } from '../util.js';
 
 export function registerAdminRoutes(router, deps) {
-  const { config, auth, tenants, hosting, qq, bili, relay, relayKeys, billing, backup, settings, audit, users, agent, customUpstreams, logger, db, readBody, tenantCtx, activeTenant, summary, listSummaries, updateAgentRelayConfig, requireAdmin } = deps;
+  const { config, auth, tenants, hosting, qq, bili, relay, relayKeys, billing, backup, settings, audit, users, agent, customUpstreams, logger, db, readBody, tenantCtx, activeTenant, summaries, listSummaries, updateAgentRelayConfig, requireAdmin } = deps;
   // Admin
   router.get('/api/admin/overview', async (ctx) => {
     const { user } = requireAdmin(ctx);
-    const instances = listSummaries(user);
+    const instances = await listSummaries(user);
     const accounts = users.list();
     const stats = billing.platformStats();
     const ts = Date.now();
@@ -42,7 +42,7 @@ export function registerAdminRoutes(router, deps) {
     requireAdmin(ctx);
     const user = users.byId(ctx.params.userId);
     if (!user) throw httpError(404, 'USER_NOT_FOUND', '用户不存在');
-    const owned = tenants.listOwnedBy(user.id).map((item) => summary(tenants.row(item.id), item.role));
+    const owned = await summaries(tenants.listOwnedBy(user.id));
     sendJson(ctx.res, 200, { ok: true, user, tenants: owned });
   });
 

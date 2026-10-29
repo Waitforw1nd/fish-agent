@@ -34,6 +34,7 @@ export class QQService {
     this.qrRequests = new Map();
     this.qrRefreshRequests = new Map();
     this.statusRequests = new Map();
+    this.summaryStatusCache = new Map();
     this.agentRuntime = null;
     this.switches = new QQSwitchExecutor(this);
   }
@@ -549,6 +550,11 @@ export class QQService {
     const row = this.docker.row(tenant.id);
     try { this.docker.assertResourceIdentity(row); }
     catch { return { state: 'degraded', pid: null }; }
+    if (row && (row.container_id || row.network_id) && (row.driver !== 'napcat'
+      || (account.effective_runtime_id && account.effective_runtime_id !== row.runtime_id)
+      || (account.runtime_generation && Number(account.runtime_generation) !== Number(row.generation)))) {
+      return { state: 'degraded', pid: null };
+    }
     if (!row?.container_id) return { state: row?.network_id || row?.desired_state === 'running' ? 'degraded' : row?.state === 'failed' ? 'crashed' : 'stopped', pid: null };
     try {
       const actual = await this.docker.inspect(row);
@@ -556,13 +562,72 @@ export class QQService {
     } catch { return { state: 'degraded', pid: null }; }
   }
 
+  summaryStatusKey(tenant, { identityOnly = false } = {}) {
+    const account = this.account(tenant.id);
+    const runtime = account?.driver === 'napcat' ? this.docker.row(tenant.id) : null;
+    const withoutUpdatedAt = (row) => {
+      if (!row) return null;
+      const { updated_at, ...rest } = row;
+      if (identityOnly) {
+        delete rest.state;
+        delete rest.uin;
+        delete rest.nickname;
+        delete rest.last_error;
+      }
+      return rest;
+    };
+    return JSON.stringify({
+      account: withoutUpdatedAt(account),
+      runtime: withoutUpdatedAt(runtime),
+      switching: this.hasActiveSwitch(tenant.id),
+      qqProcess: account?.driver === 'napcat' ? null : this.supervisor.status(tenant.id, 'qq'),
+      agentProcess: this.supervisor.status(tenant.id, 'agent'),
+      healthEpoch: this.agentRuntime?.healthEpoch?.get(tenant.id) || 0
+    });
+  }
+
+  async summaryStatus(tenant) {
+    try {
+      const pending = this.statusRequests.get(tenant.id);
+      if (pending) await pending;
+      const cache = this.summaryStatusCache.get(tenant.id);
+      if (cache && Date.now() - cache.at < 3000 && cache.key === this.summaryStatusKey(tenant)) return cache.status;
+      this.summaryStatusCache.delete(tenant.id);
+      const account = this.account(tenant.id);
+      const active = account?.driver === 'napcat'
+        ? Boolean(this.docker.row(tenant.id)?.container_id)
+        : ['running', 'restarting'].includes(this.supervisor.status(tenant.id, 'qq').state);
+      return await this.status(tenant, { probe: Boolean(account && active && !this.hasActiveSwitch(tenant.id)) });
+    } catch (error) {
+      this.summaryStatusCache.delete(tenant.id);
+      this.logger?.warn?.('qq summary status unavailable', { tenantId: tenant.id, code: error?.code || 'STATUS_UNAVAILABLE' });
+      const account = this.account(tenant.id);
+      return {
+        driver: account?.driver || null, kernel: account?.driver || 'unknown',
+        state: 'failed', phase: 'error', runtimeState: 'degraded', loginState: 'offline',
+        agentChannelState: 'disconnected', running: false, loggedIn: false, online: false,
+        expectedUin: account?.expected_uin || null, onebotConnected: false, canChat: false,
+        error: 'QQ 运行状态暂时无法确认', message: 'QQ 运行状态暂时无法确认'
+      };
+    }
+  }
+
   async status(tenant, { probe = true } = {}) {
     if (!probe) return this.statusUnlocked(tenant, { probe });
     const existing = this.statusRequests.get(tenant.id);
     if (existing) return existing;
+    const identity = this.summaryStatusKey(tenant, { identityOnly: true });
     const pending = this.statusUnlocked(tenant, { probe });
     this.statusRequests.set(tenant.id, pending);
-    try { return await pending; } finally { if (this.statusRequests.get(tenant.id) === pending) this.statusRequests.delete(tenant.id); }
+    try {
+      const status = await pending;
+      const account = this.account(tenant.id);
+      if (!status.activeOperationId && identity === this.summaryStatusKey(tenant, { identityOnly: true })
+        && (account?.state || 'unprepared') === status.state) {
+        this.summaryStatusCache.set(tenant.id, { at: Date.now(), key: this.summaryStatusKey(tenant), status });
+      }
+      return status;
+    } finally { if (this.statusRequests.get(tenant.id) === pending) this.statusRequests.delete(tenant.id); }
   }
 
   async statusUnlocked(tenant, { probe = true } = {}) {
@@ -622,7 +687,10 @@ export class QQService {
     }
     const latest = this.account(tenant.id);
     const runtime = account.driver === 'napcat' ? this.docker.row(tenant.id) : null;
-    if (latest?.driver !== account.driver || latest?.expected_uin !== account.expected_uin || (account.driver === 'napcat' && (runtime?.generation !== observedGeneration || (probeResult && runtime?.desired_state !== 'running')))) return this.statusUnlocked(tenant, { probe: false });
+    if (latest?.driver !== account.driver || latest?.expected_uin !== account.expected_uin
+      || latest?.effective_runtime_id !== account.effective_runtime_id || latest?.runtime_generation !== account.runtime_generation
+      || latest?.revision !== account.revision
+      || (account.driver === 'napcat' && (runtime?.generation !== observedGeneration || (probeResult && runtime?.desired_state !== 'running')))) return this.statusUnlocked(tenant, { probe: false });
     let state = latest.state;
     let lastError = latest.last_error;
     let uin = latest.uin;
@@ -900,6 +968,7 @@ export class QQService {
 
   async remove(tenant) {
     await this.stop(tenant, { releasePorts: true });
+    this.summaryStatusCache.delete(tenant.id);
     this.secrets.delete(tenant.id, 'qq.onebot_token');
     this.secrets.delete(tenant.id, 'qq.webui_password');
     this.secrets.delete(tenant.id, 'qq.auth_token');
