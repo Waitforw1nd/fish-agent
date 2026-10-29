@@ -1,12 +1,12 @@
 import { h, clear, setBusy } from '../../lib/dom.js';
 import { openModal } from '../../lib/modal.js';
 import { normalizeTenant } from '../../lib/normalize.js';
-import { normalizeUserTenants } from './shared.js';
+import { normalizeUserTenants, readinessChecklist } from './shared.js';
 import { formatDate, safeLink } from '../../lib/format.js';
 import { validateTenantInput } from '../../lib/validate.js';
 import { alertBox, badge, emptyBlock, errorBlock, pageHead, setAlert, skeletonGrid } from '../../lib/ui.js';
 
-export function mountUserInstances({ root, api, toast, modalRoot = null, onTenantsChanged } = {}) {
+export function mountUserInstances({ root, api, toast, modalRoot = null, onTenantsChanged, onSelectTenant } = {}) {
   let active = true;
   let tenants = [];
   let loading = true;
@@ -77,6 +77,10 @@ export function mountUserInstances({ root, api, toast, modalRoot = null, onTenan
           h('span', { class: 'status-val muted' }, tenant.expiresAt ? formatDate(tenant.expiresAt) : '未设置')
         )
       ),
+      readinessChecklist(tenant, {
+        onStart: tenant.role !== 'viewer' && !running && !transitional ? () => { void toggleTenant(tenant, action); } : null,
+        onSelectTenant
+      }),
       h('div', { class: 'tenant-card-foot' },
         h('span', { class: 'tenant-expiry' }, tenant.expiry?.label || '未设置服务期'),
         h('div', { class: 'inline-buttons' },

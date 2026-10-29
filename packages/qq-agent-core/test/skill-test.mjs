@@ -211,7 +211,7 @@ async function main() {
     // 现在迁移目标分两类：
     //   · PLANNED：未移植/已收编进核心的功能，显式登记（收编后目录不在但仍要留名）
     //   · 其余：必须真实存在于 skills/ 或 plugins/ 下（用户后装扩展的落点）
-    const cfgSrc = fs.readFileSync(new URL('../src/config.js', import.meta.url), 'utf8');
+    const cfgSrc = fs.readFileSync(new URL('../src/config-codec.js', import.meta.url), 'utf8');
     const targets = [...cfgSrc.matchAll(/\{\s*from:\s*\[[^\]]+\],\s*skill:\s*'([^']+)'/g)].map((m) => m[1]);
     assert.ok(targets.length > 0, '应能从迁移表解析出规则');
     // 两个根都要扫：技能按两型分居 skills/ 与 plugins/，

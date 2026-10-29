@@ -1,6 +1,8 @@
 # 测试、fake、E2E 与故障排查
 
-NapCat P1 本地实现待 P0 真实容器验收，不代表 P1 已完成。`node --test packages/qq-agent-core/test/headless-runtime.test.mjs packages/qq-agent-core/test/headless-transport.test.mjs packages/qq-agent-core/test/napcat-media.test.mjs packages/qq-agent-core/test/napcat-redirect.test.mjs` 验证 headless HTTP/WS fixture：图片工具经下载后首次 action 为 base64，断开和短超时均只请求一次，三个入站路径拒绝宿主读取，超限拒绝；受控 DNS 夹具确认公网首跳实际返回 302 后拒绝私网目标。`node --test packages/cloud-manager/test/headless.test.mjs packages/cloud-manager/test/napcat-agent-contract.test.mjs` 验证配置代际、实际身份、健康缓存和 HTTPS 网关跳转。核心 `npm run test:coverage` 通过；根 `npm test` 因本机缺少 SnowLuma/便携 QQ，`setup-qq-version.mjs` 的 CLIENT_BUILD 检查失败。Windows 不支持 POSIX SIGTERM 的测试跳过。以上模拟测试不证明真实容器或 QQ 可用；VPS SSH 公钥认证失败，真实验收仍受阻，P2/P3 不属于已完成范围。
+2026-10-29 视图与接口模块化的最终本地验证见 [阶段五记录](view-api-stage-5.md)。本轮未重新部署 VPS 或使用真实账号；既有 VPS QQ 对话基线以 [云端文档](cloud-manager.md) 和 [部署验收记录](linux-vps-acceptance.md) 为准，P2 双向切换和 P3 多实例恢复另行验收。
+
+已有 `headless-runtime/headless-transport/napcat-media/napcat-redirect` 用例验证 HTTP/WS fixture、媒体下载、断开与短超时、宿主文件读取拒绝及重定向私网拦截；云端 `headless/napcat-agent-contract` 验证配置代际、身份、健康缓存及 HTTPS 网关跳转。Windows 不运行 Linux 进程组用例。本机缺少 SnowLuma/便携 QQ，核心标准链中的 `setup-qq-version.mjs` CLIENT_BUILD 检查仍失败；其后的测试需单独运行并记录，不能据此声称标准链全绿。
 
 原则：用真实 HTTP/WS、真实子进程和临时目录验证集成，但外部 QQ/B 站/模型服务使用 fake。编译或 import 成功不能代替场景测试。
 
@@ -46,6 +48,7 @@ docker run --rm --network none qq-agent-headless-test
 - 安装运行：`setup-qq-version.mjs`、`setup-download.mjs`、`qq-pack.mjs`、`qq-process-detect.mjs`、`vendor-mirror-test.mjs`。
 - 角色卡：`persona-card-test.mjs`、`persona-card-route-test.mjs`、`persona-import-ui.mjs`。
 - 扩展与最终集成：`extensions-test.mjs`、`extensions-cloud-test.mjs`、`final-integration-test.mjs`。
+- 配置与管理员扩展：`config-extension-foundation.test.mjs`（已加入标准测试链），验证编解码一致性、提供商形状、秘密保留、管理员覆盖、按实例屏蔽及资源清理。
 - 其他：`web-search-parse.mjs`。
 
 测试支撑：`_harness.mjs` 启动带 fake OneBot/LLM 的核心应用，`_ui-load.mjs` 加载 UI，`judge-cases.json` 是评审用例。`final-integration-test.mjs` 实际验证骰子命令存档和出站、不调用 LLM、普通消息回落、插件异常隔离及 `bili_*` 超时。
@@ -66,7 +69,11 @@ fake：
 
 测试文件：`api.test.mjs`、`bili.test.mjs`、`gateway-ws.test.mjs`、`lifecycle.test.mjs`、`panel-contract.test.mjs`、`qq-drivers.test.mjs`、`qq-llbot.test.mjs`、`relay.test.mjs`、`unit.test.mjs`。
 
-`test/helpers.mjs` 使用临时 `CLOUD_DATA_DIR`、panel/Relay 端口 0、动态端口池和 fake 子进程入口。fake 清单：
+本次新增重点为 `view-api-backend.test.mjs`、`view-api-http.test.mjs`、`agent-extensions-view-api.test.mjs`：覆盖 v9 历史数据迁移、充值确认/驳回/防重放、会话撤销、最后管理员保护、SSRF 探测、同源设置与角色卡、真实核心进程热更新、schema 脱敏、坏包回滚和普通所有者恢复快照的扩展权限。`extension-gateway-contract.test.mjs` 及相关安全用例保留旧 Gateway 兼容与权限验证。
+
+`supervisor-readiness.test.mjs` 确定性构造临时监听器占用 Agent 端口，验证管理器必须等待目标子进程的 IPC 监听回执，并覆盖错误 PID/端口、无回执、提前退出、启动失败与回执后端口未就绪。`view-api-gateway.test.mjs` 覆盖旧 Gateway 的同等权限约束和插件错误脱敏。
+
+`test/helpers.mjs` 使用临时 `CLOUD_DATA_DIR`、panel/Relay 端口 0、独立测试端口段和 fake 子进程入口。`port-pool.mjs` 以独占的本地 socket 为每个管理器保留互不重叠的端口段，支持跨测试进程互斥，管理器停止或启动失败后释放；`port-pool.test.mjs` 覆盖 8 个并行进程互斥及启动失败的资源清理。`makeConfig` 为异步函数，直接调用者须等待并释放 `releasePorts`。授权状态等待失败时仅记录安全状态和白名单错误码。fake 清单：
 
 - `fake-agent.mjs`：Agent 控制台、配置写入、请求/SSE。
 - `fake-llbot.mjs`：WebUI 密码、auth token 状态、二维码、OneBot WS、`__fake/online` 手工上线。
@@ -80,6 +87,8 @@ fake：
 ### 2.4 panel 与 LLBot
 
 panel：`api.test.mjs`、`dom-views.test.mjs`、`view-data-validate.test.mjs`、`normalize.test.mjs`、`format.test.mjs`、`router-polling.test.mjs`；支撑为 `helpers/dom-stub.mjs`、`helpers/fake-timers.mjs`。覆盖同源 API、CSRF、秘密脱敏、二维码轮询、账单格式化和页面隐藏时暂停轮询。
+
+新增 `workspace-components.test.mjs`、`user-stage4.test.mjs`、`admin-workspace.test.mjs` 以及两套应用入口测试，覆盖共享编辑器、用户五页签、工具诊断、审核、批量扩展、用户保护和未保存导航。`agent-client-integration.test.mjs` 使用真正的管理器和面板 `createApi` 验证请求与响应，避免客户端和模拟数据同时偏离实际服务。
 
 LLBot：`test/unit` 与 `test/webui` 由 Vitest 运行，覆盖 Direct session/sign token/重连、OneBot/Satori/Milky、登录路由、WebUI auth 和前端 store/utils。当前不是手机扫码 E2E。
 
@@ -119,9 +128,9 @@ node --test test/bili.test.mjs test/qq-llbot.test.mjs test/relay.test.mjs
 - LLBot：prepare/start → 无 token 时 QR 409 → 设置 token → validating/valid → fake QR → fake online → Agent `channels.qq` 写回 → 错误 UIN 停止。
 - Relay：模型白名单、普通/流式响应、结算、失败释放、余额不足、充值和 RPM。
 
-## 4. 真实环境验收（当前均未执行）
+## 4. 真实环境验收（本轮未重新执行）
 
-以下不能由 fake 结果替代，部署后应逐项记录实际结果：
+以下不能由 fake 结果替代，已有结果以部署记录为准，本轮重构后仍需逐项确认：
 
 - [ ] 真实 LLBot auth token 校验、手机 QQ 扫码/确认、session 恢复、预期 UIN 一致性。
 - [ ] 真实 QQ OneBot 收发、@/reply、图片/表情、断线重连和自消息过滤。
@@ -236,3 +245,14 @@ Windows 便携 Node 24 执行 `node --test test/*.test.mjs`（目录 `packages/c
 合并内容为 Docker 停止/未启动容器的网络身份校验、自定义模型同步与独立上游查询、普通 NapCat 会话获取新二维码。P2 兼容回归覆盖活动切换拒绝刷新或模型/Key 写入、串行锁竞争、刷新后 profile/凭据/generation/claim、扫码确认竞态、失败不误恢复 Agent，以及过期租户不启动。切换二维码仍按 operation 与代次隔离，不允许重启式刷新。
 
 本地 Node 24 后端全量 118 项：116 通过、0 失败、2 项 Linux 进程组测试跳过；面板 105/105 通过；根 `npm run check` 通过。标准根测试的 QQ 环境限制仍按第 12 节记录，不能因服务器对话成功而把本地 CLIENT_BUILD 失败改为通过。服务器报告的偶发 gateway-ws 首帧超时、重启后自动登录可靠性、HTTPS 和 P2/P3 真机测试仍分别跟踪，不扩展本轮合并范围。
+
+## 14. 视图与接口模块化最终本地验证（2026-10-29）
+
+三个 GPT-6.1 Terra 子智能体完成核心、后端和前端分工，主智能体完成管理台及最终整合。各阶段独立记录见 [实施总记录](view-api-execution.md)，命令、日志和完整边界见 [阶段五验收](view-api-stage-5.md)。
+
+- 最终 cloud-manager 135 项：133 通过、0 失败、2 项 Linux 进程组测试在 Windows 跳过；最新后端修改后 panel 完整套件 127/127 通过，包含真实管理器客户端集成。
+- Bili 桥接 73/73、核心五组补充覆盖共 336 项通过；IPC 就绪改动后的核心运行、传输及共享配置补充检查 16 通过、1 项 POSIX SIGTERM 在 Windows 跳过。
+- 根 `npm run check`、200 个变更 JS 文件语法和 CRLF 适配后的 Git 补丁检查通过；Chrome 模拟 API 验证 18 个桌面路由和 2 个手机路由。
+- 核心标准链再次在 `setup-qq-version.mjs` 以 84 通过、1 失败停止，仍缺少 SnowLuma/便携 QQ 的 CLIENT_BUILD 诊断。其后 19 条标准命令单独执行全部通过，不能据此将根 `test:all` 标为成功。
+
+中途的 Agent 连接拒绝与授权等待超时日志不足以确定各自唯一原因。已用确定性测试修复 TCP 就绪误判，并为并行测试隔离端口；最新完整回归通过，具体证据和局限保留在阶段五。本轮未重新部署或操作真实账号，之前的 VPS 基线仍按第 13 节记录。

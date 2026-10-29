@@ -144,7 +144,7 @@ test('租户总览加载、创建弹窗与跳转', async () => {
   await settle(6);
 
   assert.equal(callsOfCall(calls, 'createTenant').length, 1);
-  assert.deepEqual(callsOfCall(calls, 'createTenant')[0].args[0], { name: '新租户', slug: 'new-bot' });
+  assert.deepEqual(callsOfCall(calls, 'createTenant')[0].args[0], { name: '新租户', slug: 'new-bot', planId: 'trial' });
   assert.equal(navigated, '#/tenants/t3/hosting');
   assert.equal(modalRoot.querySelectorAll('.modal-backdrop').length, 0);
   assert.ok(toast.messages.some((item) => item.message.includes('租户已创建')));

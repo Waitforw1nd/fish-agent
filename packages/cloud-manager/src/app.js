@@ -15,6 +15,8 @@ import { BillingService } from './billing.js';
 import { RelayKeyService } from './relay-keys.js';
 import { TenantService } from './tenants.js';
 import { AgentRuntime } from './agent-runtime.js';
+import { AgentSettingsService } from './agent-settings.js';
+import { ExtensionService } from './extension-service.js';
 import { QQService } from './qq-service.js';
 import { BiliService } from './bili-service.js';
 import { Gateway, classifyHost } from './gateway.js';
@@ -107,12 +109,22 @@ export class CloudManager {
       config: this.config, db: this.db, tenants: this.tenants, hosting: this.hosting,
       secrets: this.secrets, vault: this.vault, qq: this.qq, bili: this.bili, agent: this.agent, logger: this.logger
     });
+    const extensionDeps = {
+      config: this.config, agent: this.agent, agentRuntime: this.agent, supervisor: this.supervisor,
+      tenants: this.tenants, db: this.db, secrets: this.secrets, audit: this.audit, logger: this.logger
+    };
+    this.extensionService = new ExtensionService(extensionDeps);
+    this.agentSettings = new AgentSettingsService({ ...extensionDeps, extensionService: this.extensionService });
+    this.extensionService.agentSettings = this.agentSettings;
+    this.backup.extensionService = this.extensionService;
+    this.gateway.agentSettings = this.agentSettings;
     this.router = createApiRouter({
       config: this.config, auth: this.auth, tenants: this.tenants, hosting: this.hosting,
       qq: this.qq, bili: this.bili, relay: this.relay, relayKeys: this.relayKeys,
       billing: this.billing, backup: this.backup, settings: this.settings, audit: this.audit,
       users: this.users, agent: this.agent, customUpstreams: this.customUpstreams,
-      logger: this.logger, db: this.db, supervisor: this.supervisor
+      logger: this.logger, db: this.db, supervisor: this.supervisor,
+      agentSettings: this.agentSettings, extensionService: this.extensionService
     });
     this.server = null;
     this.relayServer = null;
@@ -230,8 +242,18 @@ export class CloudManager {
     const authed = this.auth.resolve(req);
     const isLogin = url.pathname === '/api/auth/login';
     const safeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(String(req.method).toUpperCase());
+    if (!isLogin && !authed) {
+      sendJson(res, 401, { ok: false, error: '请先登录', code: 'UNAUTHENTICATED' });
+      return;
+    }
     if (!isLogin && authed && !safeMethod) {
-      try { this.auth.verifyCsrf(req, authed); } catch (error) {
+      const strictCsrf = /^\/api\/tenants\/[^/]+\/(?:agent|extensions)(?:\/|$)/.test(url.pathname)
+        || /^\/api\/tenants\/[^/]+\/relay\/custom\/test$/.test(url.pathname)
+        || /^\/api\/admin\/extensions(?:\/|$)/.test(url.pathname)
+        || /^\/api\/admin\/recharges\/[^/]+\/reject$/.test(url.pathname)
+        || /^\/api\/admin\/users\/[^/]+$/.test(url.pathname)
+        || url.pathname === '/api/auth/password';
+      try { this.auth.verifyCsrf(req, authed, { strict: strictCsrf }); } catch (error) {
         const { status, payload } = errorPayload(error);
         sendJson(res, status, payload);
         return;

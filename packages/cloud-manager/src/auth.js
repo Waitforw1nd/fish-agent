@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { hashPassword, verifyPassword, hashSessionToken } from './crypto.js';
+import { immediateTransaction } from './db.js';
 import { id, now, randomToken, safeEqual, parseCookies } from './util.js';
 
 const USERNAME_RE = /^[A-Za-z0-9_.-]{3,64}$/;
@@ -107,6 +108,26 @@ export class AuthService {
     this.db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashSessionToken(token));
   }
 
+  changePassword(userId, sessionId, currentPassword, newPassword) {
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      throw Object.assign(new Error('密码至少 8 位'), { status: 400, code: 'WEAK_PASSWORD' });
+    }
+    const row = this.db.prepare('SELECT password_hash FROM users WHERE id = ? AND disabled = 0').get(userId);
+    if (!row || !verifyPassword(currentPassword, row.password_hash)) {
+      throw Object.assign(new Error('当前密码错误'), { status: 403, code: 'INVALID_CURRENT_PASSWORD' });
+    }
+    const nextHash = hashPassword(newPassword);
+    immediateTransaction(this.db, () => {
+      // Avoid overwriting a concurrent password reset after checking the old hash.
+      const result = this.db.prepare('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ? AND disabled = 0')
+        .run(nextHash, userId, row.password_hash);
+      if (Number(result.changes) !== 1) {
+        throw Object.assign(new Error('账户已更改，请重新登录'), { status: 409, code: 'PASSWORD_CHANGED' });
+      }
+      this.db.prepare('DELETE FROM sessions WHERE user_id = ? AND id <> ?').run(userId, sessionId);
+    });
+  }
+
   sessionTokenFrom(req) {
     const cookies = parseCookies(req.headers.cookie || '');
     return cookies[this.config.cookieName] || '';
@@ -144,12 +165,12 @@ export class AuthService {
     return auth;
   }
 
-  verifyCsrf(req, auth) {
+  verifyCsrf(req, auth, { strict = false } = {}) {
     if (!auth) throw Object.assign(new Error('请先登录'), { status: 401, code: 'UNAUTHENTICATED' });
     if (['GET', 'HEAD', 'OPTIONS'].includes(String(req.method).toUpperCase())) return;
     const header = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'] || '';
     if (header && safeEqual(hashSessionToken(header), auth.session.csrf_hash)) return;
-    if (this.hasSameOriginEvidence(req)) return;
+    if (!strict && this.hasSameOriginEvidence(req)) return;
     throw Object.assign(new Error('CSRF 校验失败，请刷新页面重试'), { status: 403, code: 'CSRF_FAILED' });
   }
 
@@ -173,7 +194,7 @@ export class AuthService {
   }
 
   cookieHeader(token, { clear = false } = {}) {
-    if (!token) return null;
+    if (!token && !clear) return null;
     const parts = [
       `${this.config.cookieName}=${encodeURIComponent(token)}`,
       'Path=/',

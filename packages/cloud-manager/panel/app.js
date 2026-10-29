@@ -10,17 +10,22 @@ import { apiErrorMessage } from './lib/view-data.js';
 import { createToast } from './lib/toast.js';
 import { errorBlock, emptyBlock, pageHead } from './lib/ui.js';
 import { mountLogin } from './views/login.js';
-import { mountTenants } from './views/tenants.js';
-import { mountHosting } from './views/hosting.js';
-import { mountRelay } from './views/relay.js';
-import { mountUsers } from './views/users.js';
-import { mountUserTenants } from './views/user-tenants.js';
+import { mountTenants } from './views/admin/tenants.js';
+import { mountUsers, mountUserTenants } from './views/admin/users.js';
+import { mountOverview } from './views/admin/overview.js';
+import { mountRecharges } from './views/admin/recharges.js';
+import { mountPlatform } from './views/admin/platform.js';
+import { mountAudit } from './views/admin/audit.js';
+import { mountExtensions } from './views/admin/extensions.js';
+import { mountTenantDetail } from './views/admin/tenant-detail.js';
+import { editDialog, labeled } from './views/admin/shared.js';
 import { mountUserInstances } from './views/user/instances.js';
 import { mountUserInstance } from './views/user/instance.js';
 import { normalizeUserTenants } from './views/user/shared.js';
 import { mountUserChannel } from './views/user/channel.js';
 import { mountUserLogs } from './views/user/logs.js';
 import { mountUserBilling } from './views/user/billing.js';
+import { mountUserAgent } from './views/user/agent.js';
 
 const els = {
   boot: document.getElementById('boot-screen'),
@@ -47,7 +52,10 @@ const els = {
   logout: document.getElementById('logout-btn'),
   themeToggle: document.getElementById('theme-toggle'),
   modalRoot: document.getElementById('modal-root'),
-  toastRoot: document.getElementById('toast-root')
+  toastRoot: document.getElementById('toast-root'),
+  workspaceSwitch: document.getElementById('workspace-switch'),
+  password: document.getElementById('password-btn'),
+  rechargeCount: document.getElementById('recharge-pending-count')
 };
 
 const toast = createToast(els.toastRoot);
@@ -60,7 +68,8 @@ const state = {
   view: null,
   loginView: null,
   loginMounted: false,
-  loggingOut: false
+  loggingOut: false,
+  restoredHash: ''
 };
 
 const api = createApi({ onUnauthorized: handleUnauthorized });
@@ -307,11 +316,14 @@ function updateTenantNav() {
 
 function updateSideNav(selectedId) {
   const admin = isAdminUser(state.me);
+  const userWorkspace = !admin || isUserRoute(state.route);
   const hasTenant = Boolean(selectedId);
-  setHidden(els.platformNav, !admin);
-  setHidden(els.sideTenants, !admin);
-  setHidden(els.userNav, false);
-  els.brandLink?.setAttribute('href', defaultRouteForUser(state.me));
+  setHidden(els.platformNav, userWorkspace);
+  setHidden(els.sideTenants, true);
+  setHidden(els.userNav, !userWorkspace);
+  setHidden(els.workspaceSwitch, !admin);
+  setText(els.workspaceSwitch, userWorkspace ? '返回平台管理台' : '切换至用户视角');
+  els.brandLink?.setAttribute('href', userWorkspace ? '#/user/instances' : '#/admin/overview');
   if (els.navHosting) {
     els.navHosting.setAttribute('href', hasTenant ? `#/tenants/${encodeURIComponent(selectedId)}/hosting` : '#/tenants');
     els.navHosting.setAttribute('aria-disabled', hasTenant ? 'false' : 'true');
@@ -323,8 +335,11 @@ function updateSideNav(selectedId) {
     els.navRelay.classList.toggle('active', state.route.name === 'relay');
   }
   els.navTenants?.classList.toggle('active', state.route.name === 'tenants');
-  for (const link of els.platformNav?.querySelectorAll?.('[data-nav="users"]') || []) {
-    link.classList.toggle('active', ['users', 'userTenants'].includes(state.route.name));
+  for (const link of els.platformNav?.querySelectorAll?.('[data-nav]') || []) {
+    const isTenantSection = ['hosting', 'relay', 'tenantAgent', 'tenantExtensions', 'tenantOps'].includes(state.route.name);
+    link.classList.toggle('active', link.dataset.nav === state.route.name
+      || (link.dataset.nav === 'users' && state.route.name === 'userTenants')
+      || (link.dataset.nav === 'tenants' && isTenantSection));
   }
   for (const link of els.userNav?.querySelectorAll?.('[data-nav]') || []) {
     link.classList.toggle('active', link.dataset.nav === state.route.name || (link.dataset.nav === 'userInstances' && state.route.name === 'userInstance'));
@@ -340,8 +355,8 @@ function updateChrome(route = state.route) {
   updateTenantNavActive(route.tenantId);
 
   let title = routeTitle(route, tenantName);
-  if (route.name === 'hosting') title = tenant ? `${tenant.name} · Hosting Center` : 'Hosting Center';
-  if (route.name === 'relay') title = tenant ? `${tenant.name} · Relay & Billing` : 'Relay & Billing';
+  if (route.name === 'hosting') title = tenant ? `${tenant.name} · 通道托管` : '通道托管';
+  if (route.name === 'relay') title = tenant ? `${tenant.name} · 中转与计费` : '中转与计费';
   setText(els.pageTitle, title);
   document.title = `${title} · Fish Cloud`;
 
@@ -358,12 +373,20 @@ function updateChrome(route = state.route) {
       els.breadcrumb.appendChild(sep());
       els.breadcrumb.appendChild(h('span', {}, '用户实例'));
     }
-  } else if (route.name === 'hosting' || route.name === 'relay') {
+  } else if (['hosting', 'relay', 'tenantAgent', 'tenantExtensions', 'tenantOps'].includes(route.name)) {
     els.breadcrumb.appendChild(h('a', { href: '#/tenants' }, '租户总览'));
     els.breadcrumb.appendChild(sep());
     els.breadcrumb.appendChild(h('a', { href: `#/tenants/${encodeURIComponent(route.tenantId)}/hosting` }, tenantName));
     els.breadcrumb.appendChild(sep());
-    els.breadcrumb.appendChild(h('span', {}, route.name === 'relay' ? 'Relay & Billing' : 'Hosting Center'));
+    els.breadcrumb.appendChild(h('span', {}, { hosting: '通道托管', relay: '中转与计费', tenantAgent: 'QQ Agent 配置', tenantExtensions: '插件与技能', tenantOps: '日志、成员与备份' }[route.name]));
+  } else if (route.name.startsWith('admin')) {
+    els.breadcrumb.appendChild(h('a', { href: '#/admin/overview' }, '平台管理台'));
+    els.breadcrumb.appendChild(sep());
+    els.breadcrumb.appendChild(h('span', {}, routeTitle(route)));
+  } else if (isUserRoute(route)) {
+    els.breadcrumb.appendChild(h('a', { href: '#/user/instances' }, '养鱼工作台'));
+    els.breadcrumb.appendChild(sep());
+    els.breadcrumb.appendChild(h('span', {}, routeTitle(route, tenant?.name)));
   } else if (route.name === 'notFound') {
     els.breadcrumb.appendChild(h('a', { href: '#/tenants' }, '租户总览'));
     els.breadcrumb.appendChild(sep());
@@ -409,7 +432,10 @@ function renderRoute() {
     api,
     toast,
     navigate,
-    modalRoot: els.modalRoot
+    modalRoot: els.modalRoot,
+    user: state.me,
+    admin: isAdminUser(state.me),
+    refreshTenants
   };
 
   try {
@@ -426,26 +452,22 @@ function renderRoute() {
       state.view = mountUsers(els.viewRoot, { ...common, refreshTenants });
     } else if (state.route.name === 'userTenants') {
       state.view = mountUserTenants(els.viewRoot, { ...common, userId: state.route.userId, refreshTenants, onTenantsChanged: () => { void refreshTenants(); } });
-    } else if (state.route.name === 'hosting') {
+    } else if (['hosting', 'relay', 'tenantAgent', 'tenantExtensions', 'tenantOps'].includes(state.route.name)) {
       if (!state.route.tenantId) {
         navigate('#/tenants');
         return;
       }
-      state.view = mountHosting({
+      state.view = mountTenantDetail(els.viewRoot, {
         ...common,
-        tenantId: state.route.tenantId
+        tenantId: state.route.tenantId,
+        section: { hosting: 'hosting', relay: 'relay', tenantAgent: 'agent', tenantExtensions: 'extensions', tenantOps: 'ops' }[state.route.name]
       });
-    } else if (state.route.name === 'relay') {
-      if (!state.route.tenantId) {
-        navigate('#/tenants');
-        return;
-      }
-      state.view = mountRelay({
-        ...common,
-        tenantId: state.route.tenantId
-      });
+    } else if (state.route.name.startsWith('admin')) {
+      const mount = { adminOverview: mountOverview, adminRecharges: mountRecharges, adminPlatform: mountPlatform, adminAudit: mountAudit, adminExtensions: mountExtensions }[state.route.name];
+      state.view = mount ? mount(els.viewRoot, common) : mountNotFound();
+      void refreshRechargeCount();
     } else if (state.route.name === 'userInstances') {
-      state.view = mountUserInstances({ ...common, onTenantsChanged: (list) => {
+      state.view = mountUserInstances({ ...common, onSelectTenant: (id) => { state.userTenantId = id; }, onTenantsChanged: (list) => {
         state.tenants = list;
         state.tenantsError = '';
         if (!findTenant(state.userTenantId)) state.userTenantId = list[0]?.id || '';
@@ -453,14 +475,14 @@ function renderRoute() {
       } });
     } else if (state.route.name === 'userInstance') {
       state.userTenantId = state.route.tenantId;
-      state.view = mountUserInstance({ ...common, tenantId: state.route.tenantId, onSelectTenant: (id) => { state.userTenantId = id; } });
+      state.view = mountUserInstance({ ...common, tenantId: state.route.tenantId, section: state.route.section, onSelectTenant: (id) => { state.userTenantId = id; } });
     } else if (isUserRoute(state.route)) {
       const options = {
         ...common, tenants: state.tenants, tenantId: state.userTenantId, tenantsError: state.tenantsError,
         retryTenants: async () => { await refreshTenants(); if (state.me) renderRoute(); },
         onTenantChange: (id) => { state.userTenantId = id; renderRoute(); }
       };
-      const mount = { userChannel: mountUserChannel, userLogs: mountUserLogs, userBilling: mountUserBilling }[state.route.name];
+      const mount = { userChannel: mountUserChannel, userLogs: mountUserLogs, userBilling: mountUserBilling, userAgent: mountUserAgent }[state.route.name];
       state.view = mount(options);
     } else {
       state.view = mountNotFound();
@@ -502,6 +524,14 @@ function mountNotFound() {
 // ── 事件绑定 ─────────────────────────────────────────────
 
 window.addEventListener('hashchange', () => {
+  const restored = state.restoredHash === location.hash;
+  state.restoredHash = '';
+  if (restored) return;
+  if (state.me && state.view?.canLeave?.() === false) {
+    state.restoredHash = state.route.path;
+    location.hash = state.route.path;
+    return;
+  }
   state.route = parseRoute(location.hash);
   if (!state.me) {
     if (!state.loginMounted) showLogin();
@@ -510,6 +540,44 @@ window.addEventListener('hashchange', () => {
   renderRoute();
 });
 
+async function refreshRechargeCount() {
+  if (!isAdminUser(state.me) || !els.rechargeCount) return;
+  try {
+    const result = await api.request('/api/admin/recharges?status=pending&limit=100');
+    if (!isAdminUser(state.me)) return;
+    const count = Number(result.total ?? result.recharges?.length ?? 0);
+    setText(els.rechargeCount, count > 99 ? '99+' : count);
+    setHidden(els.rechargeCount, count === 0);
+  } catch {
+    setHidden(els.rechargeCount, true);
+  }
+}
+
+function changePassword() {
+  if (!state.me) return;
+  const current = h('input', { id: 'account-current-password', class: 'input', type: 'password', autocomplete: 'current-password' });
+  const next = h('input', { id: 'account-new-password', class: 'input', type: 'password', autocomplete: 'new-password' });
+  const confirm = h('input', { id: 'account-confirm-password', class: 'input', type: 'password', autocomplete: 'new-password' });
+  editDialog({ modalRoot: els.modalRoot }, {
+    title: '修改密码',
+    fields: [labeled('当前密码', current), labeled('新密码', next, '至少 8 位'), labeled('再次输入新密码', confirm)],
+    async submit() {
+      if (next.value.length < 8) throw new Error('新密码至少 8 位');
+      if (next.value !== confirm.value) throw new Error('两次输入的新密码不一致');
+      await api.request('/api/auth/password', { method: 'PUT', body: { currentPassword: current.value, newPassword: next.value } });
+    },
+    onSaved: () => toast.show('密码已修改，其他登录会话已失效', { tone: 'success' })
+  });
+}
+
+window.addEventListener('beforeunload', (event) => {
+  if (state.view?.hasUnsavedChanges?.()) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
+els.workspaceSwitch?.addEventListener('click', () => navigate(isUserRoute(state.route) ? '#/admin/overview' : '#/user/instances'));
+els.password?.addEventListener('click', changePassword);
 els.logout?.addEventListener('click', () => { void logout(); });
 els.themeToggle?.addEventListener('click', toggleTheme);
 els.sidebarToggle?.addEventListener('click', () => {

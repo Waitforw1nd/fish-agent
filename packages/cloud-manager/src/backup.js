@@ -58,6 +58,29 @@ function rows(db, sql, ...params) {
   return db.prepare(sql).all(...params);
 }
 
+function isManagedExtensionPath(relative) {
+  const value = relative.toLowerCase();
+  return value === 'admin-extensions' || value.startsWith('admin-extensions/')
+    || value === 'data/blocked-extensions.json' || value.startsWith('data/blocked-extensions.json/');
+}
+
+function preserveManagedExtensions(currentRoot, staging) {
+  for (const relative of ['admin-extensions', 'data/blocked-extensions.json']) {
+    const source = path.join(currentRoot, ...relative.split('/'));
+    if (!fs.existsSync(source)) continue;
+    const stat = fs.lstatSync(source);
+    if (stat.isSymbolicLink() || (relative === 'admin-extensions' ? !stat.isDirectory() : !stat.isFile())) {
+      throw fail(409, 'INVALID_EXTENSION_PATH', '管理员扩展目录或屏蔽列表不是普通文件');
+    }
+    const target = path.join(staging, ...relative.split('/'));
+    ensureDir(path.dirname(target), 0o700);
+    fs.cpSync(source, target, {
+      recursive: stat.isDirectory(),
+      filter: (entry) => !fs.lstatSync(entry).isSymbolicLink()
+    });
+  }
+}
+
 export class BackupService {
   constructor({ config, db, tenants, hosting, secrets, vault, qq, bili, agent, logger }) {
     this.config = config;
@@ -224,6 +247,21 @@ export class BackupService {
   }
 
   async restore(tenantId, backupId, { actor = null, restart = null } = {}) {
+    const restore = () => {
+      const tenant = this.tenants.row(tenantId);
+      if (!tenant) throw fail(404, 'TENANT_NOT_FOUND', '租户不存在');
+      const run = () => this.restoreUnlocked(tenantId, backupId, { actor, restart });
+      return this.extensionService?.agentSettings
+        ? this.extensionService.agentSettings.locked(tenant, run)
+        : run();
+    };
+    if (this.extensionService) {
+      return this.extensionService.withLock(`tenant:${tenantId}`, restore);
+    }
+    return restore();
+  }
+
+  async restoreUnlocked(tenantId, backupId, { actor = null, restart = null } = {}) {
     const tenant = this.tenants.row(tenantId);
     if (!tenant) throw fail(404, 'TENANT_NOT_FOUND', '租户不存在');
     const archive = this.readArchive(tenantId, backupId);
@@ -238,11 +276,13 @@ export class BackupService {
     try {
       ensureDir(staging, 0o700);
       for (const file of archive.files) {
+        if (actor?.role !== 'admin' && isManagedExtensionPath(file.path)) continue;
         const target = path.join(staging, ...file.path.split('/'));
         ensureDir(path.dirname(target), 0o700);
         fs.writeFileSync(target, file.data, { mode: file.mode });
       }
       await this.hosting.stop(tenant, { reason: 'restore' });
+      if (actor?.role !== 'admin') preserveManagedExtensions(tenant.data_dir, staging);
       try {
         if (fs.existsSync(tenant.data_dir)) {
           fs.renameSync(tenant.data_dir, rollbackDir);

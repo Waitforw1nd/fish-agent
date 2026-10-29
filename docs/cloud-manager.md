@@ -2,7 +2,7 @@
 
 2026-10-29 用户确认 VPS QQ 对话测试已跑通；服务器修复包记录 NapCat v4.18.41 的真实容器、登录和自定义模型调用结果。本轮将该 P1 基线修复合并到已发布的 P2 代码，并进行本地回归，未重新部署 VPS。P2 双向切换、Linux 进程组及 P3 多实例恢复仍需真机验收；HTTPS 控制台尚未完成部署验收。Host 网关使用配置或可信代理提供的 scheme；域名、DNS 和证书需部署者提供。
 
-主要源码：`packages/cloud-manager/src/{app,api,config,db,gateway,agent-runtime,qq-service,bili-service,relay/server,billing,plans,ports,crypto}.js`。API 表以 `src/api.js` 为唯一准绳，panel 静态文件由 `src/app.js` 直接托管。
+主要源码位于 `packages/cloud-manager/src/`。`api.js` 聚合 `routes/{auth,tenants,qq,bili,agent,extensions,relay-billing,admin}.js` 八个模块，`contracts/http.js` 统一校验与授权，`presenters/tenant-presenter.js` 统一租户摘要和就绪度。接口以这些路由和服务实现为准，panel 静态文件仍由 `app.js` 直接托管。模块化实施与验证记录见 [分阶段交付](view-api-execution.md)。
 
 ## 用户旅程：目标与当前实现
 
@@ -13,8 +13,8 @@
 1. **交钱**：没有支付成功校验作为创建或续费的前置条件。用户先有平台账号；用户面板的充值需要选择已有实例，提交后只是 pending 订单，不自动扣款、不代表支付成功，管理员确认后才入钱包。管理员也可直接给钱包充值。支付方式、付款核验和开通规则仍待确定。
 2. **创建实例**：用户面板填写名称并可选择套餐，默认 trial；服务端创建 active 租户、初始钱包额度和本地 Relay Key，并不检查支付。普通用户可创建多实例，数量按本次新建所选套餐限制，详见第 5 节。创建不等于进程已启动，实例页提供启动操作。续费接口由 owner 调用，可延长时长、选择套餐并发放套餐续费额度，同样不检查支付；只有管理员可指定 `creditMicros`。
 3. **登录 QQ**：普通用户从 `#/user/instances` 的实例卡片进入 `#/user/instances/:tenantId`，输入 5–12 位 QQ 号后按实例配置准备、启动 QQ 内核并打开扫码窗口；新实例默认 NapCat，已配置实例保留原内核。viewer 只读，owner 和 operator 可操作。普通用户无需提供平台 token；LLBot direct 仍依赖平台预先配置有效授权，缺失或无效时请联系平台管理员。管理员可从 `#/users` 进入 `#/users/:userId/instances` 管理该用户拥有的实例，并进入托管视图。具体可用性依赖部署环境和协议端；桌面模式需要外部独立 QQ 与 PMHQ 组件，平台不自带启动器或注入器。提供 QQ 号本身不等于登录成功，须完成扫码；用户已确认 VPS QQ 对话跑通，具体内核与场景仍以验收记录为准。普通 NapCat 扫码窗口可“获取新二维码”，通过重启尚未登录的会话换码，保留账号数据；在线或确认中的会话不重启。切换扫码窗口不提供重启式换码，可继续扫码或安全取消后重新发起。
-4. **绑定 Key**：创建时已自动签发本平台的租户 Relay Key，Agent 启动或写配置时会使用它。用户渠道页保留“平台 Relay Key”输入框和“绑定平台 Key”按钮，可替换这个本地 Bearer 凭据；本地格式及唯一性校验通过不代表外部上游 Key 有效，也不会验证远端。若用户自带模型服务，应在同页的自定义渠道填写 Base URL、上游 API Key 和模型；保存时不提供连接测试，但会同步 Agent 使用的模型，原先运行且仍有效的实例会重启 Agent 应用配置，失败返回 `restartRequired`。删除自定义渠道后恢复平台模型，更换本地 Relay Key 保留自定义模型。切换进行中修改渠道或 Key 返回 `QQ_SWITCH_ACTIVE`，不写入部分配置。平台渠道依赖管理员配置平台上游 URL 和 API Key。
-5. **开始养鱼**：需要租户有效、Agent 和 QQ 协议端可运行且 QQ 已登录，模型渠道和模型可用；平台渠道还需要可用钱包余额。还需按实际场景配置允许互动的对象（空白 allowlist 不默认放行）。这些条件并非由一条已验证的一键开通流程自动保证。
+4. **绑定 Key**：创建时已自动签发本平台的租户 Relay Key，Agent 启动或写配置时会使用它。“模型与渠道”页可绑定平台 Key 并选择套餐允许的模型；本地格式及唯一性校验不代表远端凭据有效。自定义渠道填写 Base URL、上游 API Key 和模型，可主动测试连接、读取远端模型列表；探测不会保存设置。保存后同步 Agent 模型，原先运行且仍有效的实例会重启 Agent 应用配置，失败返回 `restartRequired`。删除自定义渠道后恢复平台模型，更换本地 Relay Key 保留自定义模型。切换进行中修改渠道或 Key 返回 `QQ_SWITCH_ACTIVE`，不写入部分配置。平台渠道依赖管理员配置平台上游 URL 和 API Key。
+5. **开始养鱼**：实例卡片和工作台显示启动 Agent、QQ 登录、模型渠道、互动白名单四步检查，并给出对应操作入口。白名单、人设和档位可在离线时保存；空白名单不放行任何会话。单实例工作台包含接入、白名单、人设、档位与能力、会话与记忆五个页签，设置使用同源 API，不依赖泛域名。就绪度根据当前状态与配置计算，不等于真实模型请求或完整账号链路已通过。
 
 平台技术职责包括隔离租户数据和进程、管理端口及秘密、提供 QQ 协议接入、Relay 鉴权与用量记录。支付方式、付款核验和开通规则尚待确定。
 
@@ -43,6 +43,10 @@
 
 Supervisor 注入租户专属 `QQ_AGENT_TOKEN`、回环 `QQ_AGENT_HOST`、租约 `QQ_AGENT_PORT` 和 `QQ_AGENT_ALLOWED_HOSTS`。Gateway 根据 Host 识别 `<slug>.<CLOUD_BASE_DOMAIN>`，检查会话、租户成员角色和 active 状态，再注入内部 `x-console-token` 转发到该租户 Agent，并把 Host 和 Origin 改写为对应回环地址。浏览器的 panel Cookie、Origin、CSRF 等不会原样透传。HTTP、SSE 和 WebSocket 都走同一租户隔离逻辑。
 
+Agent 的启动就绪必须来自实际子进程：管理器注入 `QQ_AGENT_READY_IPC=1` 并建立 Node IPC；核心在 HTTP `listen` 完成后发送 `{type:"fish-agent-listening",pid:process.pid,port:actualPort}`。Supervisor 核对该子进程 PID 和租约端口，再检查 TCP 连接，整个过程共用原启动时限。未收到正确回执、进程提前退出或端口未监听均返回启动失败，不会因其他进程临时占用端口而误报成功，也不向未知端口发送租户 token。
+
+默认核心入口已支持此约定。**覆盖 `CLOUD_AGENT_ENTRY` 的自定义 Node 入口也必须在实际监听后发送上述回执**；QQ/B 站协议端保持各自原有就绪机制。端口分配到绑定之间仍可能发生竞争，此时应明确启动失败，不能把分配成功当作进程就绪。
+
 ## 2. 关键环境变量
 
 完整默认值在 `src/config.js`；没有 `.env` 自动加载。
@@ -59,7 +63,7 @@ Supervisor 注入租户专属 `QQ_AGENT_TOKEN`、回环 `QQ_AGENT_HOST`、租约
 | `CLOUD_MASTER_KEY` | 32 字节 base64 或 64 位 hex；缺省从 `master.key` 读取/生成。 |
 | `CLOUD_PORT_RANGE_START` / `CLOUD_PORT_RANGE_END` | `31000`–`39999`。 |
 | `CLOUD_NODE_PATH` | 当前 `process.execPath`。 |
-| `CLOUD_AGENT_ENTRY` / `CLOUD_LLBOT_ENTRY` / `CLOUD_BILI_BRIDGE_ENTRY` | 三个主要子进程入口。 |
+| `CLOUD_AGENT_ENTRY` / `CLOUD_LLBOT_ENTRY` / `CLOUD_BILI_BRIDGE_ENTRY` | 三个主要子进程入口；自定义 Agent 入口须遵守前述 IPC 就绪约定。 |
 | `CLOUD_NAPCAT_ENTRY` / `CLOUD_SNOWLUMA_ENTRY` | 可选 QQ 驱动入口，存在性需部署机核查。 |
 | `CLOUD_UPSTREAM_BASE_URL` / `CLOUD_UPSTREAM_API_KEY` | 初始上游；管理面设置会覆盖。 |
 | `CLOUD_DEFAULT_MODEL` | `deepseek-chat`。 |
@@ -78,8 +82,11 @@ Supervisor 注入租户专属 `QQ_AGENT_TOKEN`、回环 `QQ_AGENT_HOST`、租约
 <CLOUD_DATA_DIR>/
 ├── master.key                  缺省生成的 32 字节主密钥
 ├── cloud.sqlite                SQLite + WAL
+├── extensions/catalog/{plugins,skills}/  管理员公共插件库
 ├── tenants/<tenant-id>/
 │   ├── data/config.json        Agent 配置（含运行所需 Relay Key 明文）
+│   ├── data/blocked-extensions.json  管理员按实例屏蔽的扩展 ID
+│   ├── admin-extensions/{plugins,skills}/  管理员安装的受信扩展
 │   ├── extensions/plugins/
 │   ├── extensions/skills/
 │   ├── qq/<driver>/data/       QQ 配置、session、auth_token.txt
@@ -90,11 +97,13 @@ Supervisor 注入租户专属 `QQ_AGENT_TOKEN`、回环 `QQ_AGENT_HOST`、租约
 └── logs/
 ```
 
-`cloud.sqlite` 当前最新迁移版本为 8。版本 4 为 ledger 增加 platform、chat_key、run_id、vision、usage_source；版本 5/6 新增 `qq_runtimes` 及镜像身份和规格字段；版本 7 为 `qq_accounts` 增加 revision、生效 profile/runtime 引用，并新增 `qq_profiles`、`qq_operations`、`qq_account_claims`；版本 8 为 `qq_accounts` 增加 `runtime_generation` 和 `runtime_secret_namespace`，持久保存运行代次与凭据命名空间。同实例只允许一个 running/needs_attention operation，活动 QQ 号有唯一占用约束。原有用户、租户、秘密、租约、计费、备份和审计表保留。
+`cloud.sqlite` 当前最新迁移版本为 9。版本 4 为 ledger 增加 platform、chat_key、run_id、vision、usage_source；版本 5/6 新增 `qq_runtimes` 及镜像身份和规格字段；版本 7 为 `qq_accounts` 增加 revision、生效 profile/runtime 引用，并新增 `qq_profiles`、`qq_operations`、`qq_account_claims`；版本 8 为 `qq_accounts` 增加 `runtime_generation` 和 `runtime_secret_namespace`，持久保存运行代次与凭据命名空间；版本 9 保留充值历史并增加 rejected 状态和审核人、备注、时间。同实例只允许一个 running/needs_attention operation，活动 QQ 号有唯一占用约束。原有用户、租户、秘密、租约、计费、备份和审计表保留。
 
 迁移前使用 SQLite 一致性备份，配合原主密钥和对应 profile/data 快照；不能只复制运行中的主库文件。回滚旧版本需同时处理 schema 与仍在运行的容器/进程，不可只换代码留下无人管理的 QQ。
 
 备份包含租户文件与密钥状态，使用主密钥 AES-256-GCM 加密并做 SHA-256 完整性校验；恢复会重分端口、重写配置，失败时回滚文件和运行状态。**只复制 `cloud.sqlite` 不足以恢复；主密钥丢失会导致秘密和备份不可解密。**
+
+管理员扩展和屏蔽清单也在实例快照中。管理员恢复可还原快照中的这些内容；普通 owner 恢复时保留当前管理员扩展目录和屏蔽文件的状态（包括不存在的状态），避免旧快照撤销管理员的安装、删除或屏蔽决定。恢复与该实例的扩展操作和设置写入互斥。
 
 ### 3.2 端口租约
 
@@ -125,7 +134,7 @@ Agent 的 `data/config.json` 必须含 Relay Key 才能调用模型，因此该�
 ### 4.1 认证与角色
 
 - `POST /api/auth/login` 返回用户、CSRF token 和 HttpOnly SameSite=Lax Cookie。
-- 非 GET/HEAD/OPTIONS 请求需要 `X-CSRF-Token`（也接受 `X-XSRF-Token`）或有效同源证据；所有 API 还做 Origin/跨站检查。
+- 新增 Agent、扩展、密码、用户更新、驳回和上游探测等敏感写接口要求显式 `X-CSRF-Token`（也接受 `X-XSRF-Token`）；既有写接口保留有效同源证据兼容。所有 API 仍检查 Origin/跨站来源，panel 客户端统一携带 CSRF。
 - 平台用户角色是 `admin/user`；租户成员角色是 `owner/operator/viewer`，权限依次降低。admin 可跨租户。
 - 下表“登录”表示任意已认证用户；“成员”表示至少 viewer；“操作员”至少 operator；“所有者”至少 owner。
 - 错误形状通常为 `{ok:false,error,code}`。Relay 不使用 panel Cookie，而使用 Bearer Key。
@@ -138,6 +147,7 @@ Agent 的 `data/config.json` 必须含 Relay Key 才能调用模型，因此该�
 | POST | `/api/auth/login` | 公开，`{username,password}`。 |
 | POST | `/api/auth/logout` | 注销当前 Cookie 会话。 |
 | GET | `/api/me` | 登录，返回用户、CSRF、租户列表。 |
+| PUT | `/api/auth/password` | 登录，`{currentPassword,newPassword}`；改密后保留当前会话，注销其他会话。 |
 | GET | `/api/plans` | 登录。 |
 | GET / POST | `/api/tenants` | 登录；POST 创建 `{name,slug,planId}`，admin 可指定 owner。 |
 | GET / PATCH | `/api/tenants/:id` | GET 成员；PATCH 所有者。 |
@@ -183,21 +193,27 @@ B 站配置面向 panel 的订阅键是 `mentions/upVideos/privateMessages/liveR
 | 方法 | 路径 | 权限/说明 |
 |---|---|---|
 | GET | `/api/tenants/:id/relay/overview` | 成员，钱包、用量、模型、上游公开状态。 |
-| GET | `/api/tenants/:id/relay/models` | 成员，返回允许模型及 allModels。 |
+| GET | `/api/tenants/:id/relay/models` | 成员，返回当前渠道 `models/allModels`，另有平台套餐 `platformModels/platformModel`。 |
 | PUT | `/api/tenants/:id/relay/key` | 所有者，`{key?,model?}`；绑定本平台 Relay 凭据或在无活动 Key 时按条件签发，模型受套餐白名单限制。 |
 | GET / PUT / DELETE | `/api/tenants/:id/relay/custom` | GET 成员；PUT/DELETE 所有者，配置或删除自定义上游 `{baseUrl,apiKey,model}`，更新时可省略 `apiKey` 保留旧值。 |
+| POST | `/api/tenants/:id/relay/custom/test` | 所有者，测试配置并读取模型；公网地址校验、固定 DNS 结果、禁止重定向，不保存凭据。 |
 | GET | `/api/tenants/:id/relay/logs` | 成员，支持 `days/limit/model/status` 筛选。 |
 | GET / POST | `/api/tenants/:id/billing/recharges` | GET 成员；POST 所有者，`{amountMicros}` 创建待审核申请。 |
-| POST | `/api/admin/recharges/:id/confirm` | admin；确认申请并到账，不校验实际支付。 |
+| GET | `/api/tenants/:id/billing/transactions` | 成员，返回钱包流水 `transactions`，包括金额、类型、说明和时间。 |
+| GET | `/api/admin/recharges` | admin；按 `status/tenantId/limit` 查询全局申请和审核信息。 |
+| POST | `/api/admin/recharges/:id/confirm` | admin；可选 `{note}`，确认申请并到账，不校验实际支付；重复审核返回 409。 |
+| POST | `/api/admin/recharges/:id/reject` | admin；必填 `{note}`，驳回但不修改余额，用户可见原因。 |
 | POST | `/api/tenants/:id/relay/topup` | admin，`{amountMicros,note}`。 |
 | POST | `/api/tenants/:id/backup` | 所有者。 |
 | GET | `/api/tenants/:id/backups` | 成员。 |
 | POST | `/api/tenants/:id/restore` | 所有者且 active，`{backupId,restart?}`。 |
 | GET / POST | `/api/admin/users` | admin；POST 创建用户，密码至少 8 位。 |
+| PATCH | `/api/admin/users/:userId` | admin；`{disabled?,role?,password?}`，禁用/重置密码立即吊销会话，保护最后活跃管理员。 |
 | GET | `/api/admin/users/:userId/tenants` | admin；返回 `{ok, user, tenants}`，`user` 为公开信息，`tenants` 为按所有者查询的实例摘要；未知用户 404，普通用户 403。 |
 | GET / PUT | `/api/admin/upstream` | admin；PUT `{baseUrl,apiKey?,clear?}`，不返回明文 Key。 |
 | GET / PUT | `/api/admin/llbot-auth-token` | admin；GET 只返回 hasToken。 |
-| GET | `/api/admin/audit` | admin，可按 tenantId/limit。 |
+| GET | `/api/admin/overview` | admin，实例与用户统计、待审充值、今日/7日用量、上游与驱动状态。 |
+| GET | `/api/admin/audit` | admin，可按 `tenantId/actorUserId/action/limit` 筛选。 |
 
 ### 4.5 Relay 独立端点
 
@@ -209,7 +225,44 @@ B 站配置面向 panel 的订阅键是 `mentions/upVideos/privateMessages/liveR
 
 聊天请求必须有非空 `messages`；平台上游要求套餐允许的 `model`，自定义上游要求请求模型与所配置模型一致。`max_tokens/max_completion_tokens` 不能超过套餐上限。转发字段白名单包括 messages、采样参数、tools/tool_choice、response_format、reasoning/thinking 等；Relay 统一重写 `max_tokens` 和 `stream`，流式请求附加 `stream_options.include_usage=true`。
 
-成功非流式响应带 `x-fish-request-id`、`x-fish-cost-micros`。上游失败、无响应或无效 JSON会释放预占；成功才按 usage 结算。缺少 usage 时按文本启发式估算，因此它不是上游原生账单。
+成功非流式响应带 `x-fish-request-id`、`x-fish-cost-micros`。上游失败、无响应或无效 JSON 会释放预占；成功才按 usage 结算。缺少 usage 时按文本启发式估算，因此它不是上游原生账单。
+
+### 4.6 同源 Agent 设置
+
+以下路径统一以 `/api/tenants/:id/agent` 为前缀；读取至少 viewer，修改至少 operator。与旧 Gateway 一样经过成员校验和配置锁定，但离线预配置不需要 Agent 进程运行。
+
+| 方法 | 相对路径 | 说明 |
+|---|---|---|
+| GET / PATCH / PUT | `/config` | 返回脱敏配置、`agentRunning` 和锁定字段；在线热更新、离线原子写盘。 |
+| GET / POST / DELETE | `/personas`、`/personas/:templateId` | 列出、保存或删除自定义人设模板。 |
+| POST | `/persona-cards/preview`、`/persona-cards/import` | JSON/PNG 安全预览和导入；导入重新解析原始文件。 |
+| GET | `/contacts`、`/status` | 联系人和运行状态；离线联系人返回空数组及 `online:false`。 |
+| PUT | `/pause` | `{paused,clearUnread?}`，在线暂停或恢复回复。 |
+| GET / POST | `/sessions`、`/sessions/:sessionId/:action`、`/sessions/clear-finished` | 在线会话读取、retry/abort 和清除已结束记录。 |
+| GET | `/chats`、`/chats/:chatId/messages` | 在线会话及消息列表。 |
+| POST | `/chats/:chatId/actions` | 在线会话操作；测试发送仍执行白名单与拒绝名单检查。 |
+| GET / DELETE | `/memories`、`/memories/:chatId` | 记忆列表、单会话读取或清除；列表仅 GET。 |
+| PUT / DELETE | `/memories/:chatId/members/:userId` | 修改或删除群友印象与备注。 |
+| POST | `/memories/consolidate` | 触发在线记忆整理。 |
+| GET / PATCH | `/skills`、`/skills/:skillId` | 工具分类/可用性、未屏蔽扩展及安全 schema 参数；离线诊断标记未知。 |
+| POST | `/prompt-preview` | viewer 可读取在线生成的系统提示词预览。 |
+
+运行态操作在 Agent 离线时返回明确错误。通用 `/config` 禁止直接写入 `skills`，必须走 schema 限制的专用接口；仅 `blocklist`、`personaByChat`、`store.groupSliderPos`、`store.groupPeakPos` 可使用 `__replace__`，不能借此绕过云管字段锁定。viewer 无权通过同源接口或旧 Gateway 修改配置。
+
+### 4.7 管理员扩展
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/tenants/:id/extensions` | 成员读取可用扩展；管理员另可看到屏蔽项。 |
+| POST | `/api/tenants/:id/extensions/install-zip` | admin；`{filename,base64}`，ZIP 最多 8 MiB。 |
+| POST | `/api/tenants/:id/extensions/install-catalog` | admin；`{extId}`，从公共库安装。 |
+| DELETE | `/api/tenants/:id/extensions/:extId` | admin；移除或屏蔽，`cleanConfig=1` 清配置，`fallback=1` 回退内置。 |
+| POST | `/api/tenants/:id/extensions/:extId/restore`、`/api/tenants/:id/extensions/reload` | admin；恢复内置或显式热重载。 |
+| GET / POST | `/api/admin/extensions/catalog` | admin；列出公共库或上传 ZIP，含实际安装实例 ID 和数量。 |
+| DELETE | `/api/admin/extensions/catalog/:extId` | admin；删除库副本，不删除已分发副本。 |
+| POST | `/api/admin/extensions/catalog/:extId/deploy`、`/api/admin/extensions/catalog/:extId/undeploy` | admin；`{tenantIds}`，逐实例返回成功或失败。 |
+
+插件中心和单实例插件页显示来源、版本、启用/加载状态及分发状态。在线安装失败会回滚原目录并重载原版本；安装可信代码的管理员权限不会放开普通用户的代码上传。权限和扩展生命周期详见 [扩展文档](extensions.md)。
 
 ## 5. 套餐与计费模型
 

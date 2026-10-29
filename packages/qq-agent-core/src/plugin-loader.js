@@ -29,6 +29,7 @@ import { format } from 'node:util';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { registerTool, unregisterTool, unregisterToolsBySkill, getTool, listTools } from './tool-registry.js';
 import { skillManager } from './skills/manager.js';
+import { DATA_DIR } from './config.js';
 import { normalizeManifest, isManifestUsable, SKILL_API_VERSION, kindOfDir } from './skills/manifest.js';
 import { skillErrorText } from './skills/errors.js';
 
@@ -90,6 +91,19 @@ export function resolveSkillRoots(roots = null) {
     skills: roots?.skills ? path.resolve(roots.skills) : (envDir('QQ_AGENT_SKILLS_DIR') || BUILTIN_SKILLS_DIR),
     plugins: roots?.plugins ? path.resolve(roots.plugins) : (envDir('QQ_AGENT_PLUGINS_DIR') || BUILTIN_PLUGINS_DIR)
   };
+}
+
+export function readBlockedExtensions(dataDir = process.env.QQ_AGENT_DATA_DIR || DATA_DIR) {
+  if (!dataDir) return new Set();
+  const file = path.join(path.resolve(dataDir), 'blocked-extensions.json');
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); }
+  catch (error) { if (error.code === 'ENOENT') return new Set(); throw error; }
+  const values = JSON.parse(text.replace(/^\uFEFF/, ''));
+  if (!Array.isArray(values) || values.some((value) => typeof value !== 'string')) {
+    throw new Error('blocked-extensions.json 必须是扩展 ID 数组');
+  }
+  return new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean));
 }
 
 /**
@@ -529,7 +543,7 @@ async function loadSkillDir(dir, { log = console.log, kind = null } = {}) {
 }
 
 /** 扫描一个目录下的所有 Skill。 */
-async function loadSkillRoot(rootDir, { log = console.log, label = 'skill', excludedIds = new Set() } = {}) {
+async function loadSkillRoot(rootDir, { log = console.log, label = 'skill', excludedIds = new Set(), origin = null } = {}) {
   if (!fs.existsSync(rootDir)) {
     // 不再静默：目录找不到必须打日志（历史上这里返回 missing 后被丢弃，
     // 表现为"安装版一个 Skill 都没有，且日志里毫无线索"）。
@@ -537,7 +551,7 @@ async function loadSkillRoot(rootDir, { log = console.log, label = 'skill', excl
     return { loaded: [], failed: [], missing: true, rootDir };
   }
   const dirs = fs.readdirSync(rootDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
     .map((e) => path.join(rootDir, e.name));
   if (!dirs.length) {
     log(`[${label}] ${path.basename(rootDir)}/ 为空：${rootDir}`);
@@ -564,7 +578,9 @@ async function loadSkillRoot(rootDir, { log = console.log, label = 'skill', excl
       }
     }
     // 逐个串行加载：并行 import 时若两个 Skill 抢同一 id，顺序不确定
-    results.push(await loadSkillDir(dir, { log, kind }));
+    const result = await loadSkillDir(dir, { log, kind });
+    if (result.skill) result.skill.origin = origin;
+    results.push(result);
   }
   const loaded = results.filter((r) => r.loaded);
   const failed = results.filter((r) => !r.loaded);
@@ -609,33 +625,57 @@ export async function loadPlugins({ log = console.log, roots = null } = {}) {
     }
   }
   skillManager.setLog(log);
-  const builtinRoots = roots ? [] : [
-    ...(skillsRoot !== BUILTIN_SKILLS_DIR ? [BUILTIN_SKILLS_DIR] : []),
-    ...(pluginsRoot !== BUILTIN_PLUGINS_DIR ? [BUILTIN_PLUGINS_DIR] : [])
-  ];
-  const tenantIds = new Set();
+  const adminSkills = roots ? '' : envDir('QQ_AGENT_ADMIN_SKILLS_DIR');
+  const adminPlugins = roots ? '' : envDir('QQ_AGENT_ADMIN_PLUGINS_DIR');
+  let blocked;
+  let invalidBlocklist = false;
+  try { blocked = readBlockedExtensions(); }
+  catch (error) {
+    blocked = new Set();
+    invalidBlocklist = true;
+    log(`[skill] 屏蔽列表无法读取，已停用内置扩展：${error.message}`);
+  }
+  const records = roots
+    ? [{ root: skillsRoot, origin: 'custom' }, { root: pluginsRoot, origin: 'custom' }]
+    : [
+        { root: BUILTIN_SKILLS_DIR, origin: 'builtin' },
+        { root: BUILTIN_PLUGINS_DIR, origin: 'builtin' },
+        ...(adminSkills ? [{ root: adminSkills, origin: 'admin' }] : []),
+        ...(adminPlugins ? [{ root: adminPlugins, origin: 'admin' }] : [])
+      ];
   const scanTenantSkills = skillsRoot === BUILTIN_SKILLS_DIR || tenantExtensionsAllowed();
   const scanTenantPlugins = pluginsRoot === BUILTIN_PLUGINS_DIR || tenantExtensionsAllowed();
-  for (const root of [scanTenantSkills ? skillsRoot : null, scanTenantPlugins ? pluginsRoot : null]) {
-    if (!root) continue;
-    if (!fs.existsSync(root)) continue;
-    for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const found = readManifest(path.join(root, entry.name));
-      if (found.raw?.id) tenantIds.add(String(found.raw.id).toLowerCase());
-    }
+  if (!roots) {
+    if (skillsRoot !== BUILTIN_SKILLS_DIR && scanTenantSkills) records.push({ root: skillsRoot, origin: 'tenant' });
+    if (pluginsRoot !== BUILTIN_PLUGINS_DIR && scanTenantPlugins) records.push({ root: pluginsRoot, origin: 'tenant' });
   }
-  const builtins = [];
-  for (const root of builtinRoots) builtins.push(await loadSkillRoot(root, { log, label: 'builtin', excludedIds: tenantIds }));
+  const allow = extensionAllowlist();
+  const idsAt = (root) => {
+    if (!fs.existsSync(root)) return [];
+    return fs.readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith('.')).map((entry) => {
+      const found = readManifest(path.join(root, entry.name));
+      return String(found.raw?.id || entry.name).trim().toLowerCase();
+    }).filter((id) => !allow || allow.has(id));
+  };
+  const allResults = [];
+  for (let index = 0; index < records.length; index++) {
+    const record = records[index];
+    const excludedIds = new Set(records.slice(index + 1).flatMap((item) => idsAt(item.root)));
+    if (record.origin === 'builtin') {
+      for (const id of blocked) excludedIds.add(id);
+      if (invalidBlocklist) for (const id of idsAt(record.root)) excludedIds.add(id);
+    }
+    if (roots && !tenantExtensionsAllowed() && record.root !== BUILTIN_SKILLS_DIR && record.root !== BUILTIN_PLUGINS_DIR) continue;
+    allResults.push(await loadSkillRoot(record.root, { log, label: record.origin, excludedIds, origin: record.origin }));
+  }
   const blockedRoot = (rootDir) => ({ loaded: [], failed: [], skipped: [{ dir: rootDir, reason: '租户扩展执行隔离未确认' }], rootDir });
-  const skillRes = scanTenantSkills ? await loadSkillRoot(skillsRoot, { log, label: 'skill' }) : blockedRoot(skillsRoot);
-  const pluginRes = scanTenantPlugins ? await loadSkillRoot(pluginsRoot, { log, label: 'plugin' }) : blockedRoot(pluginsRoot);
+  if (!scanTenantSkills) allResults.push(blockedRoot(skillsRoot));
+  if (!scanTenantPlugins) allResults.push(blockedRoot(pluginsRoot));
   // 与磁盘对齐：把已经不存在于任何目录里的 Skill 卸掉（开发期删目录/改名的幽灵残留）。
   // 注意"存活集合"包含加载失败的 id —— 文件还在只是这次没加载成功，不触发卸载。
   // 加载失败的 Skill 现在分两种：
   //   · 有旧实例在跑 → 旧实例保留继续工作（loadSkillDir 的 stale-but-working 分支）；
   //   · 首次就失败   → 带 loadError 注册进表（UI 可见），不产生任何副作用。
-  const allResults = [...builtins, skillRes, pluginRes];
   const aliveIds = allResults.flatMap((result) => [...result.loaded, ...result.failed].map((r) => r.id)).filter(Boolean);
   const pruned = skillManager.pruneMissing(aliveIds, {});
   if (pruned.length) log(`[skill] 已卸载磁盘上不存在或不在白名单内的 Skill：${pruned.join(', ')}`);
@@ -658,7 +698,7 @@ export async function loadPlugins({ log = console.log, roots = null } = {}) {
     failed: allResults.flatMap((result) => result.failed),
     skipped: allResults.flatMap((result) => result.skipped || []),
     pruned,
-    dirs: { skills: skillsRoot, plugins: pluginsRoot }
+    dirs: { skills: skillsRoot, plugins: pluginsRoot, adminSkills, adminPlugins }
   };
 }
 
@@ -674,7 +714,8 @@ export function watchPlugins({ log = console.log, onReload, roots: rootsOpt = nu
     return null;
   }
   const { skills: skillsRoot, plugins: pluginsRoot } = resolveSkillRoots(rootsOpt);
-  const roots = [skillsRoot, pluginsRoot].filter((d) => fs.existsSync(d));
+  const roots = [skillsRoot, pluginsRoot, envDir('QQ_AGENT_ADMIN_SKILLS_DIR'), envDir('QQ_AGENT_ADMIN_PLUGINS_DIR')]
+    .filter((d, index, list) => d && list.indexOf(d) === index && fs.existsSync(d));
   if (!roots.length) return null;
 
   let reloadTimer = null;

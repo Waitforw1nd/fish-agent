@@ -1,5 +1,6 @@
 import { h, clear, setBusy } from '../../lib/dom.js';
 import { normalizeRelayLogs } from '../../lib/user-data.js';
+import { normalizeRelayOverview } from '../../lib/normalize.js';
 import { formatDateTime, formatMicros, formatNumber, redactText, truncate } from '../../lib/format.js';
 import { apiErrorMessage } from '../../lib/view-data.js';
 import { badge, emptyBlock, errorBlock } from '../../lib/ui.js';
@@ -10,6 +11,7 @@ export function mountUserLogs({ root, api, toast, tenants = [], tenantId = '', t
   let loading = true;
   let requestSerial = 0;
   let logs = [];
+  let billing = null;
   let loadError = '';
   const filters = { days: '7', model: '', status: '' };
   const tenant = resolveTenant(tenants, tenantId);
@@ -58,6 +60,18 @@ export function mountUserLogs({ root, api, toast, tenants = [], tenantId = '', t
       result.appendChild(errorBlock({ title: '调用日志加载失败', message: loadError, onRetry: () => { void load(); } }));
       return;
     }
+    if (billing?.byChat?.length) {
+      const rows = billing.byChat.slice(0, 30).map((row) => h('tr', {},
+        h('td', {}, row.date || '—'), h('td', {}, row.chatKey || '未归因'),
+        h('td', {}, row.model || '—'), h('td', {}, formatNumber(row.requests)),
+        h('td', {}, formatMicros(row.costMicros, billing.currency))));
+      result.appendChild(h('section', { class: 'card card-pad' },
+        h('h2', {}, '按日与会话费用'),
+        h('p', { class: 'note' }, '来自账单归因数据，范围由平台账单决定；未归因调用显示为未归因。'),
+        h('div', { class: 'table-wrap' }, h('table', { class: 'billing-table' },
+          h('thead', {}, h('tr', {}, h('th', {}, '日期'), h('th', {}, '会话'), h('th', {}, '模型'), h('th', {}, '调用'), h('th', {}, '费用'))),
+          h('tbody', {}, ...rows)))));
+    }
     if (!logs.length) {
       result.appendChild(emptyBlock({ title: '暂无调用日志', message: '当前筛选条件下没有记录，可调整时间、模型或状态后重试。', symbol: '—' }));
       return;
@@ -93,9 +107,13 @@ export function mountUserLogs({ root, api, toast, tenants = [], tenantId = '', t
     render();
     setBusy(refreshButton, true);
     try {
-      const payload = await api.getRelayLogs(tenant.id, { ...filters });
+      const [payload, overview] = await Promise.all([
+        api.getRelayLogs(tenant.id, { ...filters }),
+        typeof api.getRelayOverview === 'function' ? api.getRelayOverview(tenant.id).catch(() => null) : Promise.resolve(null)
+      ]);
       if (!active || serial !== requestSerial) return;
       logs = normalizeRelayLogs(payload);
+      billing = overview ? normalizeRelayOverview(overview).billing : null;
       loading = false;
       render();
       if (notify) toast?.show?.('日志已刷新');

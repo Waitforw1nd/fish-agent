@@ -86,7 +86,17 @@ export function guardConfigPatch(patch) {
   }
   const out = structuredClone(patch);
   const warnings = [];
+  stripDangerousKeys(out, warnings);
   for (const key of LOCKED_TOP_LEVEL) deleteWithWarning(out, key, warnings);
+  for (const key of ['api', 'webSearch', 'security', 'tools']) {
+    if (!Object.hasOwn(out, key)) continue;
+    if (!out[key] || typeof out[key] !== 'object' || Array.isArray(out[key])) {
+      delete out[key];
+      warnings.push(`${key} 必须是对象，已忽略`);
+      continue;
+    }
+    stripReplacementMarkers(out[key], warnings, `${key}.`);
+  }
   if (out.api && typeof out.api === 'object') {
     for (const key of LOCKED_API_KEYS) deleteWithWarning(out.api, key, warnings, 'api.');
     if (out.api.model !== undefined && (typeof out.api.model !== 'string' || out.api.model.length > 200)) {
@@ -117,6 +127,27 @@ export function guardConfigPatch(patch) {
   return { patch: out, warnings, blocked: false };
 }
 
+function stripDangerousKeys(node, warnings, seen = new WeakSet()) {
+  if (!node || typeof node !== 'object' || seen.has(node)) return;
+  seen.add(node);
+  for (const key of Object.keys(node)) {
+    if (['__proto__', 'constructor', 'prototype'].includes(key)) {
+      delete node[key];
+      warnings.push('不安全的配置键已忽略');
+    } else stripDangerousKeys(node[key], warnings, seen);
+  }
+}
+
+function stripReplacementMarkers(node, warnings, prefix, seen = new WeakSet()) {
+  if (!node || typeof node !== 'object' || seen.has(node)) return;
+  seen.add(node);
+  if (Object.hasOwn(node, '__replace__')) {
+    delete node.__replace__;
+    warnings.push(`${prefix}整体替换已锁定`);
+  }
+  for (const [key, value] of Object.entries(node)) stripReplacementMarkers(value, warnings, `${prefix}${key}.`, seen);
+}
+
 function stripNestedBaseUrl(node, warnings, prefix, depth = 0) {
   if (!node || typeof node !== 'object' || depth > 3) return;
   for (const [key, value] of Object.entries(node)) {
@@ -132,7 +163,9 @@ function stripNestedBaseUrl(node, warnings, prefix, depth = 0) {
 export function guardApiBody({ method, pathname, body }) {
   const verb = String(method || 'GET').toUpperCase();
   if (pathname === '/api/config' && verb === 'POST') {
-    return { body: guardConfigPatch(body), modified: false };
+    const guarded = guardConfigPatch(body);
+    deleteWithWarning(guarded.patch, 'skills', guarded.warnings);
+    return { body: guarded, modified: false };
   }
   if (pathname === '/api/media-data' && verb === 'POST') {
     if (!body || typeof body !== 'object' || !Array.isArray(body.items)) {

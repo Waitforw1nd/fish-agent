@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { loadConfig } from '../src/config.js';
 import { CloudManager } from '../src/app.js';
+import { reserveTestPortRange } from './port-pool.mjs';
 
 export const FIXTURES = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), 'fixtures');
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', '..', '..');
@@ -12,9 +13,15 @@ export function fixture(name) {
   return path.join(FIXTURES, name);
 }
 
-export function makeConfig(extra = {}) {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fish-cloud-test-'));
-  const basePort = 41000 + Math.floor(Math.random() * 6000);
+export async function makeConfig(extra = {}) {
+  const pool = await reserveTestPortRange();
+  let dataDir;
+  try {
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fish-cloud-test-'));
+  } catch (error) {
+    await pool.release();
+    throw error;
+  }
   const env = {
     CLOUD_DATA_DIR: dataDir,
     CLOUD_HOST: '127.0.0.1',
@@ -31,8 +38,8 @@ export function makeConfig(extra = {}) {
     CLOUD_NAPCAT_ENTRY: fixture('fake-qqproto.mjs'),
     CLOUD_SNOWLUMA_ENTRY: fixture('fake-qqproto.mjs'),
     CLOUD_BILI_BRIDGE_ENTRY: fixture('fake-bili.mjs'),
-    CLOUD_PORT_RANGE_START: String(basePort),
-    CLOUD_PORT_RANGE_END: String(basePort + 1500),
+    CLOUD_PORT_RANGE_START: String(pool.start),
+    CLOUD_PORT_RANGE_END: String(pool.end),
     CLOUD_PROCESS_START_TIMEOUT_MS: '8000',
     CLOUD_PROCESS_STOP_TIMEOUT_MS: '2000',
     CLOUD_CRASH_BACKOFF_MS: '100',
@@ -41,20 +48,35 @@ export function makeConfig(extra = {}) {
     CLOUD_LOGIN_MAX_FAILURES: '20',
     CLOUD_EXPIRY_SWEEP_MS: '300'
   };
-  const config = loadConfig(env, extra);
-  return { config, dataDir };
+  try {
+    const config = loadConfig(env, extra);
+    return { config, dataDir, releasePorts: pool.release };
+  } catch (error) {
+    await pool.release();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 export async function startManager(extra = {}) {
-  const { config, dataDir } = makeConfig(extra);
-  const manager = new CloudManager({ config });
-  await manager.start();
+  const { config, dataDir, releasePorts } = await makeConfig(extra);
+  let manager;
+  try {
+    manager = new CloudManager({ config });
+    await manager.start();
+  } catch (error) {
+    try { await manager?.stop(); } catch { /* ignore */ }
+    await releasePorts();
+    try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    throw error;
+  }
   return {
     manager,
     config,
     dataDir,
     async stop({ remove = true } = {}) {
       try { await manager.stop(); } catch { /* ignore */ }
+      if (manager.stopped) await releasePorts();
       if (remove) {
         try { fs.rmSync(dataDir, { recursive: true, force: true }); } catch { /* ignore */ }
       }

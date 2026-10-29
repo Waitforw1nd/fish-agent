@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { deepMerge, ensureDir, randomToken, readJsonFile, writeJsonPrivate } from './util.js';
+import { deepMerge, ensureDir, randomToken, readJsonFile, redactSecrets, writeJsonPrivate } from './util.js';
 import { isolateQqSwitchTasks } from '../../qq-agent-core/src/qq-switch-isolation.js';
 
 export class AgentRuntime {
@@ -72,6 +72,7 @@ export class AgentRuntime {
       allow: existing.allow || { groups: [], private: [] },
       allowAllWhenEmpty: false,
       tools: { ...(existing.tools || {}), crossChatSend: false },
+      security: { ...(existing.security || {}), allowPrivateImageHosts: false },
       connection: {
         ...(existing.connection || {}),
         enabled: Boolean(links.qq?.enabled),
@@ -155,7 +156,9 @@ export class AgentRuntime {
     const dataDir = this.dataDir(tenant);
     const pluginsDir = path.join(tenant.data_dir, 'extensions', 'plugins');
     const skillsDir = path.join(tenant.data_dir, 'extensions', 'skills');
-    for (const dir of [dataDir, pluginsDir, skillsDir]) ensureDir(dir, 0o700);
+    const adminPluginsDir = path.join(tenant.data_dir, 'admin-extensions', 'plugins');
+    const adminSkillsDir = path.join(tenant.data_dir, 'admin-extensions', 'skills');
+    for (const dir of [dataDir, pluginsDir, skillsDir, adminPluginsDir, adminSkillsDir]) ensureDir(dir, 0o700);
     const status = await this.supervisor.start({
       tenantId: tenant.id,
       kind: 'agent',
@@ -169,13 +172,16 @@ export class AgentRuntime {
         QQ_AGENT_ALLOWED_HOSTS: `127.0.0.1:${port}`,
         QQ_AGENT_TOKEN: consoleToken,
         QQ_AGENT_CLOUD: '1',
+        QQ_AGENT_READY_IPC: '1',
         QQ_AGENT_PLUGINS_DIR: pluginsDir,
         QQ_AGENT_SKILLS_DIR: skillsDir,
+        QQ_AGENT_ADMIN_PLUGINS_DIR: adminPluginsDir,
+        QQ_AGENT_ADMIN_SKILLS_DIR: adminSkillsDir,
         QQ_AGENT_TELEMETRY: '0',
         QQ_AGENT_COMMUNITY: '0'
       },
       logFile: path.join(this.config.logDir, 'tenants', `${tenant.id}.agent.log`),
-      ready: { host: '127.0.0.1', port, timeoutMs: this.config.processStartTimeoutMs },
+      ready: { host: '127.0.0.1', port, timeoutMs: this.config.processStartTimeoutMs, signal: 'agent-listening' },
       restart: true
     });
     return { ...status, port };
@@ -295,6 +301,53 @@ export class AgentRuntime {
   consoleHeaders(tenant) {
     const token = this.secrets.get(tenant.id, 'agent.console_token', '');
     return { 'x-console-token': token };
+  }
+
+  isRunning(tenant) {
+    return this.supervisor.status(tenant.id, 'agent').state === 'running' && Boolean(this.port(tenant));
+  }
+
+  async request(tenant, method, endpoint, body) {
+    const port = this.port(tenant);
+    if (!this.isRunning(tenant) || !port) {
+      throw Object.assign(new Error('Agent 尚未运行'), { status: 503, code: 'AGENT_NOT_RUNNING' });
+    }
+    if (!/^\/api\/[a-zA-Z0-9_./?=&%:-]*$/.test(endpoint) || endpoint.includes('..')) {
+      throw Object.assign(new Error('Agent 路径不合法'), { status: 400, code: 'INVALID_AGENT_PATH' });
+    }
+    const content = body === undefined ? null : Buffer.from(JSON.stringify(body));
+    return new Promise((resolve, reject) => {
+      const headers = { host: `127.0.0.1:${port}`, ...this.consoleHeaders(tenant) };
+      if (content) Object.assign(headers, { 'content-type': 'application/json', 'content-length': content.length });
+      const req = http.request({ host: '127.0.0.1', port, path: endpoint, method, headers, timeout: 10000 }, (res) => {
+        const chunks = [];
+        let size = 0;
+        res.on('data', (chunk) => {
+          size += chunk.length;
+          if (size > 16 * 1024 * 1024) req.destroy(new Error('Agent 响应过大'));
+          else chunks.push(chunk);
+        });
+        res.on('end', () => {
+          let data;
+          try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+          catch { return reject(Object.assign(new Error('Agent 返回无效数据'), { status: 502, code: 'AGENT_BAD_RESPONSE' })); }
+          if (res.statusCode < 200 || res.statusCode >= 300 || data?.ok === false) {
+            const token = String(headers['x-console-token'] || '');
+            const message = String(data?.error || `Agent HTTP ${res.statusCode}`);
+            const safeMessage = redactSecrets(token ? message.split(token).join('[redacted]') : message);
+            return reject(Object.assign(new Error(safeMessage), {
+              status: res.statusCode >= 400 ? res.statusCode : 502, code: data?.code || 'AGENT_REQUEST_FAILED'
+            }));
+          }
+          resolve(data);
+        });
+      });
+      req.on('timeout', () => req.destroy(new Error('Agent 请求超时')));
+      req.on('error', (error) => reject(Object.assign(new Error(`Agent 请求失败: ${error.message}`), {
+        status: 503, code: 'AGENT_UNAVAILABLE'
+      })));
+      req.end(content);
+    });
   }
 
   logs(tenant, limit = 100) {

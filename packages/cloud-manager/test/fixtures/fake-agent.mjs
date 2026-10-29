@@ -130,6 +130,9 @@ server.on('upgrade', (req, socket, head) => {
 server.listen(port, '127.0.0.1', () => {
   fs.mkdirSync(dataDir, { recursive: true });
   fs.writeFileSync(path.join(dataDir, 'fake-agent-ready.json'), JSON.stringify({ port, pid: process.pid, tokenHash: token ? crypto.createHash('sha256').update(token).digest('hex') : null }));
+  if (process.env.QQ_AGENT_READY_IPC === '1' && process.connected && process.send) {
+    process.send({ type: 'fish-agent-listening', pid: process.pid, port }, () => {});
+  }
 });
 
 process.on('SIGTERM', () => { try { server.close(); } catch { /* ignore */ } process.exit(0); });

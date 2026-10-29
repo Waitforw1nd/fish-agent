@@ -2,13 +2,15 @@
 
 养鱼 Bot 由四个可独立运行的包组成：QQ-Agent 核心、LLBot QQ 协议端、B 站 OneBot 桥接，以及多租户 cloud-manager 与原生 Web panel。各包独立安装依赖；根目录提供 `npm test`、`npm run test:all` 和 `npm run check`。
 
-> 本文命令以 Windows + Git Bash 为例。NapCat P1 本地实现和模拟测试不能代替真实验收：VPS SSH 公钥认证受阻，真实容器、扫码、QQ 消息、模型和公网 HTTPS 尚未验证。P2 切换事务和 P3 全量恢复仍未完成。
+> 本文命令以 Windows + Git Bash 为例。本轮视图与接口重构的本地验证见 [实施记录](docs/view-api-execution.md)，既有 VPS QQ 对话基线见 [云端管理文档](docs/cloud-manager.md)。本轮未重新部署或使用真实账号验收；P2 双向切换、P3 多实例恢复及公网 HTTPS 仍需按各自验收记录确认。
 
 ## 产品目标与当前能力
 
 面向用户的最简目标是：**交钱 → 创建实例 → 登录 QQ → 绑定模型 Key → 开始养鱼**。平台应提供默认的“大肥鱼”人设与合理档位，隐藏协议配置和日常运维；用户在开始养鱼时首次选择允许互动的群，不能默认在所有群开口。提供 QQ 号只能指定要登录的账号，仍需本人用手机扫码或确认登录。
 
-这是产品目标，不代表整条流程已经交付或完成真实账号验收。用户面板的“我的鱼”支持多实例、套餐选择、启停及实例详情中的 QQ 号扫码入口；管理员可通过用户管理查看各用户拥有的实例并为其创建实例。新实例默认使用 NapCat，已配置实例保留原内核；NapCat 需管理员准备 Docker 镜像，LLBot Direct 需有效平台授权。普通用户无需填写协议技术配置。自定义渠道首次配置仍需填写 Base URL、API Key 和模型，充值需管理员审核，并非在线支付自动开通。首次群白名单选择的简化体验、默认人设和档位仍需结合实际产品流程确认。
+用户面板的“我的鱼”支持多实例、套餐选择及四步就绪检查。单实例工作台提供接入、白名单、人设、档位与能力、会话与记忆五个页签，可在实例离线时预配白名单和角色；在线时可拉取联系人、导入角色卡、调整回复策略和查看运行记录。设置通过同源接口完成，使用公网 IP 或单域名时也可进入。新实例默认使用 NapCat，已配置实例保留原内核；NapCat 需管理员准备 Docker 镜像，LLBot Direct 需有效平台授权。
+
+管理员工作区提供运营总览、租户与用户管理、插件库分发、充值审核、平台设置和审计；可按实例安装可信插件或屏蔽内置插件。普通用户只能切换已开放功能和修改安全参数。自定义模型渠道支持保存前主动测试连接和读取模型，但首次仍需填写 Base URL、API Key 和模型。充值由管理员核验后确认或驳回，并非在线支付自动开通；真实账号的完整交付体验仍需实际验收。
 
 密钥各有用途：平台会为实例自动签发并配置租户 Relay Key，供 Agent 访问平台 Relay；用户绑定的模型 Key 是自有模型上游的 API Key，当前自定义渠道还需上游地址和模型名。LLBot 的 `auth_token` 则用于 QQ 协议端认证，既不是模型 Key，也不是 Relay Key。平台渠道仍保留现有套餐、额度与 Relay 计费模式；具体配置和充值流程见 [云端管理文档](docs/cloud-manager.md)，QQ 认证见 [协议文档](docs/protocols.md)。
 
@@ -19,6 +21,7 @@
 - [docs/cloud-manager.md](docs/cloud-manager.md)：云端 API、数据目录、端口、密钥、套餐和计费。
 - [docs/extensions.md](docs/extensions.md)：扩展目录、`send.guard`、`message.command`、角色卡安全边界。
 - [docs/testing.md](docs/testing.md)：测试/fake 清单、双租户 E2E、故障排查和修改后验证清单。
+- [docs/view-api-execution.md](docs/view-api-execution.md)：本次视图、接口和核心模块化的分阶段交付及验收结果。
 
 ## 1. 准备便携 Node 24
 
@@ -147,7 +150,7 @@ cd /e/bigPeach/fish/packages/protocol-qq-llbot
 npm run check && npm test && npm run build
 ```
 
-最近的本地验证与限制见 [docs/testing.md](docs/testing.md)：根 `check` 和单独执行的核心 coverage 已通过，根 `test:all` 仍因缺少便携 QQ/SnowLuma 组件在核心 setup 检查处失败，后续测试不能据此视为通过。测试期间工作区存在并行修改，最终集成后仍需复验；真实账号、上游及部署环境均待验收。本次 README 文档调整未运行软件测试。
+最近的本地验证与限制见 [阶段五验收记录](docs/view-api-stage-5.md) 和 [docs/testing.md](docs/testing.md)。本机缺少便携 QQ/SnowLuma，核心标准测试的安装检查无法通过；单独继续执行的测试结果另列，不把它们等同于整套标准命令通过。真实账号、上游及部署验收与本地自动化结果分别记录。
 
 ## 5. 数据与秘密不要提交到文档或仓库
 

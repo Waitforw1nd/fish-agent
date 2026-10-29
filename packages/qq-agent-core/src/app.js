@@ -1,3 +1,4 @@
+import { sanitizeConfig, sanitizeProvider } from './config-codec.js';
 // 总装：OneBot 事件接入 → 存储 → 编排器；HTTP API + SSE 给 UI。
 // Electron 主进程与 headless 服务器都从这里启动。
 import http from 'node:http';
@@ -1263,68 +1264,6 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     return req.headers['x-console-token'] === token || url.searchParams.get('token') === token;
   }
 
-  // ── 配置脱敏 ────────────────────────────────────────────────────────────
-  // 凡是字段名命中这些模式的，值一律替换为空串（保留"有/无"的 hasXxx 标记）。
-  // 覆盖：apiKey / api_key / accessToken / httpAccessToken / token / secret / password / cookie …
-  // ⚠️ cookie 必须在内：media-download 插件的 bilibiliCookie / douyinCookie
-  //    是登录凭据，曾经 pattern 不认导致 /api/config 明文返回。
-  // ⚠️ server.token（控制台管理令牌）也在内：它只用于 x-console-token 校验，
-  //    GET /api/config 没有任何理由把明文管理令牌回传给浏览器（2026-09-26 审查发现
-  //    裸 "token" 键名不命中原 pattern，配置了 token 的实例会在每次打开设置页时泄露它）。
-  const SECRET_KEY_PATTERN = /(apikey|api_key|accesstoken|access_token|communitykey|cookie|secret|password|privatekey|private_key|^token$)/i;
-  // 形如 apiKeyFrom 的字段存的是"密钥来源标识"（如 manual），不是密钥本身，不要脱敏
-  const SECRET_KEY_EXCLUDE = /from$/i;
-
-  function sanitizeConfig(cfg) {
-    const out = JSON.parse(JSON.stringify(cfg ?? {}));
-    const seen = new WeakSet();
-
-    const walk = (node) => {
-      if (!node || typeof node !== 'object' || seen.has(node)) return;
-      seen.add(node);
-      for (const key of Object.keys(node)) {
-        const value = node[key];
-        if (value && typeof value === 'object') { walk(value); continue; }
-        if (SECRET_KEY_EXCLUDE.test(key)) continue;
-        // 已生成的 hasXxx 布尔标记本身也会被 apikey 模式匹配到，
-        // 不排除就会连锁生成 hasHasXxx
-        if (/^has/i.test(key) && typeof value === 'boolean') continue;
-        if (SECRET_KEY_PATTERN.test(key)) {
-          // ⚠️ 必须"删除字段"而不是"置为空串"。
-          // 前端保存设置时会把整个 config 展开成 patch 回传（...c.webSearch?.deepseek），
-          // 若这里留一个空串，deepMerge 会拿空串覆盖掉服务端保存的真 Key ——
-          // 表现为：用户点一次"保存设置"，所有搜索 Key 就被静默清空。
-          // 删掉字段则展开时不会带上该键，服务端原值得以保留。
-          delete node[key];
-          const flagName = `has${key.charAt(0).toUpperCase()}${key.slice(1)}`;
-          node[flagName] = Boolean(String(value ?? '').trim());
-        }
-      }
-    };
-    walk(out);
-
-    // 密钥集合整体清空（不逐 key 暴露存在性）
-    if (out.dshProviderKeys && typeof out.dshProviderKeys === 'object') {
-      const has = {};
-      for (const [k, v] of Object.entries(out.dshProviderKeys)) has[k] = Boolean(String(v ?? '').trim());
-      out.dshProviderKeys = {};
-      out.dshProviderKeyPresence = has;
-    }
-
-    // 提供商列表：删掉 key 字段（同样不能置空串，否则回传时覆盖真实 Key），补 hasKey
-    if (Array.isArray(out.providers)) {
-      for (const p of out.providers) {
-        const real = (cfg?.dshProviderKeys || {})[p.id] || p.apiKey;
-        delete p.apiKey;
-        p.hasKey = Boolean(String(real ?? '').trim());
-      }
-    }
-    // 顶层 api：walk 已生成 hasApiKey，这里补一个简写的 hasKey 供旧代码读取
-    if (out.api) out.api.hasKey = out.api.hasApiKey ?? Boolean(String(cfg?.api?.apiKey ?? '').trim());
-
-    return out;
-  }
-
   // ── 明文密钥端点守卫 ────────────────────────────────────────────────────
   /**
    * 这是本地单机程序，控制台就在本机浏览器打开，「显示密钥」是用户自己的操作，
@@ -1343,17 +1282,6 @@ export function createApp({ log = console.log, runtime = null } = {}) {
       if (req.headers['x-console-token'] === token || url.searchParams.get('token') === token) return true;
     }
     return originAllowed(req);
-  }
-
-  /**
-   * 提供商对象脱敏：去掉明文 apiKey，只留 hasKey。
-   * upsertProvider / addModelsToProvider / removeModelFromProvider 的返回值都带
-   * 明文 key（来自 withResolvedKey），不能直接 json 给前端。
-   */
-  function sanitizeProvider(p) {
-    if (!p || typeof p !== 'object') return p;
-    const { apiKey, ...rest } = p;
-    return { ...rest, apiKey: '', hasKey: Boolean(String(apiKey ?? '').trim()) };
   }
 
   // 声明式路由表（src/routes.js）：把所有依赖一次性注入。
@@ -1534,7 +1462,11 @@ export function createApp({ log = console.log, runtime = null } = {}) {
       server.once('error', reject);
       server.listen(port, runtime?.listenOptions?.().host || '127.0.0.1', () => {
         server.off('error', reject);
-        resolve(server.address().port);
+        const listeningPort = server.address().port;
+        if (process.env.QQ_AGENT_READY_IPC === '1' && process.connected && process.send) {
+          process.send({ type: 'fish-agent-listening', pid: process.pid, port: listeningPort }, () => {});
+        }
+        resolve(listeningPort);
       });
     });
   }

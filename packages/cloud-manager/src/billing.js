@@ -321,20 +321,100 @@ export class BillingService {
       .all(tenantId).map(serializeRecharge);
   }
 
-  confirmRecharge(rechargeId, adminUserId) {
+  listRecharges({ status = 'all', tenantId = '', limit = 100 } = {}) {
+    if (!['all', 'pending', 'confirmed', 'rejected'].includes(status)) {
+      throw error(400, 'INVALID_RECHARGE_STATUS', '充值状态无效');
+    }
+    const conditions = [];
+    const params = [];
+    if (status !== 'all') { conditions.push('r.status = ?'); params.push(status); }
+    if (tenantId) { conditions.push('r.tenant_id = ?'); params.push(tenantId); }
+    params.push(Math.max(1, Math.min(500, Math.trunc(Number(limit)) || 100)));
+    return this.db.prepare(`
+      SELECT r.*, t.name AS tenant_name, t.slug AS tenant_slug,
+        u.username AS created_by_username, reviewer.username AS reviewed_by_username
+      FROM recharges r
+      LEFT JOIN tenants t ON t.id = r.tenant_id
+      LEFT JOIN users u ON u.id = r.created_by_user_id
+      LEFT JOIN users reviewer ON reviewer.id = r.reviewed_by_user_id
+      ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
+      ORDER BY r.created_at DESC, r.id DESC LIMIT ?
+    `).all(...params).map(serializeRecharge);
+  }
+
+  transactions(tenantId, limit = 100) {
+    return this.db.prepare(`
+      SELECT id, tenant_id, amount_micros, kind, note, created_at FROM wallet_transactions
+      WHERE tenant_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
+    `).all(tenantId, Math.max(1, Math.min(500, Math.trunc(Number(limit)) || 100)))
+      .map((row) => ({
+        id: row.id, tenantId: row.tenant_id, amountMicros: Number(row.amount_micros),
+        kind: row.kind, note: row.note || '', createdAt: row.created_at
+      }));
+  }
+
+  reviewNote(value, required = false) {
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      throw error(400, 'INVALID_REVIEW_NOTE', '审核备注必须是文本');
+    }
+    const note = String(value || '').trim();
+    if ((required && !note) || note.length > 500) {
+      throw error(400, 'INVALID_REVIEW_NOTE', required ? '请填写不超过 500 字的驳回原因' : '审核备注不能超过 500 字');
+    }
+    return note || null;
+  }
+
+  confirmRecharge(rechargeId, adminUserId, note) {
+    const reviewNote = this.reviewNote(note);
     return immediateTransaction(this.db, () => {
       const row = this.db.prepare('SELECT * FROM recharges WHERE id = ?').get(rechargeId);
       if (!row) throw error(404, 'RECHARGE_NOT_FOUND', '充值订单不存在');
       if (row.status !== 'pending') throw error(409, 'RECHARGE_ALREADY_CONFIRMED', '充值订单已审核，不能重复到账');
       const ts = now();
       const updated = this.db.prepare(`
-        UPDATE recharges SET status = 'confirmed', confirmed_by_user_id = ?, confirmed_at = ?
+        UPDATE recharges SET status = 'confirmed', confirmed_by_user_id = ?, confirmed_at = ?,
+          reviewed_by_user_id = ?, reviewed_at = ?, review_note = ?
         WHERE id = ? AND status = 'pending'
-      `).run(adminUserId, ts, rechargeId);
+      `).run(adminUserId, ts, adminUserId, ts, reviewNote, rechargeId);
       if (Number(updated.changes) !== 1) throw error(409, 'RECHARGE_ALREADY_CONFIRMED', '充值订单已审核，不能重复到账');
       const wallet = this.credit(row.tenant_id, row.amount_micros, `充值订单 ${rechargeId}`, 'recharge');
       return { recharge: serializeRecharge(this.db.prepare('SELECT * FROM recharges WHERE id = ?').get(rechargeId)), wallet };
     });
+  }
+
+  rejectRecharge(rechargeId, adminUserId, note) {
+    const reviewNote = this.reviewNote(note, true);
+    return immediateTransaction(this.db, () => {
+      const row = this.db.prepare('SELECT * FROM recharges WHERE id = ?').get(rechargeId);
+      if (!row) throw error(404, 'RECHARGE_NOT_FOUND', '充值订单不存在');
+      if (row.status !== 'pending') throw error(409, 'RECHARGE_ALREADY_CONFIRMED', '充值订单已审核，不能重复审核');
+      const updated = this.db.prepare(`
+        UPDATE recharges SET status = 'rejected', reviewed_by_user_id = ?, reviewed_at = ?, review_note = ?
+        WHERE id = ? AND status = 'pending'
+      `).run(adminUserId, now(), reviewNote, rechargeId);
+      if (Number(updated.changes) !== 1) throw error(409, 'RECHARGE_ALREADY_CONFIRMED', '充值订单已审核，不能重复审核');
+      return serializeRecharge(this.db.prepare('SELECT * FROM recharges WHERE id = ?').get(rechargeId));
+    });
+  }
+
+  platformStats() {
+    const pending = this.db.prepare(`
+      SELECT COUNT(*) AS count, COALESCE(SUM(amount_micros), 0) AS amount FROM recharges WHERE status = 'pending'
+    `).get();
+    const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+    const readUsage = (since) => {
+      const row = this.db.prepare(`
+        SELECT COUNT(*) AS requests, COALESCE(SUM(prompt_tokens), 0) AS prompt,
+          COALESCE(SUM(completion_tokens), 0) AS completion, COALESCE(SUM(cost_micros), 0) AS cost
+        FROM ledger WHERE created_at >= ?
+      `).get(since);
+      return { requests: Number(row.requests), promptTokens: Number(row.prompt), completionTokens: Number(row.completion),
+        totalTokens: Number(row.prompt) + Number(row.completion), costMicros: Number(row.cost) };
+    };
+    return {
+      pendingRecharges: { count: Number(pending.count), amountMicros: Number(pending.amount) },
+      today: readUsage(today.getTime()), last7Days: readUsage(now() - 7 * 86400000)
+    };
   }
 
   hasBalance(tenantId, micros = 1) {
@@ -351,6 +431,13 @@ function serializeRecharge(row) {
     createdByUserId: row.created_by_user_id,
     confirmedByUserId: row.confirmed_by_user_id || null,
     createdAt: row.created_at,
-    confirmedAt: row.confirmed_at || null
+    confirmedAt: row.confirmed_at || null,
+    reviewedByUserId: row.reviewed_by_user_id || null,
+    reviewedAt: row.reviewed_at || null,
+    reviewNote: row.review_note || null,
+    tenantName: row.tenant_name || null,
+    tenantSlug: row.tenant_slug || null,
+    createdByUsername: row.created_by_username || null,
+    reviewedByUsername: row.reviewed_by_username || null
   };
 }

@@ -1,6 +1,6 @@
 import { h, clear, setBusy } from '../../lib/dom.js';
-import { confirmDialog } from '../../lib/modal.js';
-import { normalizeRelayOverview } from '../../lib/normalize.js';
+import { confirmDialog, openModal } from '../../lib/modal.js';
+import { normalizeRelayOverview, normalizeModels } from '../../lib/normalize.js';
 import { normalizeRelayCustom } from '../../lib/user-data.js';
 import { formatDateTime, redactText } from '../../lib/format.js';
 import { validateRelayInput } from '../../lib/validate.js';
@@ -16,16 +16,28 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
     return { destroy() { active = false; root.replaceChildren(); } };
   }
 
-  const readOnly = tenant.role === 'viewer';
+  const readOnly = ['viewer', 'operator'].includes(tenant.role);
   let platform = null;
   let custom = null;
   let savingPlatform = false;
   let savingCustom = false;
   let deleting = false;
+  let dirtyPlatform = false;
+  let dirtyCustom = false;
+  const hasUnsavedChanges = () => dirtyPlatform || dirtyCustom;
+  const canLeave = () => !hasUnsavedChanges() || !globalThis.confirm || globalThis.confirm('渠道配置尚未保存，确定离开吗？');
   const head = userHead({
-    eyebrow: 'Channels', title: '渠道 Key',
+    eyebrow: 'Channels', title: '模型与渠道',
     sub: '绑定平台 Relay Key，或使用自己的 OpenAI 兼容服务。密钥只写入服务端，不会回显。',
-    tenants, tenant, onTenantChange, refresh: () => { void load(true); }
+    tenants, tenant, onTenantChange: (next) => {
+      if (!canLeave()) {
+        const select = head.querySelector('select');
+        if (select) select.value = tenant.id;
+        return;
+      }
+      onTenantChange?.(next);
+    },
+    refresh: () => { if (canLeave()) { dirtyPlatform = false; dirtyCustom = false; void load(true); } }
   });
   userLoading(root, head, '正在读取渠道配置…');
 
@@ -36,6 +48,8 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
     class: 'input', id: 'user-relay-key', name: 'relayKey', type: 'password',
     autocomplete: 'off', spellcheck: false, placeholder: '输入平台 Relay Key'
   });
+  const platformModel = h('select', { class: 'select', id: 'user-relay-model', disabled: readOnly },
+    h('option', { value: '' }, '选择套餐允许的模型'));
   const platformSave = h('button', { class: 'btn btn-primary', type: 'button' }, '绑定平台 Key');
   const platformCard = h('section', { class: 'card card-pad' },
     cardHead({
@@ -48,6 +62,7 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
         h('label', { class: 'field-label', for: 'user-relay-key' }, 'Relay Key'),
         platformInput
       ),
+      h('div', { class: 'field' }, h('label', { class: 'field-label', for: 'user-relay-model' }, '默认模型'), platformModel),
       platformAlert,
       h('div', { class: 'inline-buttons' }, platformSave)
     )
@@ -65,15 +80,17 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
   });
   const modelInput = h('input', {
     class: 'input mono', id: 'custom-model', name: 'model', type: 'text',
-    autocomplete: 'off', spellcheck: false, placeholder: '例如：gpt-4o-mini'
+    autocomplete: 'off', spellcheck: false, placeholder: '例如：gpt-4o-mini', attrs: { list: 'custom-model-options' }
   });
+  const modelSuggestions = h('datalist', { id: 'custom-model-options' });
   const customAlert = alertBox('', 'danger', { hidden: true });
   const customSave = h('button', { class: 'btn btn-primary', type: 'button' }, '保存配置');
   const customDelete = h('button', { class: 'btn btn-danger', type: 'button', disabled: true }, '删除配置');
+  const customTest = h('button', { class: 'btn btn-soft', type: 'button', disabled: readOnly || typeof api.testRelayCustom !== 'function' }, '测试连接并拉取模型');
   const customCard = h('section', { class: 'card card-pad' },
     cardHead({
       kicker: 'OpenAI Compatible', title: '自定义 OpenAI 兼容渠道',
-      sub: '填写自己的 Base URL、API Key 和模型。当前接口不提供连接测试。', badge: customBadge
+      sub: '填写自己的 Base URL、API Key 和模型，可先测试连接并拉取模型。', badge: customBadge
     }),
     h('form', { class: 'relay-form', novalidate: true },
       h('div', { class: 'field' },
@@ -87,18 +104,18 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
         ),
         h('div', { class: 'field' },
           h('label', { class: 'field-label', for: 'custom-model' }, 'model'),
-          modelInput
+          modelInput, modelSuggestions
         )
       ),
       customAlert,
-      h('div', { class: 'inline-buttons' }, customSave, customDelete)
+      h('div', { class: 'inline-buttons' }, customSave, customTest, customDelete)
     ),
     customStatus,
     note('API Key 仅用于本次写入；更新其他字段时可留空以保留原密钥。')
   );
 
   if (readOnly) {
-    for (const element of [platformInput, platformSave, baseUrlInput, apiKeyInput, modelInput, customSave, customDelete]) element.disabled = true;
+    for (const element of [platformInput, platformModel, platformSave, baseUrlInput, apiKeyInput, modelInput, customSave, customTest, customDelete]) element.disabled = true;
   }
 
   function renderPage() {
@@ -125,9 +142,10 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
     if (!active) return;
     const refresh = head.querySelector('button');
     setBusy(refresh, true);
-    const [platformResult, customResult] = await Promise.allSettled([
+    const [platformResult, customResult, modelsResult] = await Promise.allSettled([
       api.getRelayOverview(tenant.id),
-      api.getRelayCustom(tenant.id)
+      api.getRelayCustom(tenant.id),
+      typeof api.getRelayModels === 'function' ? api.getRelayModels(tenant.id) : Promise.resolve(null)
     ]);
     if (!active) return;
     if (platformResult.status === 'fulfilled') {
@@ -138,11 +156,19 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
     } else {
       setAlert(platformAlert, apiErrorMessage(platformResult.reason, { fallback: '平台渠道加载失败。' }), 'danger');
     }
+    if (modelsResult.status === 'fulfilled' && modelsResult.value) {
+      const models = normalizeModels(modelsResult.value.platformModels || modelsResult.value);
+      platformModel.replaceChildren(h('option', { value: '' }, '选择套餐允许的模型'),
+        ...models.map((model) => h('option', { value: model.id }, model.name)));
+      if (!dirtyPlatform) platformModel.value = modelsResult.value.platformModel || platform?.model || '';
+    }
     if (customResult.status === 'fulfilled') {
       custom = normalizeRelayCustom(customResult.value);
-      baseUrlInput.value = custom.baseUrl;
-      modelInput.value = custom.model;
-      apiKeyInput.value = '';
+      if (!dirtyCustom) {
+        baseUrlInput.value = custom.baseUrl;
+        modelInput.value = custom.model;
+        apiKeyInput.value = '';
+      }
       updateCustom();
       setAlert(customAlert, '', 'danger');
     } else {
@@ -155,7 +181,7 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
 
   async function savePlatform() {
     if (readOnly || savingPlatform || !active) return;
-    const validation = validateRelayInput({ key: platformInput.value }, { configured: platform?.configured });
+    const validation = validateRelayInput({ key: platformInput.value, model: platformModel.value }, { configured: platform?.configured });
     if (!validation.ok) {
       setAlert(platformAlert, validation.error, 'danger');
       return;
@@ -163,9 +189,18 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
     savingPlatform = true;
     setBusy(platformSave, true);
     try {
-      await api.updateRelayKey(tenant.id, { key: validation.payload.key });
+      const result = await api.updateRelayKey(tenant.id, validation.payload);
       if (!active) return;
       platformInput.value = '';
+      dirtyPlatform = false;
+      if (!validation.payload.key && typeof result?.key === 'string' && result.key) {
+        const key = h('input', { class: 'input mono', type: 'text', value: result.key, readOnly: true, 'aria-label': '新签发的 Relay Key' });
+        const close = h('button', { class: 'btn btn-primary', type: 'button' }, '我已保存');
+        const modal = openModal({ root: modalRoot || document.getElementById('modal-root') || document.body,
+          title: '新的 Relay Key', description: '密钥仅显示一次，请妥善保存。', content: key, footer: [close],
+          onClose: () => { key.value = ''; } });
+        close.addEventListener('click', () => modal.close('saved'));
+      }
       toast?.show?.('平台 Relay Key 已绑定', { tone: 'success' });
       const payload = await api.getRelayOverview(tenant.id);
       if (!active) return;
@@ -213,6 +248,7 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
         keyConfigured: result?.keyConfigured ?? result?.custom?.keyConfigured ?? true
       });
       apiKeyInput.value = '';
+      dirtyCustom = false;
       updateCustom();
       toast?.show?.('自定义渠道已保存', { tone: 'success' });
     } catch (error) {
@@ -221,6 +257,33 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
       savingCustom = false;
       if (active) setBusy(customSave, false);
     }
+  }
+
+  async function testCustom() {
+    if (readOnly || !active || typeof api.testRelayCustom !== 'function') return;
+    const baseUrl = baseUrlInput.value.trim();
+    let parsed;
+    try { parsed = new URL(baseUrl); } catch { /* reported below */ }
+    if (!parsed || !['http:', 'https:'].includes(parsed.protocol)) {
+      setAlert(customAlert, '请输入有效的 http(s) Base URL', 'danger');
+      return;
+    }
+    const body = { baseUrl };
+    if (apiKeyInput.value.trim()) body.apiKey = apiKeyInput.value.trim();
+    setBusy(customTest, true); setAlert(customAlert, '', 'danger');
+    try {
+      const result = await api.testRelayCustom(tenant.id, body);
+      if (!active) return;
+      const connected = result?.connected ?? result?.test?.connected;
+      const models = normalizeModels(result?.models || result?.test?.models || []);
+      modelSuggestions.replaceChildren(...models.map((model) => h('option', { value: model.id }, model.name)));
+      customStatus.textContent = connected
+        ? `连接成功${Number.isFinite(Number(result?.latencyMs)) ? ` · ${Number(result.latencyMs)} ms` : ''} · 发现 ${models.length} 个模型。`
+        : `连接失败：${redactText(result?.error || result?.test?.error || '请检查地址与密钥。', { maxLength: 240 })}`;
+      if (connected && !modelInput.value && models[0]) modelInput.value = models[0].id;
+    } catch (error) {
+      if (active) setAlert(customAlert, apiErrorMessage(error, { fallback: '连接测试失败。' }), 'danger');
+    } finally { if (active) setBusy(customTest, false); }
   }
 
   async function deleteCustom() {
@@ -240,6 +303,7 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
       baseUrlInput.value = '';
       apiKeyInput.value = '';
       modelInput.value = '';
+      dirtyCustom = false;
       updateCustom();
       toast?.show?.('自定义渠道已删除', { tone: 'success' });
     } catch (error) {
@@ -255,18 +319,23 @@ export function mountUserChannel({ root, api, toast, tenants = [], tenantId = ''
 
   platformSave.addEventListener('click', () => { void savePlatform(); });
   customSave.addEventListener('click', () => { void saveCustom(); });
+  customTest.addEventListener('click', () => { void testCustom(); });
   customDelete.addEventListener('click', () => { void deleteCustom(); });
   customCard.querySelector('form').addEventListener('submit', (event) => { event.preventDefault(); void saveCustom(); });
   for (const input of [platformInput, baseUrlInput, apiKeyInput, modelInput]) {
     input.addEventListener('input', () => {
+      if (input === platformInput) dirtyPlatform = true; else dirtyCustom = true;
       setAlert(input === platformInput ? platformAlert : customAlert, '', 'danger');
     });
   }
+  platformModel.addEventListener('change', () => { dirtyPlatform = true; });
 
   renderPage();
   void load();
   return {
     destroy() { active = false; root.replaceChildren(); },
-    refresh: load
+    refresh: load,
+    hasUnsavedChanges,
+    canLeave
   };
 }

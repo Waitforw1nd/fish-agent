@@ -2,6 +2,7 @@ import http from 'node:http';
 import net from 'node:net';
 import { guardApiBody, isApiAllowed } from './config-guard.js';
 import { readBuffer, sendHtml, sendJson, sendText } from './http.js';
+import { safeSkillStatus } from './extension-service.js';
 
 const HOP_BY_HOP = new Set([
   'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
@@ -185,6 +186,10 @@ export class Gateway {
       this.respondError(req, res, Object.assign(new Error('无权访问该租户'), { status: 403, code: 'TENANT_FORBIDDEN' }), { tenant });
       return true;
     }
+    if (role === 'viewer' && !['GET', 'HEAD', 'OPTIONS'].includes(String(req.method).toUpperCase())) {
+      sendJson(res, 403, { ok: false, error: '当前角色无权修改实例', code: 'INSUFFICIENT_ROLE' });
+      return true;
+    }
     try {
       this.tenants.assertActive(tenant);
     } catch (error) {
@@ -210,6 +215,50 @@ export class Gateway {
     }
     if (parsed.pathname.startsWith('/api/') && !isApiAllowed(req.method, parsed.pathname)) {
       sendJson(res, 403, { ok: false, error: '该 API 在云端控制台不可用', code: 'API_NOT_ALLOWED' });
+      return true;
+    }
+    const method = String(req.method).toUpperCase();
+    const skillMatch = /^\/api\/skills\/([^/]+)$/.exec(parsed.pathname);
+    const skillAction = skillMatch && !['reload', 'cleanup', 'install-zip', 'capabilities'].includes(skillMatch[1]);
+    const guardedRead = method === 'GET' && [
+      '/api/config', '/api/skills', '/api/tools/availability', '/api/skills/capabilities'
+    ].includes(parsed.pathname);
+    const guardedWrite = method === 'POST' && (parsed.pathname === '/api/config'
+      || parsed.pathname === '/api/skills/reload' || parsed.pathname === '/api/skills/cleanup' || skillAction);
+    if ((guardedRead || guardedWrite) && !this.agentSettings) {
+      sendJson(res, 503, { ok: false, error: '配置安全服务不可用', code: 'GUARD_UNAVAILABLE' });
+      return true;
+    }
+    if (guardedRead) {
+      try {
+        let result;
+        if (parsed.pathname === '/api/config') {
+          result = (await this.agentSettings.getConfig(tenant)).config;
+        } else {
+          const visible = await this.agentSettings.skills(tenant);
+          if (parsed.pathname === '/api/tools/availability') {
+            result = { categories: visible.categories, tools: (visible.tools || []).map((item) => {
+              const safe = safeSkillStatus(item);
+              return { id: safe.id, category: safe.category, skillId: safe.skillId ?? null,
+                enabled: safe.enabled, code: safe.code ?? null, reason: safe.reason || '' };
+            }) };
+          } else if (parsed.pathname === '/api/skills/capabilities') {
+            const allowed = new Set((visible.skills || []).map((item) => item.id));
+            const raw = await this.agentRuntime.request(tenant, 'GET', parsed.pathname);
+            result = { capabilities: (raw.capabilities || []).map((capability) => {
+              const providers = (capability.providers || []).filter((item) => allowed.has(item.skillId)).map((item) => {
+                const safe = safeSkillStatus(item);
+                return { skillId: safe.skillId, active: safe.active, code: safe.code ?? null,
+                  reason: safe.reason || '', implemented: safe.implemented, usable: safe.usable };
+              });
+              const available = providers.some((item) => item.usable);
+              return { name: capability.name, available,
+                reason: available ? '' : '扩展能力当前不可用，请检查运行状态', providers };
+            }).filter((capability) => capability.providers.length) };
+          } else result = visible;
+        }
+        sendJson(res, 200, result);
+      } catch (error) { this.respondError(req, res, error, { tenant }); }
       return true;
     }
     let bodyBuffer = null;
@@ -239,6 +288,63 @@ export class Gateway {
         this.respondError(req, res, error, { tenant });
         return true;
       }
+    }
+    if (guardedWrite) {
+      try {
+        let body = {};
+        if (bodyBuffer?.length) {
+          try { body = JSON.parse(bodyBuffer.toString('utf8')); }
+          catch { throw Object.assign(new Error('请求体不是合法 JSON'), { status: 400, code: 'INVALID_JSON' }); }
+        }
+        if (guardWarnings?.length) res.setHeader('x-cloud-guard', encodeURIComponent(JSON.stringify(guardWarnings)));
+        const withExtensionLock = (fn) => this.agentSettings.extensionService
+          ? this.agentSettings.extensionService.withLock(`tenant:${tenant.id}`, fn) : fn();
+        let result;
+        if (parsed.pathname === '/api/config') {
+          result = await this.agentSettings.locked(tenant, async () => {
+            this.agentSettings.assertStable(tenant);
+            const response = await this.agentRuntime.request(tenant, 'POST', '/api/config', body);
+            response.config = await this.agentSettings.publicConfig(tenant, response.config);
+            return response;
+          });
+        } else if (parsed.pathname === '/api/skills/cleanup') {
+          result = await withExtensionLock(() => this.agentSettings.locked(tenant, async () => {
+            this.agentSettings.assertStable(tenant);
+            const response = await this.agentRuntime.request(tenant, 'POST', parsed.pathname, body);
+            response.config = await this.agentSettings.publicConfig(tenant, response.config);
+            return response;
+          }));
+        } else if (parsed.pathname === '/api/skills/reload') {
+          result = await withExtensionLock(async () => {
+            const response = await this.agentRuntime.request(tenant, 'POST', parsed.pathname, body);
+            const visible = await this.agentSettings.skills(tenant);
+            const safeIds = (items) => Array.isArray(items)
+              ? items.filter((id) => typeof id === 'string' && /^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(id)) : [];
+            const capabilities = safeIds(visible.capabilities);
+            const summary = visible.summary || {};
+            return {
+              loaded: safeIds(response.loaded),
+              failed: (Array.isArray(response.failed) ? response.failed : []).map((entry) => ({
+                id: safeIds([entry?.id])[0] || '', error: '扩展加载失败，请检查 Agent 日志'
+              })),
+              pruned: safeIds(response.pruned),
+              skills: visible.skills,
+              summary: {
+                total: Number(summary.total) || 0, active: Number(summary.active) || 0,
+                disabled: Number(summary.disabled) || 0, broken: Number(summary.broken) || 0, capabilities
+              },
+              capabilities
+            };
+          });
+        } else {
+          let id;
+          try { id = decodeURIComponent(skillMatch[1]); }
+          catch { throw Object.assign(new Error('扩展 ID 不合法'), { status: 400, code: 'INVALID_EXTENSION_ID' }); }
+          result = await withExtensionLock(() => this.agentSettings.updateSkill(tenant, id, body));
+        }
+        sendJson(res, 200, { ok: true, ...result });
+      } catch (error) { this.respondError(req, res, error, { tenant }); }
+      return true;
     }
     this.proxyHttp({ req, res, tenant, port, bodyBuffer, guardWarnings, publicOrigin: `${schemeOf(this.config, req)}://${req.headers.host}` });
     return true;

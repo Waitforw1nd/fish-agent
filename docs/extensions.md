@@ -11,20 +11,33 @@
 
 两型使用同一套 manifest 和生命周期，不是两种不同的文件格式。每目录优先读 `skill.json`，其次 `plugin.json`；入口默认 `index.js`，可用 `entry` 指定，但必须留在本目录内，符号链接越界也会拒绝。
 
-本地默认扫描包内目录。设置租户目录时先扫描包内扩展，再扫描租户扩展；同 ID 由租户扩展覆盖，租户目录独立保存配置和启用状态：
+本地默认扫描包内目录。云端按以下顺序加载，后层同 ID 覆盖前层：
 
-- `QQ_AGENT_PLUGINS_DIR`
-- `QQ_AGENT_SKILLS_DIR`
+1. 包内 `plugins/`、`skills/`，可由实例数据目录中的 `blocked-extensions.json` 屏蔽。
+2. `QQ_AGENT_ADMIN_PLUGINS_DIR`、`QQ_AGENT_ADMIN_SKILLS_DIR`，仅由管理员安装的受信代码。
+3. `QQ_AGENT_PLUGINS_DIR`、`QQ_AGENT_SKILLS_DIR`，只有确认隔离后才加载的租户代码。
 
-cloud-manager 将租户目录注入为 `tenants/<id>/extensions/plugins` 和 `extensions/skills`。租户目录或云模式存在时，默认拒绝上传并跳过租户扩展；部署者只有在完成实际隔离后，才可为该进程设置 `QQ_AGENT_EXTENSION_ISOLATION_CONFIRMED=1`。该开关是部署者的声明，不提供或验证隔离。包内扩展仍加载。启用后租户控制台可上传不超过 8 MiB 的 ZIP；清单、入口与解压资源均受校验，失败恢复原目录并重扫，中断留下的备份在重启时恢复。包内同 ID 扩展由租户版本覆盖，包升级不改写租户目录。扩展代码在宿主进程执行：上线开放租户上传前必须完成 Linux 用户、文件、网络及进程隔离和 VPS 验收，当前目录分离并非安全沙箱。
+cloud-manager 将管理员目录注入为 `tenants/<id>/admin-extensions/{plugins,skills}`，将租户目录注入为 `tenants/<id>/extensions/{plugins,skills}`。管理员专用接口不需要开启租户隔离声明；普通用户不能通过这些接口安装、删除或屏蔽代码。租户目录或云模式存在时，默认拒绝租户上传并跳过租户扩展；部署者只有在完成实际隔离后，才可为该进程设置 `QQ_AGENT_EXTENSION_ISOLATION_CONFIRMED=1`。该开关是部署者的声明，不提供或验证隔离。
+
+两种安装入口均限制 ZIP 不超过 8 MiB，并校验清单、入口、路径和解压资源。管理员安装或覆盖失败会恢复原目录并重载原版本；删除管理员覆盖版时默认同时屏蔽同 ID 内置版本，也可显式选择回退内置。屏蔽只影响当前实例，损坏的屏蔽清单不会被当作空清单放行内置扩展。包升级不改写实例扩展目录。扩展代码在宿主进程执行，上线开放租户上传前仍须完成 Linux 用户、文件、网络及进程隔离和真实验收。
 
 其他开关：
 
 - `QQ_AGENT_EXTENSIONS_ALLOW=id1,id2`：白名单外条目不 import，并卸载已加载实例。
 - `QQ_AGENT_HOT_RELOAD=1/0`：显式控制热重载；桌面默认开，loader 检测到 `QQ_AGENT_CLOUD=1`、`QQ_AGENT_DEPLOYMENT=cloud` 或 `QQ_AGENT_MULTI_TENANT=1` 时默认关。
-- cloud-manager 当前显式设置的是租户扩展目录、`QQ_AGENT_TELEMETRY=0`、`QQ_AGENT_COMMUNITY=0`；不要仅凭“运行在云里”就假定其他环境标记已注入，部署时应核查并显式设置所需的热重载策略。
+- cloud-manager 显式设置 `QQ_AGENT_CLOUD=1`、四个扩展目录变量、`QQ_AGENT_TELEMETRY=0`、`QQ_AGENT_COMMUNITY=0`。管理员操作使用显式重载接口，不依赖目录自动监听。
 
 扩展不是沙箱：入口 JS 在 Agent 进程内执行。`web_fetch` 权限只限制扩展通过 `api.fetch` 获取网络能力，不能阻止模块自行 import 或访问 Node API。只安装可信代码。
+
+### 云端管理与安全参数
+
+管理员可在插件中心上传公共库 ZIP，再选择实例批量分发、升级或移除；公共库位于 `<CLOUD_DATA_DIR>/extensions/catalog/{plugins,skills}`。单实例插件页支持直接上传、从库安装、移除、恢复内置和热重载。列表显示来源、版本、加载状态及真实安装实例，批量操作逐项报告结果。删除公共库条目不会删除已经安装的实例副本。
+
+普通 owner/operator 通过 `/api/tenants/:id/agent/skills/:skillId` 修改启用状态和 `configSchema` 声明的安全参数；支持布尔、数字、整数、短字符串及枚举。secret 字段以及名称涉及地址、路径、命令、脚本或凭据的参数不能读取或修改，未声明参数也会拒绝。通用配置写入不能直接修改 `skills`；viewer 始终只读。配置、schema 默认值和错误响应都不能用于回显凭据。
+
+在线操作写入后重载并回收旧工具、定时器和监听器；离线操作持久化到实例目录，下次启动生效。管理员扩展和屏蔽文件包含在加密快照中，普通所有者恢复快照时保留当前管理员决定；管理员恢复可还原快照中的版本。恢复与实例扩展变更共用锁，避免并发覆盖。
+
+对应云端实现为 `extension-service.js`、`agent-settings.js` 及 `routes/extensions.js`、`routes/agent.js`。接口表见 [云端扩展接口](cloud-manager.md#47-管理员扩展)，阶段验证见 [核心底座](view-api-stage-1.md) 与 [同源服务](view-api-stage-2-services.md)。
 
 ## 2. Manifest 与入口最小形状
 
@@ -163,7 +176,7 @@ greeting 不自动发送。导入模板会额外声明“核心安全规则、�
 
 ### 6.3 限额与配置覆盖风险
 
-主要限额：请求 8 MiB、JSON 2 MiB、PNG 5 MiB、base64 7 MiB 字符、深度 24、节点 50000、模板 100000 字符、名称 50 字符；同时清理 `__proto__/prototype/constructor` 等危险键。
+主要限额：请求体 12 MiB、JSON/PNG 文件各 8 MiB、base64 最多 `12 * 1024 * 1024` 字符、PNG 文本块 4 MiB、深度 24、节点 50000、模板 100000 字符、名称 50 字符；同时清理 `__proto__/prototype/constructor` 等危险键。
 
 `persona.systemPromptOverride` 是另一个高级功能：非空时会整体替换内置行为准则，可能移除安全规则、工具协议和反 AI 味约束。它不是角色卡导入字段，角色卡无法自动设置它；手工启用时必须自行保留必要安全约束。
 

@@ -223,10 +223,10 @@ export const PERSONAS = {
 
 export const PERSONA_CARD_LIMITS = Object.freeze({
   // 路由层 body 上限（base64 膨胀后仍要留余量）
-  maxRequestBytes: 8 * 1024 * 1024,
-  maxJsonBytes: 2 * 1024 * 1024,
-  maxPngBytes: 5 * 1024 * 1024,
-  maxBase64Chars: 7 * 1024 * 1024,
+  maxRequestBytes: 12 * 1024 * 1024,
+  maxJsonBytes: 8 * 1024 * 1024,
+  maxPngBytes: 8 * 1024 * 1024,
+  maxBase64Chars: 12 * 1024 * 1024,
   maxTextChunkBytes: 4 * 1024 * 1024,
   maxChunks: 2000,
   maxDepth: 24,

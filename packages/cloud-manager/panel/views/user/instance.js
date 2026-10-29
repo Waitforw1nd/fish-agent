@@ -1,116 +1,114 @@
-import { h, clear, setBusy } from '../../lib/dom.js';
-import { normalizeTenant, normalizeQQStatus, normalizeQQDrivers } from '../../lib/normalize.js';
+import { h, setBusy } from '../../lib/dom.js';
+import { normalizeTenant } from '../../lib/normalize.js';
 import { safeLink } from '../../lib/format.js';
 import { badge, errorBlock, pageHead } from '../../lib/ui.js';
-import { openQrFlow } from '../qr.js';
-import { createSwitchController } from '../qq-switch.js';
-import { createPoller } from '../../lib/polling.js';
+import { createTabs } from '../../components/tabs.js';
+import { mountQQPanel } from '../../components/qq-panel.js';
+import { mountBiliPanel } from '../../components/bili-panel.js';
+import { mountAgentStudio } from '../../components/agent-studio/index.js';
+import { readinessChecklist } from './shared.js';
 
-export function mountUserInstance({ root, api, toast, tenantId, modalRoot, onSelectTenant, timers, visibility } = {}) {
-  let active = true, tenant = null, qr = null, busy = false, loadSequence = 0, statusSequence = 0;
-  let drivers = { defaultDriver: '', drivers: [] }, selected = '', statusText = null, login = null, select = null, reason = null;
-  const statusPoller = createPoller({ intervalMs: 5000, timers, visibility, task: async () => {
-    const sequence = ++statusSequence;
-    const payload = await api.getQQStatus(tenantId);
-    if (!active || sequence !== statusSequence || !tenant) return;
-    tenant.qq = normalizeQQStatus(payload);
-    void switcher.restore(tenant.qq.activeOperationId || tenant.qq.latestOperationId);
-    updateStatus();
-  } });
-  const switcher = createSwitchController({ api, tenantId, modalRoot, toast, timers, onChange: () => updateStatus() });
-  const content = h('div', {});
-  root.replaceChildren(pageHead({ title: '我的鱼', sub: '管理实例和 QQ 登录。', actions: h('a', { class: 'btn btn-ghost', href: '#/user/instances' }, '返回我的鱼') }), content);
-  const chosen = () => drivers.drivers.find((driver) => driver.id === selected);
-  function updateStatus() {
-    if (!tenant || !statusText) return;
-    const q = tenant.qq || {};
-    statusText.textContent = `运行环境：${q.runtimeState || 'unknown'} · QQ 登录：${q.loginState || 'unknown'} · Agent 通道：${q.agentChannelState || 'unknown'} · ${q.canChat ? '可对话' : '尚不可确认可对话'}`;
-    const driver = chosen();
-    if (select) select.disabled = busy || switcher.busy;
-    if (reason) reason.textContent = driver ? (driver.available ? '' : driver.reason || '此内核当前不可用') : '无法读取允许的内核，请联系管理员。';
-    if (login) {
-      login.disabled = busy || switcher.busy || !driver?.available || tenant.expiry?.state === 'expired' || !tenant.running;
-      login.textContent = q.running ? '继续扫码登录' : '扫码登录 QQ';
+export function mountUserInstance({ root, api, toast, tenantId, modalRoot, onSelectTenant, timers, visibility, section = 'overview', user } = {}) {
+  let active = true, tenant = null, rawTenant = null, serial = 0, children = [], tabs = null, busy = false;
+  let current = ['overview', 'whitelist', 'persona', 'behavior', 'runtime'].includes(section) ? section : 'overview';
+  const content = h('div', { class: 'workspace-stack' });
+  root.replaceChildren(pageHead({ title: '我的鱼', sub: '管理实例、接入和机器人设置。', actions: h('a', { class: 'btn btn-ghost', href: '#/user/instances' }, '返回我的鱼') }), content);
+  const writable = () => ['owner', 'operator', 'admin'].includes(tenant?.role) || user?.role === 'admin';
+  const hasUnsavedChanges = () => children.some((view) => view.hasUnsavedChanges?.());
+  function clearChildren() { for (const view of children) view.destroy?.(); children = []; }
+  function renderSection() {
+    if (!active || !tenant) return;
+    clearChildren();
+    const body = content.querySelector('.user-workspace-body');
+    if (!body) return;
+    body.replaceChildren();
+    const context = { api, tenantId, tenant: rawTenant, toast, modalRoot, timers, visibility, user, readOnly: !writable() };
+    if (current === 'overview') {
+      const qqRoot = h('div', {}); body.appendChild(qqRoot);
+      children.push(mountQQPanel(qqRoot, context));
+      if (typeof api.getBiliConfig === 'function' || typeof api.getBiliStatus === 'function') {
+        const biliRoot = h('div', {}); body.appendChild(biliRoot); children.push(mountBiliPanel(biliRoot, context));
+      }
+      if (typeof api.getAgentStatus === 'function') {
+        const status = h('p', { class: 'note' }, '正在读取机器人状态…');
+        const pause = h('button', { class: 'btn btn-soft', type: 'button', disabled: !writable() }, '暂停回复');
+        const card = h('section', { class: 'card card-pad workspace-section' }, h('h3', {}, '机器人回复'), status, pause);
+        body.appendChild(card);
+        let paused = false;
+        const readStatus = async () => {
+          try {
+            const result = await api.getAgentStatus(tenantId);
+            if (!active || !body.contains(card)) return;
+            paused = Boolean(result?.paused ?? result?.status?.paused);
+            status.textContent = paused ? '机器人已暂停回复。' : '机器人允许回复。';
+            pause.textContent = paused ? '恢复回复' : '暂停回复';
+          } catch { if (active && body.contains(card)) status.textContent = '运行状态暂不可用。'; }
+        };
+        pause.addEventListener('click', async () => {
+          if (!writable()) return;
+          setBusy(pause, true);
+          try { await api.setAgentPause(tenantId, !paused); await readStatus(); }
+          catch (error) { toast?.show?.(error?.message || '无法更新暂停状态。', { tone: 'danger' }); }
+          finally { if (active) setBusy(pause, false); }
+        });
+        void readStatus();
+      }
+    } else {
+      children.push(mountAgentStudio(body, { ...context, section: current }));
     }
   }
   function render() {
     if (!active || !tenant) return;
-    const writable = ['owner', 'operator', 'admin'].includes(tenant.role);
     const running = tenant.status === 'running';
-    const input = h('input', { class: 'input', id: 'user-qq-uin', type: 'text', inputmode: 'numeric', autocomplete: 'off', placeholder: '输入 QQ 号', value: tenant.qq?.expectedUin || tenant.qq?.uin || '' });
-    select = h('select', { class: 'input', id: 'user-qq-driver', on: { change: () => { selected = select.value; updateStatus(); } } }, ...drivers.drivers.map((driver) => h('option', { value: driver.id }, driver.label)));
-    select.value = selected;
-    reason = h('p', { class: 'note' });
-    login = h('button', { class: 'btn btn-primary', type: 'button' }, '扫码登录 QQ');
-    const toggle = h('button', { class: 'btn btn-soft', type: 'button', disabled: ['starting', 'stopping', 'provisioning'].includes(tenant.status) || (!running && tenant.expiry?.state === 'expired') }, running ? '停止实例' : '启动实例');
-    const consoleUrl = safeLink(tenant.consoleUrl);
-    const actions = h('div', { class: 'inline-buttons' }, writable ? toggle : null,
-      writable && consoleUrl ? h('a', { class: 'btn btn-ghost', href: consoleUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Bot 控制台 ↗') : null,
-      h('a', { class: 'btn btn-ghost', href: '#/user/channel', on: { click: () => onSelectTenant?.(tenantId) } }, '渠道配置'));
-    statusText = h('p', { class: 'note', 'aria-live': 'polite' });
-    const switchButton = h('button', { class: 'btn btn-soft', type: 'button' }, '切换内核');
-    const qq = h('section', { class: 'card card-pad' }, h('h2', {}, 'QQ 登录'), statusText,
-      writable ? h('div', { class: 'field' }, h('label', { class: 'field-label', for: 'user-qq-driver' }, 'QQ 内核'), select, reason, h('label', { class: 'field-label', for: 'user-qq-uin' }, 'QQ 号'), input, login, switchButton) : h('p', { class: 'note' }, '当前为只读权限。'), switcher.node);
-    switchButton.addEventListener('click', () => {
-      if (!chosen()?.available || switcher.busy || !tenant.running || tenant.expiry?.state === 'expired') return;
-      const uin = input.value.trim();
-      if (!/^\d{5,12}$/.test(uin)) { toast?.show?.('请输入有效的 QQ 号。', { tone: 'danger' }); return; }
-      void switcher.start({ driver: selected, expectedRevision: tenant.qq.revision, uin });
-    });
-    clear(content);
-    content.appendChild(h('section', { class: 'card card-pad' }, h('h2', {}, tenant.name), badge(tenant.statusLabel, tenant.statusTone), actions));
-    content.appendChild(qq);
-    updateStatus();
+    const transitional = ['starting', 'stopping', 'provisioning'].includes(tenant.status);
+    const toggle = h('button', { class: 'btn btn-soft', type: 'button', disabled: !writable() || transitional || (!running && tenant.expiry?.state === 'expired') }, running ? '停止实例' : '启动实例');
     toggle.addEventListener('click', async () => {
-      if (busy || !active) return;
+      if (!active || busy || !writable()) return;
       busy = true; setBusy(toggle, true);
       try { if (running) await api.stopTenant(tenantId); else await api.startTenant(tenantId); if (active) await load(); }
-      catch { if (active) toast?.show?.('实例操作失败，请稍后重试。', { tone: 'danger' }); }
-      finally { busy = false; if (active) { setBusy(toggle, false); updateStatus(); } }
+      catch (error) { if (active) toast?.show?.(error?.message || '实例操作失败。', { tone: 'danger' }); }
+      finally { busy = false; if (active) setBusy(toggle, false); }
     });
-    login.addEventListener('click', async () => {
-      if (busy || switcher.busy || !active || !chosen()?.available || tenant.expiry?.state === 'expired' || !tenant.running) return;
-      const uin = input.value.trim();
-      if (!/^\d{5,12}$/.test(uin)) { toast?.show?.('请输入有效的 QQ 号。', { tone: 'danger' }); return; }
-      const q = tenant.qq || {};
-      if (q.kernel !== 'unknown' && q.kernel !== selected) { toast?.show?.('请使用切换内核按钮。', { tone: 'danger' }); return; }
-      if (q.running && ((q.kernel !== 'unknown' && q.kernel !== selected) || (q.expectedUin && q.expectedUin !== uin))) {
-        toast?.show?.('QQ 正在运行，请先停止后再更改内核或账号。', { tone: 'danger' }); return;
-      }
-      busy = true; setBusy(login, true); updateStatus();
-      try {
-        if (!q.running) {
-          await api.prepareQQ(tenantId, { kernel: selected, uin });
-          if (!active) return;
-          await api.startQQ(tenantId, { kernel: selected, uin });
-          if (!active) return;
-          tenant.qq = normalizeQQStatus(await api.getQQStatus(tenantId));
-          if (!active) return;
-        }
-        qr?.close();
-        qr = openQrFlow({ modalRoot, api, tenantId, toast, timers, safeMessages: true, capabilities: chosen().capabilities, runtimeGeneration: tenant.qq.runtimeGeneration, onConfirmed: () => { void statusPoller.refreshNow(); } });
-      } catch { if (active) toast?.show?.('QQ 登录准备失败，请联系平台管理员检查配置。', { tone: 'danger' }); }
-      finally { busy = false; if (active) { setBusy(login, false); updateStatus(); } }
-    });
+    const restart = h('button', { class: 'btn btn-ghost', type: 'button', disabled: !writable() || transitional || !running || typeof api.restartTenant !== 'function', on: { click: async () => {
+      if (!writable() || busy) return;
+      busy = true; setBusy(restart, true);
+      try { await api.restartTenant(tenantId); if (active) await load(); }
+      catch (error) { if (active) toast?.show?.(error?.message || '实例重启失败。', { tone: 'danger' }); }
+      finally { busy = false; if (active) setBusy(restart, false); }
+    } } }, '重启实例');
+    const consoleUrl = safeLink(tenant.consoleUrl);
+    tabs = createTabs({ tabs: [
+      { id: 'overview', label: '概览与扫码接入' }, { id: 'whitelist', label: '群聊与白名单' },
+      { id: 'persona', label: '人设与角色卡' }, { id: 'behavior', label: '响应档位与能力' },
+      { id: 'runtime', label: '会话、记忆与备份' }
+    ], selected: current, isDirty: hasUnsavedChanges, onSelect: (next) => { current = next; renderSection(); } });
+    const summary = h('section', { class: 'card card-pad' }, h('h2', {}, tenant.name), badge(tenant.statusLabel, tenant.statusTone),
+      h('div', { class: 'inline-buttons' }, writable() ? toggle : null, writable() && typeof api.restartTenant === 'function' ? restart : null,
+        writable() && consoleUrl ? h('a', { class: 'btn btn-ghost', href: consoleUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Bot 控制台 ↗') : null,
+        h('a', { class: 'btn btn-ghost', href: '#/user/channel', on: { click: () => onSelectTenant?.(tenantId) } }, '渠道配置')),
+      readinessChecklist(tenant, { onStart: writable() && !running ? () => toggle.click() : null, onSection: (next) => tabs.select(next), onSelectTenant }));
+    content.replaceChildren(summary, tabs.node, h('div', { class: 'user-workspace-body workspace-stack', role: 'tabpanel' }));
+    renderSection();
   }
   async function load() {
-    const sequence = ++loadSequence;
+    const sequence = ++serial;
     try {
-      const [payload, driverPayload, statusPayload] = await Promise.all([api.getTenant(tenantId), api.getQQDrivers(), api.getQQStatus(tenantId)]);
-      if (!active || sequence !== loadSequence) return;
+      const payload = await api.getTenant(tenantId);
+      if (!active || sequence !== serial) return;
+      clearChildren();
+      rawTenant = payload?.tenant || payload;
       tenant = normalizeTenant(payload);
-      tenant.role = String(payload?.role || payload?.tenant?.role || '').toLowerCase();
-      tenant.qq = normalizeQQStatus(statusPayload);
-      switcher.setWritable(['owner', 'operator', 'admin'].includes(tenant.role));
-      void switcher.restore(tenant.qq.activeOperationId || tenant.qq.latestOperationId);
-      drivers = normalizeQQDrivers(driverPayload);
-      selected = tenant.qq.kernel !== 'unknown' ? tenant.qq.kernel : drivers.defaultDriver;
+      tenant.role = String(payload?.role || rawTenant?.role || (user?.role === 'admin' ? 'admin' : '')).toLowerCase();
+      rawTenant = { ...rawTenant, role: tenant.role };
       render();
-      if (!statusPoller.isRunning()) statusPoller.start(); else void statusPoller.refreshNow();
-    } catch {
-      if (active && sequence === loadSequence) content.replaceChildren(errorBlock({ title: '实例加载失败', message: '无法读取此实例或内核列表，请检查权限或稍后重试。', onRetry: () => { void load(); } }));
+    } catch (error) {
+      if (active && sequence === serial) content.replaceChildren(errorBlock({ title: '实例加载失败', message: error?.message || '无法读取此实例，请检查权限或稍后重试。', onRetry: () => { void load(); } }));
     }
   }
   void load();
-  return { destroy() { active = false; statusSequence++; statusPoller.stop(); qr?.close(); switcher.destroy(); root.replaceChildren(); }, refresh: load };
+  return {
+    refresh: load, reload: load, hasUnsavedChanges,
+    canLeave: () => !hasUnsavedChanges() || !globalThis.confirm || globalThis.confirm('有未保存的更改，确定离开吗？'),
+    destroy() { active = false; serial++; clearChildren(); root.replaceChildren(); }
+  };
 }

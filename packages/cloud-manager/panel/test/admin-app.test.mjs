@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { installDom, flush, findByText } from './helpers/dom-stub.mjs';
+import { installDom, flush, findByText, fire } from './helpers/dom-stub.mjs';
 
 const settle = async () => { for (let i = 0; i < 8; i++) await flush(); };
 
 test('管理员应用挂载、指定所有者创建与异常路由', async () => {
   const document = installDom();
-  const ids = ['boot-screen', 'boot-status', 'login-root', 'app-shell', 'view-root', 'sidebar', 'sidebar-toggle', 'sidebar-scrim', 'tenant-nav', 'platform-nav', 'user-nav', 'side-tenants', 'brand-link', 'nav-hosting', 'nav-relay', 'page-title', 'breadcrumb', 'user-avatar', 'user-name', 'user-role', 'logout-btn', 'theme-toggle', 'modal-root', 'toast-root'];
+  const ids = ['boot-screen', 'boot-status', 'login-root', 'app-shell', 'view-root', 'sidebar', 'sidebar-toggle', 'sidebar-scrim', 'tenant-nav', 'platform-nav', 'user-nav', 'side-tenants', 'brand-link', 'nav-hosting', 'nav-relay', 'page-title', 'breadcrumb', 'user-avatar', 'user-name', 'user-role', 'logout-btn', 'theme-toggle', 'modal-root', 'toast-root', 'workspace-switch', 'password-btn'];
   for (const id of ids) { const el = document.createElement('div'); el.id = id; document.body.appendChild(el); }
   const nav = document.createElement('a');
   nav.setAttribute('data-nav', 'users'); nav.href = '#/users'; nav.textContent = '用户管理';
@@ -26,6 +26,7 @@ test('管理员应用挂载、指定所有者创建与异常路由', async () =>
   globalThis.fetch = async (path, init) => {
     calls.push({ path, method: init.method, body: init.body ? JSON.parse(init.body) : null, headers: init.headers });
     if (path === '/api/me') return response({ user: { id: 'admin', username: 'admin', role: 'admin' }, csrfToken: 'csrf-test' });
+    if (path === '/api/admin/overview') return response({ overview: { tenants: {}, users: {}, pendingRecharges: { count: 0 }, drivers: [] } });
     if (path === '/api/tenants' && init.method === 'POST') {
       tenants.push({ id: 'new-fish', name: hostile, status: 'stopped', ownerUserId: 'alice' });
       return response({ ok: true, tenant: tenants[0] }, 201);
@@ -48,8 +49,19 @@ test('管理员应用挂载、指定所有者创建与异常路由', async () =>
   const go = async (hash) => { location.hash = hash; listeners.hashchange(); await settle(); };
   await import('../app.js');
   await settle();
-  assert.equal(location.hash, '#/tenants');
+  assert.equal(location.hash, '#/admin/overview');
   listeners.hashchange(); await settle();
+  assert.match(root.textContent, /运营总览/);
+  assert.equal(document.getElementById('user-nav').hidden, true);
+  document.getElementById('workspace-switch').click();
+  assert.equal(location.hash, '#/user/instances');
+  listeners.hashchange(); await settle();
+  assert.equal(document.getElementById('platform-nav').hidden, true);
+  assert.equal(document.getElementById('user-nav').hidden, false);
+  document.getElementById('workspace-switch').click();
+  assert.equal(location.hash, '#/admin/overview');
+  listeners.hashchange(); await settle();
+  await go('#/tenants');
   assert.match(root.textContent, /租户总览/);
   assert.equal(document.getElementById('platform-nav').hidden, false);
   await go(nav.href);
@@ -116,4 +128,24 @@ test('管理员应用挂载、指定所有者创建与异常路由', async () =>
   findByText(root, 'button', '重试').click();
   await settle();
   assert.match(root.textContent, /还没有用户/);
+  await go('#/tenants/new-fish/agent');
+  const whitelist = root.querySelector('textarea');
+  whitelist.value = '123456';
+  fire(whitelist, 'input');
+  let leavePrompts = 0;
+  globalThis.confirm = () => { leavePrompts++; return false; };
+  try {
+    await go('#/admin/overview');
+    assert.equal(location.hash, '#/tenants/new-fish/agent');
+    listeners.hashchange();
+    await settle();
+    assert.equal(leavePrompts, 1);
+    assert.equal(root.querySelector('textarea'), whitelist);
+    assert.equal(whitelist.value, '123456');
+    globalThis.confirm = () => true;
+    await go('#/admin/overview');
+    assert.match(root.textContent, /运营总览/);
+  } finally {
+    delete globalThis.confirm;
+  }
 });

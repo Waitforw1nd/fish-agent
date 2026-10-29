@@ -1,3 +1,5 @@
+import http from 'node:http';
+import https from 'node:https';
 import { now } from '../util.js';
 import { transaction } from '../db.js';
 import { resolveCustomUpstreamUrl } from './ssrf.js';
@@ -101,6 +103,73 @@ export class CustomUpstreamService {
 
   async resolve(baseUrl) {
     return resolveCustomUpstreamUrl(baseUrl, { allowPrivate: this.allowPrivate });
+  }
+
+  async probe(tenant, body = {}) {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw inputError('INVALID_BODY', '请求体必须是对象');
+    const saved = this.get(tenant.id);
+    const baseUrl = body.baseUrl ?? saved.baseUrl;
+    const resolved = await this.resolve(baseUrl);
+    const normalized = resolved.url.toString().replace(/\/+$/, '');
+    const savedBase = saved.baseUrl ? String(saved.baseUrl).replace(/\/+$/, '') : '';
+    const providedKey = body.apiKey;
+    if (providedKey !== undefined && (typeof providedKey !== 'string' || !providedKey.trim() || providedKey.length > 4096 || /[\r\n]/.test(providedKey))) {
+      throw inputError('INVALID_CUSTOM_UPSTREAM_KEY', 'API Key 无效');
+    }
+    const key = providedKey?.trim() || (normalized === savedBase ? saved.apiKey : '');
+    if (!key) throw inputError('CUSTOM_UPSTREAM_KEY_REQUIRED', '请提供上游 API Key');
+    const target = new URL(this.url(normalized, 'models'));
+    const started = Date.now();
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ ...result, latencyMs: Date.now() - started });
+      };
+      const transport = target.protocol === 'https:' ? https : http;
+      const request = transport.request({
+        protocol: target.protocol, hostname: target.hostname.replace(/^\[|\]$/g, ''), port: target.port || undefined,
+        path: target.pathname, method: 'GET', lookup: resolved.lookup,
+        headers: { accept: 'application/json', authorization: `Bearer ${key}` }
+      }, (response) => {
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          response.resume();
+          finish({ connected: false, models: [], error: `上游返回 HTTP ${response.statusCode}` });
+          return;
+        }
+        let size = 0;
+        const chunks = [];
+        response.on('data', (chunk) => {
+          size += chunk.length;
+          if (size > 1024 * 1024) {
+            response.destroy();
+            finish({ connected: false, models: [], error: '上游响应过大' });
+          } else chunks.push(chunk);
+        });
+        response.on('end', () => {
+          try {
+            const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            const entries = Array.isArray(data.data) ? data.data : data.models;
+            if (!Array.isArray(entries)) throw new Error('invalid models');
+            const models = [...new Set(entries.map((entry) => typeof entry === 'string' ? entry : entry?.id)
+              .filter((entry) => typeof entry === 'string' && entry.length > 0 && entry.length <= 200 && !entry.includes(key)))].slice(0, 2000);
+            finish({ connected: true, models, error: null });
+          } catch {
+            finish({ connected: false, models: [], error: '上游模型列表格式无效' });
+          }
+        });
+        response.on('error', () => finish({ connected: false, models: [], error: '读取上游响应失败' }));
+      });
+      request.on('error', () => finish({ connected: false, models: [], error: '无法连接上游' }));
+      const timer = setTimeout(() => {
+        request.destroy();
+        finish({ connected: false, models: [], error: '连接上游超时' });
+      }, 8000);
+      timer.unref?.();
+      request.end();
+    });
   }
 
   url(baseUrl, path) {

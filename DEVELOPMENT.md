@@ -100,7 +100,9 @@ flowchart LR
   APP --> SQ[SendQueue + SendGuard\n白名单/能力/限频/去重]
   SQ --> CR
 
-  Panel[原生 cloud panel] --> CM[cloud-manager API\nCookie + CSRF + RBAC]
+  Panel[原生 cloud panel\n用户工作台 / 管理台] --> CM[cloud-manager API\nCookie + CSRF + RBAC]
+  CM --> Settings[AgentSettingsService / ExtensionService\n在线回环同步 / 离线配置和扩展]
+  Settings --> APP
   CM --> Sup[Supervisor\n每租户 agent/qq/bili 进程]
   Sup --> APP
   Sup --> QD
@@ -120,8 +122,10 @@ flowchart LR
 - 云端每个租户有独立数据目录、Agent 配置、密钥和端口租约；子域只是入口，不是唯一鉴权手段。
 - Relay 使用 Bearer `sk-fish-*`，panel API 使用 HttpOnly 会话 Cookie + CSRF，两套认证不可混用。
 - Headless 通过 `modules/headless/index.js` 组合现有 `createApp`、`ChannelRouter` 和独立连接模块，保留 QQ/Bili 双通道；不负责桌面 QQ 或协议端进程。数字 OneBot 路由目前不支持 QQBot OpenID。
+- 云端 Agent 使用子进程 IPC 监听回执证明就绪，再进行 TCP 探测；自定义 `CLOUD_AGENT_ENTRY` 须支持 `QQ_AGENT_READY_IPC=1` 下的 `fish-agent-listening` 消息，详见 [云端进程模型](docs/cloud-manager.md#1-进程与网络模型)。只检测端口可连接不足以证明目标 Agent 已启动。
 - 云端 LLBot 的 OneBot action 走 WS；其他驱动可走 HTTP。独立 headless 可选择 WS 或 HTTP，旧配置兼容 HTTP，显式连接配置优先。
-- 扩展先加载包内目录，再加载租户目录，同 ID 由租户版本覆盖。云模式或配置租户目录时，默认跳过租户扩展并拒绝上传；`QQ_AGENT_EXTENSION_ISOLATION_CONFIRMED=1` 只是部署者声明，不会创建或验证沙箱。扩展 JS 在 Agent 进程执行，上线开放上传前仍需完成 Linux 用户、文件、网络和进程隔离及实际验收。
+- 扩展按包内、管理员受信目录、已确认隔离的租户目录分层加载，后层同 ID 覆盖前层；`blocked-extensions.json` 按实例屏蔽。管理员通过云端专用接口安装可信代码，不需要开启租户自上传。云模式或配置租户目录时，默认跳过租户代码并拒绝租户上传；`QQ_AGENT_EXTENSION_ISOLATION_CONFIRMED=1` 只是部署者声明，不会创建或验证沙箱。
+- Agent 设置统一通过同源 `/api/tenants/:id/agent/*` 访问，离线配置也经过共享编解码和云端字段锁定；联系人、会话、记忆与提示词预览等运行态能力依赖已启动的 Agent。扩展 JS 仍在 Agent 进程执行，目录隔离不能替代 Linux 用户、文件、网络和进程隔离。
 
 ## 4. 配置和数据的真实来源
 
@@ -129,7 +133,8 @@ flowchart LR
 
 | 范围 | 源码/位置 | 说明 |
 |---|---|---|
-| 核心默认值 | `packages/qq-agent-core/src/config.js` | 包括 `channels`、`snowluma`、白名单、发送守卫和 persona。 |
+| 核心默认值 | `packages/qq-agent-core/src/config-defaults.js` | 包括 `channels`、`snowluma`、白名单、发送守卫和 persona；`config.js` 保留兼容导出。 |
+| 配置编解码 | `packages/qq-agent-core/src/config-codec.js` | 纯函数处理默认值、迁移、补丁合并与脱敏，供核心与云端离线设置共用。 |
 | 核心运行配置 | `<QQ_AGENT_DATA_DIR>/config.json` | 默认包内 `data/config.json`；API 返回会脱敏。 |
 | 核心双通道 | `resolveChannels()` + `ChannelRouter` | `channels.qq` 非空值优先，空值回落旧 `snowluma`。 |
 | B 站独立配置 | `protocol-bili-bridge/src/config.js` | 环境变量 + 代码 overrides，不自动读取 `.env`。 |
@@ -138,6 +143,8 @@ flowchart LR
 | 云端数据库 | `<CLOUD_DATA_DIR>/cloud.sqlite` | 用户、租户、密钥密文、端口、钱包、账单、备份元数据。 |
 | 云租户 Agent 配置 | `var/cloud/tenants/<id>/data/config.json` | `AgentRuntime` 重写云管字段，不能用来手工改 Relay/通道。 |
 | 云租户扩展 | `var/cloud/tenants/<id>/extensions/{plugins,skills}` | 由 `QQ_AGENT_*_DIR` 注入。 |
+| 管理员实例扩展 | `var/cloud/tenants/<id>/admin-extensions/{plugins,skills}` | 由 `QQ_AGENT_ADMIN_*_DIR` 注入，普通用户不能安装或删除代码。 |
+| 实例扩展屏蔽表 | `var/cloud/tenants/<id>/data/blocked-extensions.json` | 由管理员控制；普通所有者恢复快照时保留当前管理员决定。 |
 
 环境变量不会被这些包自动从 `.env` 加载，应在进程环境中设置。不要把真实配置样例写进文档。
 
@@ -149,19 +156,20 @@ flowchart LR
 | OneBot HTTP/WS 客户端 | `qq-agent-core/src/onebot.js` | 慢 action 超时、token、核心路由 fake；不要只测 import。 |
 | 出站、白名单、限频、B 站文本约束 | `qq-agent-core/src/sender.js` | `send-guard-test.mjs`、插件守卫、B 站桥接实际段支持。 |
 | 入站命令与 Agent 触发 | `qq-agent-core/src/app.js`、`orchestrator.js` | `message.command` 在存档后、Orchestrator 前；`final-integration-test.mjs`。 |
-| 扩展加载、热重载、权限 | `plugin-loader.js`、`skills/manifest.js`、`skills/manager.js` | 两个目录语义、卸载清理、云端 env、扩展安全测试。 |
+| 扩展加载、热重载、权限 | `plugin-loader.js`、`skills/manifest.js`、`skills/manager.js` | 三层来源、按实例屏蔽、卸载清理、失败回滚及扩展安全测试。 |
 | 角色卡导入/提示词 | `personas.js`、`prompt.js`、`routes.js` | V1/V2/V3、PNG、排除系统提示/世界书、preview 不落盘。 |
 | B 站原生事件与 OneBot 映射 | `protocol-bili-bridge/src/bridge.js`、`mapping/ids.js`、`onebot/message.js` | 所有 ID 保持安全整数；原生字符串只留内部。 |
 | B 站 action/admin | `onebot/actions.js`、`onebot/admin.js`、`onebot/server.js` | 核心能力白名单也要同步；admin 不返回秘密。 |
 | B 站登录/Cookie | `bili/auth.js`、`refresh.js`、`store/secret-store.js` | 四状态、SESSDATA、refresh token 加密、fake 扫码。 |
 | LLBot token 与扫码 | `protocol-qq-llbot/src/main/qqProtocol/direct.ts`、`direct-lib/authTokenWatcher.ts`、`webui/BE/routes/{login,authToken}.ts` | 云端 `qq/llbot.js` 的状态门和 UIN 校验。 |
-| 云管理 API | `cloud-manager/src/api.js`、`app.js` | 方法/路径/角色、CSRF/Origin、panel `lib/api.js` 和契约测试。 |
-| 云进程与配置注入 | `agent-runtime.js`、`qq-service.js`、`bili-service.js`、`supervisor.js` | 端口租约、数据隔离、启动/停止/崩溃恢复。 |
+| 云管理 API | `cloud-manager/src/routes/*.js`、`contracts/http.js`、`presenters/tenant-presenter.js` | `api.js` 仅聚合八个路由模块；核对角色、CSRF/Origin、状态摘要与 panel 按域客户端。 |
+| 同源 Agent 设置和扩展 | `cloud-manager/src/{agent-settings,extension-service,config-guard}.js` | 在线/离线一致、秘密脱敏、schema 参数验证、ZIP 安全、租户锁及快照恢复权限。 |
+| 云进程与配置注入 | `agent-runtime.js`、`qq-service.js`、`bili-service.js`、`supervisor.js` | 端口租约、Agent IPC 就绪证明、数据隔离、启动/停止/崩溃恢复。 |
 | 云网关安全 | `gateway.js`、`config-guard.js` | API allowlist、云管字段锁定、Cookie 不透传、WS/SSE。 |
 | Relay 与计费 | `relay/server.js`、`relay-keys.js`、`billing.js`、`pricing.js`、`plans.js` | 预占/结算/释放、usage 提取、流式、余额和套餐白名单。 |
-| panel | `cloud-manager/panel/{app.js,lib,views}` | 无构建；同源 API、秘密脱敏、panel 全部测试。 |
+| panel | `cloud-manager/panel/{app.js,lib/api,lib/normalize,components,views,styles}` | 无构建；复用 QQ/Bili/Agent/扩展组件，用户与管理视图分离，核对未保存提醒及手机布局。 |
 | Headless 接入与 QQ action | `qq-agent-core/modules/headless/{index,connection,server}.js` | 双通道保留、WS action/echo、旧 HTTP 配置、独立协议进程。 |
-| 租户扩展分层与安装闭锁 | `qq-agent-core/src/{plugin-loader,extension-install,routes}.js`、`cloud-manager/src/agent-runtime.js` | 包内与租户同 ID 覆盖、未确认隔离时不加载/不上传、真实隔离另行验收。 |
+| 租户扩展分层与安装闭锁 | `qq-agent-core/src/{plugin-loader,extension-install,routes}.js`、`cloud-manager/src/{agent-runtime,extension-service}.js` | 包内/管理员/租户同 ID 覆盖、未确认隔离时租户不加载/不上传、真实隔离另行验收。 |
 | B 站动态、私信图片、视频上下文和 watcher | `protocol-bili-bridge/src/{bridge,bili/dynamic,bili/dm,bili/video,pollers/watchers}.js`、`qq-agent-core/src/bili-context.js`、`qq-agent-core/plugins/bili-watcher/index.js` | 动态 ID 映射群，评论 type/OID 取详情；私信图片格式和大小限制；上下文失败状态及 watcher 启停。 |
 | 成本归因 | `qq-agent-core/src/{orchestrator,llm,vision-scan}.js`、`cloud-manager/src/{relay/server,billing,db}.js` | 云 Relay 携带并校验平台、会话、运行 ID、视觉标记；ledger 记录及按日期/模型/会话汇总，区分上游 reported、estimated 和历史 unknown。视觉请求费用是整次请求费用，不是单独图片成本；非所有调用都有完整会话归因。 |
 
@@ -185,3 +193,5 @@ flowchart LR
 10. 最后单独标注真实 QQ、真实 B 站和真实上游 Relay 是否实测；未测就写未测。
 
 完整测试与故障矩阵见 [docs/testing.md](docs/testing.md)。
+
+视图与接口模块化的实施、分工和逐阶段结果见 [实施记录](docs/view-api-execution.md)。后续修改同源设置或扩展时，应同时运行云端 HTTP 权限测试、panel 客户端集成测试及核心扩展基础测试。

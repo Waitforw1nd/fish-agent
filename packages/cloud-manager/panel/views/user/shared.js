@@ -61,3 +61,28 @@ export function userLoading(root, head, message) {
   );
   root.appendChild(loading);
 }
+
+export function readinessChecklist(tenant, { onStart, onSection, onSelectTenant } = {}) {
+  const readiness = tenant?.readiness;
+  if (!readiness?.steps?.length) return null;
+  const links = { agentRunning: 'overview', qqOnline: 'overview', whitelistReady: 'whitelist' };
+  return h('section', { class: 'workspace-readiness', 'aria-label': '开通就绪度' },
+    h('strong', {}, `开通进度 ${readiness.completed}/${readiness.total}`),
+    h('div', { class: 'workspace-readiness-steps' }, ...readiness.steps.map((step) => {
+      const id = step.id;
+      const label = `${step.ready ? '✓' : '○'} ${step.label}`;
+      let action = null;
+      if (!step.ready && id === 'channelReady') {
+        action = h('a', { href: '#/user/channel', on: { click: () => onSelectTenant?.(tenant.id) } }, '去配置');
+      } else if (!step.ready && id === 'agentRunning' && onStart) {
+        action = h('button', { class: 'btn btn-soft btn-sm', type: 'button', on: { click: onStart } }, '立即启动');
+      } else if (!step.ready && links[id]) {
+        action = onSection
+          ? h('button', { class: 'btn btn-soft btn-sm', type: 'button', on: { click: () => onSection(links[id]) } }, id === 'whitelistReady' ? '选择白名单' : '去接入')
+          : h('a', { href: `#/user/instances/${encodeURIComponent(tenant.id)}?tab=${links[id]}` }, id === 'whitelistReady' ? '选择白名单' : '去接入');
+      }
+      return h('div', { class: 'workspace-readiness-step', dataset: { ready: step.ready ? 'true' : 'false' } }, h('span', {}, label), action);
+    })),
+    readiness.steps.some((step) => step.id === 'whitelistReady' && !step.ready)
+      ? h('p', { class: 'note' }, '当前白名单为空，机器人不会在任何群或私聊开口。') : null);
+}

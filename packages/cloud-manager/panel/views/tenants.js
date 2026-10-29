@@ -6,6 +6,7 @@ import { normalizeTenant, normalizeTenantList } from '../lib/normalize.js';
 import { formatDate } from '../lib/format.js';
 import { apiErrorMessage, tenantSummary } from '../lib/view-data.js';
 import { validateTenantInput, suggestSlug } from '../lib/validate.js';
+import { labeled, selectInput } from './admin/shared.js';
 import {
   badge,
   emptyBlock,
@@ -23,6 +24,10 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
   let sequence = 0;
   let loading = true;
   let loadError = null;
+  const search = h('input', { id: 'tenant-search', class: 'input', type: 'search', placeholder: '租户名、slug、QQ 号或所属用户' });
+  const statusFilter = selectInput('tenant-status-filter', [['', '全部状态'], ['running', '运行中'], ['stopped', '已停止'], ['suspended', '已暂停'], ['expired', '已到期']], '');
+  const planFilter = selectInput('tenant-plan-filter', [['', '全部套餐'], ['trial', '体验版'], ['starter', '入门版'], ['pro', '专业版']], '');
+  const filters = h('div', { class: 'workspace-filters' }, labeled('搜索实例', search), labeled('状态', statusFilter), labeled('套餐', planFilter));
 
   root.replaceChildren();
   const content = h('div', {});
@@ -37,6 +42,7 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
   });
   root.appendChild(h('div', {},
     head,
+    filters,
     content
   ));
 
@@ -80,8 +86,13 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
       return;
     }
 
+    const needle = search.value.trim().toLowerCase();
+    const matching = current.filter((tenant) => (!needle || `${tenant.name} ${tenant.slug} ${tenant.qq?.uin || ''} ${owners.get(tenant.ownerUserId) || tenant.ownerUserId || ''}`.toLowerCase().includes(needle))
+      && (!statusFilter.value || tenant.status === statusFilter.value || tenant.subscriptionStatus === statusFilter.value)
+      && (!planFilter.value || (tenant.planId || tenant.plan?.id) === planFilter.value));
     const grid = h('div', { class: 'tenant-grid' });
-    for (const tenant of current) grid.appendChild(tenantCard(tenant));
+    for (const tenant of matching) grid.appendChild(tenantCard(tenant));
+    if (!matching.length) grid.appendChild(emptyBlock({ title: '没有匹配的实例', message: '调整筛选条件后重试。' }));
     content.appendChild(grid);
   }
 
@@ -200,6 +211,9 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
       spellcheck: false
     });
     const formError = alertBox('', 'danger', { hidden: true });
+    const owner = selectInput('create-tenant-owner', [['', '当前管理员'], ...[...owners].map(([id, name]) => [id, name])], '');
+    const plan = selectInput('create-tenant-plan', [['trial', '体验版'], ['starter', '入门版'], ['pro', '专业版']], 'trial');
+    const days = h('input', { id: 'create-tenant-days', class: 'input', type: 'number', min: 1, max: 3650, placeholder: '留空使用套餐默认天数' });
     const nameError = h('p', { class: 'form-error', hidden: true });
     const slugError = h('p', { class: 'form-error', hidden: true });
     let slugTouched = false;
@@ -219,6 +233,9 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
         slugInput,
         slugError
       ),
+      labeled('所属用户', owner),
+      labeled('套餐', plan),
+      labeled('初始服务天数', days),
       formError,
       h('p', { class: 'note' }, '创建后平台会分配独立数据目录与端口；套餐和 Relay Key 可在租户内继续配置。')
     );
@@ -271,7 +288,14 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
       submitting = true;
       setBusy(submit, true);
       try {
-        const payload = await api.createTenant(result.values);
+        const body = { ...result.values, planId: plan.value };
+        if (owner.value) body.ownerUserId = owner.value;
+        if (days.value.trim()) {
+          const count = Number(days.value);
+          if (!Number.isInteger(count) || count < 1 || count > 3650) throw new Error('服务天数必须为 1–3650 的整数');
+          body.days = count;
+        }
+        const payload = await api.createTenant(body);
         const created = normalizeTenant(payload?.tenant ?? payload);
         toast?.show?.('租户已创建', { tone: 'success' });
         modal.close('created');
@@ -306,6 +330,9 @@ export function mountTenants({ root, api, toast, navigate, onTenantsChanged, mod
 
   createButton.addEventListener('click', openCreate);
   refreshButton.addEventListener('click', () => { void load(); });
+  search.addEventListener('input', render);
+  statusFilter.addEventListener('change', render);
+  planFilter.addEventListener('change', render);
 
   void load();
 

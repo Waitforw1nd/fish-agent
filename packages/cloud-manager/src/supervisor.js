@@ -46,6 +46,35 @@ export function waitForPort({ host = '127.0.0.1', port, timeoutMs = 10_000, shou
   });
 }
 
+function waitForAgentListening({ child, port, timeoutMs, shouldAbort }) {
+  return new Promise((resolve, reject) => {
+    let timer;
+    let settled = false;
+    const done = (error = null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      child.off('message', onMessage);
+      child.off('exit', onExit);
+      child.off('error', onExit);
+      if (error) reject(error);
+      else resolve();
+    };
+    const exited = () => Object.assign(new Error('进程在就绪前退出'), { code: 'PROCESS_EXITED' });
+    const onExit = () => done(exited());
+    const onMessage = (message) => {
+      if (shouldAbort()) return done(exited());
+      if (message?.type !== 'fish-agent-listening' || message.pid !== child.pid || message.port !== port) return;
+      done();
+    };
+    child.on('message', onMessage);
+    child.once('exit', onExit);
+    child.once('error', onExit);
+    timer = setTimeout(() => done(Object.assign(new Error('等待端口就绪超时'), { code: 'READY_TIMEOUT' })), timeoutMs);
+    if (shouldAbort()) done(exited());
+  });
+}
+
 class LogSink {
   constructor({ file, maxBytes = 5 * 1024 * 1024, keep = 3, ringSize = 300 }) {
     this.file = file;
@@ -203,7 +232,7 @@ export class Supervisor {
       child = spawn(service.command, service.args, {
         cwd: service.cwd,
         env: minimalEnv({ ...service.env, NODE_ENV: service.env.NODE_ENV || 'production' }),
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: service.ready?.signal === 'agent-listening' ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe'],
         detached: process.platform === 'linux',
         windowsHide: true
       });
@@ -248,6 +277,12 @@ export class Supervisor {
       child.once('spawn', resolve);
       child.once('error', reject);
     });
+    const readyTimeoutMs = service.ready?.timeoutMs || this.config.processStartTimeoutMs;
+    const readinessStarted = now();
+    const shouldAbort = () => child.exitCode !== null || child.signalCode !== null || service.child !== child || service.intentionalStop;
+    const readySignal = service.ready?.signal === 'agent-listening'
+      ? waitForAgentListening({ child, port: Number(service.ready.port), timeoutMs: readyTimeoutMs, shouldAbort })
+      : null;
     child.once('error', (error) => {
       service.lastError = String(error?.message || error);
       service.logs.write('err', service.lastError);
@@ -266,13 +301,16 @@ export class Supervisor {
     });
 
     try {
-      await spawned;
+      if (readySignal) await Promise.all([spawned, readySignal]);
+      else await spawned;
       if (service.ready) {
+        const remaining = readySignal ? readyTimeoutMs - (now() - readinessStarted) : readyTimeoutMs;
+        if (remaining <= 0) throw Object.assign(new Error('等待端口就绪超时'), { code: 'READY_TIMEOUT' });
         await waitForPort({
           host: service.ready.host || '127.0.0.1',
           port: Number(service.ready.port),
-          timeoutMs: service.ready.timeoutMs || this.config.processStartTimeoutMs,
-          shouldAbort: () => child.exitCode !== null || child.signalCode !== null || service.child !== child || service.intentionalStop
+          timeoutMs: remaining,
+          shouldAbort
         });
       }
       if (service.child !== child || service.intentionalStop || child.exitCode !== null || child.signalCode !== null) {

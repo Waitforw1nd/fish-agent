@@ -255,7 +255,9 @@ export class TenantService {
   }
 
   addMember(tenantId, user, role = 'operator', { actor = null, ip = null } = {}) {
-    if (!ROLE_RANK[role]) throw httpError(400, 'INVALID_ROLE', '非法成员角色');
+    if (!['operator', 'viewer'].includes(role)) throw httpError(400, 'INVALID_ROLE', '成员角色只能是 operator 或 viewer');
+    const tenant = this.row(tenantId);
+    if (tenant?.owner_user_id === user.id) throw httpError(409, 'OWNER_ROLE_LOCKED', '不能修改租户所有者的角色');
     const exists = this.membership(user.id, tenantId);
     if (exists) {
       this.db.prepare('UPDATE memberships SET role = ? WHERE user_id = ? AND tenant_id = ?').run(role, user.id, tenantId);

@@ -76,10 +76,24 @@ test('panel contract: same-origin writes, runtime status, QQ/Bili/relay response
     method: 'PUT', body: { token: 'panel-auth-token-12345' }
   });
   assert.equal(token.status, 200, token.text);
-  await waitFor(async () => {
-    const status = await admin.call(`/api/tenants/${tenantId}/qq/status`);
-    return status.json.qq.authTokenStatus === 'ok' ? status : null;
-  }, { label: 'panel auth token valid' });
+  let lastStatus = null;
+  const diagnostics = () => ({
+    httpStatus: lastStatus?.status ?? null,
+    phase: lastStatus?.json?.qq?.phase ?? null,
+    processState: manager.supervisor.status(tenantId, 'qq').state,
+    authTokenStatus: lastStatus?.json?.qq?.authTokenStatus ?? null,
+    validation: lastStatus?.json?.qq?.authToken?.validation ?? null,
+    logCodes: manager.supervisor.logs(tenantId, 'qq').flatMap(line => line.match(/\b(?:EADDRINUSE|EACCES|ECONNREFUSED|ERR_[A-Z_]+)\b/g) || [])
+  });
+  assert.equal(token.json.restartRequired, false, JSON.stringify(diagnostics()));
+  try {
+    await waitFor(async () => {
+      lastStatus = await admin.call(`/api/tenants/${tenantId}/qq/status`);
+      return lastStatus.json.qq.authTokenStatus === 'ok' ? lastStatus : null;
+    }, { label: 'panel auth token valid' });
+  } catch (error) {
+    throw new Error(`${error.message}: ${JSON.stringify(diagnostics())}`, { cause: error });
+  }
   const qr = await admin.call(`/api/tenants/${tenantId}/qq/qrcode`);
   assert.equal(qr.status, 200, qr.text);
   assert.equal(qr.json.qrcode.status, 'waiting');

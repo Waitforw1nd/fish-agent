@@ -7,14 +7,15 @@ import { Client, loginAdmin, makeConfig, request, startManager, tenantHost } fro
 
 const entry = path.join(REPO_ROOT, 'packages', 'qq-agent-core', 'modules', 'headless', 'server.js');
 
-test('default agent entry points to Linux headless', () => {
-  const { dataDir } = makeConfig();
+test('default agent entry points to Linux headless', async () => {
+  const { dataDir, releasePorts } = await makeConfig();
   try {
     const config = loadConfig({ CLOUD_DATA_DIR: dataDir });
     assert.equal(config.agentEntry, entry);
     assert.equal(loadConfig({ CLOUD_DATA_DIR: dataDir, CLOUD_AGENT_ENTRY: 'custom-agent.js' }).agentEntry, path.resolve('custom-agent.js'));
   } finally {
     fs.rmSync(dataDir, { recursive: true, force: true });
+    await releasePorts();
   }
 });
 
@@ -33,6 +34,7 @@ test('tenant starts real headless and gateway authenticates', async (t) => {
   const tenant = manager.tenants.row(tenantId);
   const service = manager.supervisor.get(tenantId, 'agent');
   assert.equal(service.env.QQ_AGENT_CLOUD, '1');
+  assert.equal(service.env.QQ_AGENT_READY_IPC, '1');
   assert.equal(service.env.QQ_AGENT_DATA_DIR, path.join(tenant.data_dir, 'data'));
   for (const key of ['QQ_AGENT_PLUGINS_DIR', 'QQ_AGENT_SKILLS_DIR']) {
     assert.ok(service.env[key].startsWith(tenant.data_dir));

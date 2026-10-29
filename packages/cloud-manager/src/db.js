@@ -329,6 +329,34 @@ const MIGRATIONS = [
     version: 8,
     sql: `ALTER TABLE qq_accounts ADD COLUMN runtime_generation INTEGER NOT NULL DEFAULT 0;
           ALTER TABLE qq_accounts ADD COLUMN runtime_secret_namespace TEXT;`
+  },
+  {
+    version: 9,
+    optionalTable: 'recharges',
+    sql: `
+      CREATE TABLE recharges_v9 (
+        id TEXT PRIMARY KEY,
+        tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        amount_micros INTEGER NOT NULL CHECK (amount_micros > 0),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'rejected')),
+        created_by_user_id TEXT NOT NULL REFERENCES users(id),
+        confirmed_by_user_id TEXT REFERENCES users(id),
+        reviewed_by_user_id TEXT REFERENCES users(id),
+        review_note TEXT,
+        created_at INTEGER NOT NULL,
+        confirmed_at INTEGER,
+        reviewed_at INTEGER
+      );
+      INSERT INTO recharges_v9 (
+        id, tenant_id, amount_micros, status, created_by_user_id, confirmed_by_user_id,
+        reviewed_by_user_id, review_note, created_at, confirmed_at, reviewed_at
+      ) SELECT id, tenant_id, amount_micros, status, created_by_user_id, confirmed_by_user_id,
+        confirmed_by_user_id, NULL, created_at, confirmed_at, confirmed_at FROM recharges;
+      DROP TABLE recharges;
+      ALTER TABLE recharges_v9 RENAME TO recharges;
+      CREATE INDEX idx_recharges_tenant_created ON recharges(tenant_id, created_at);
+      CREATE INDEX idx_recharges_pending ON recharges(status, created_at);
+    `
   }
 ];
 
@@ -350,7 +378,11 @@ export function migrate(db) {
     if (migration.version <= current) continue;
     db.exec('BEGIN IMMEDIATE');
     try {
-      db.exec(migration.sql);
+      // Some tests migrate deliberately partial historical schemas.
+      const tablePresent = !migration.optionalTable || db.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
+      ).get(migration.optionalTable);
+      if (tablePresent) db.exec(migration.sql);
       db.exec(`PRAGMA user_version = ${migration.version}`);
       db.exec('COMMIT');
     } catch (error) {

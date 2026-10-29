@@ -62,6 +62,7 @@ export function normalizeRelayLogs(payload) {
       costMicros: asNumber(first(source, ['costMicros', 'cost_micros', 'cost']), 0),
       currency: asString(first(source, ['currency', 'currencyCode']), 'CNY').toUpperCase(),
       latencyMs: asNumber(first(source, ['latencyMs', 'latency_ms', 'latency', 'durationMs', 'duration_ms', 'elapsedMs'])),
+      chatId: asString(first(source, ['chatId', 'chat_id', 'chatKey', 'chat_key', 'sessionId', 'session_id'])),
       source: asString(first(source, ['source', 'channel', 'provider', 'keyType', 'key_type']), '—'),
       error: asString(first(source, ['errorMessage', 'error_message', 'error', 'message', 'detail']))
     };

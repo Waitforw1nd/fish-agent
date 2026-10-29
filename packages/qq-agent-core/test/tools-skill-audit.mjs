@@ -322,7 +322,7 @@ async function main() {
   // 只是旧配置被迁进没人读的命名空间。名字写错只会静默失效，所以必须有测试兜住。
   console.log('\n=== 十二、旧配置迁移目标 ===');
   {
-    const cfgSrc = fs.readFileSync(path.join(APP_ROOT, 'src/config.js'), 'utf8');
+    const cfgSrc = fs.readFileSync(path.join(APP_ROOT, 'src/config-codec.js'), 'utf8');
     const skillIdsAll = new Set(skills.map((x) => x.id));
     // 从源码里抓 { from: [...], skill: 'xxx' } 的 skill 值
     const targets = [...cfgSrc.matchAll(/\{\s*from:\s*\[[^\]]+\],\s*skill:\s*'([^']+)'/g)].map((m) => m[1]);
