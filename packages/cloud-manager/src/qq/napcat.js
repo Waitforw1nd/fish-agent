@@ -89,6 +89,7 @@ export const napcatDriver = {
   label: 'NapCat',
   capabilities: {
     qrcode: true,
+    qrcodeRefresh: true,
     authToken: false,
     webui: true,
     onebotHttp: true,
@@ -171,13 +172,14 @@ export const napcatDriver = {
     if (status.body?.code !== 0) throw fail(502, 'NAPCAT_LOGIN_STATUS_FAILED', status.body?.message || 'NapCat 登录状态不可用');
     const data = status.body.data || {};
     if (data.isLogin) return { state: 'success' };
+    if (data.qrLoginAccepted || ['qrcode_scanned', 'initializing'].includes(data.loginPhase)) return { state: 'scanned', pollTimeInterval: 3 };
     const qr = await webui(ctx, 'QQLogin/GetQQLoginQrcode');
     if (qr.body?.code !== 0 || !qr.body?.data?.qrcode) {
       return { state: 'pending', message: qr.body?.message || '等待 NapCat 生成二维码', pollTimeInterval: 3 };
     }
     const qrcodeUrl = String(qr.body.data.qrcode);
     if (qrcodeUrl.length > 4096) throw fail(502, 'NAPCAT_QRCODE_INVALID', 'NapCat 返回的二维码内容过长');
-    return { state: data.loginPhase === 'qrcode_scanned' ? 'scanned' : 'ready', qrcodeUrl, qrGeneration: qrGeneration(ctx, qrcodeUrl), pngBase64: await QRCode.toDataURL(qrcodeUrl), pollTimeInterval: 3 };
+    return { state: 'ready', qrcodeUrl, qrGeneration: qrGeneration(ctx, qrcodeUrl), pngBase64: await QRCode.toDataURL(qrcodeUrl), pollTimeInterval: 3 };
   },
 
   async authStatus() {

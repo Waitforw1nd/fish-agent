@@ -67,9 +67,10 @@ export class CloudManager {
       db: this.db, config: this.config, billing: this.billing,
       relayKeys: this.relayKeys, audit: this.audit, logger: this.logger
     });
+    this.customUpstreams = new CustomUpstreamService({ db: this.db, secrets: this.secrets, config: this.config });
     this.agent = new AgentRuntime({
       config: this.config, allocator: this.allocator, supervisor: this.supervisor, db: this.db,
-      secrets: this.secrets, relayKeys: this.relayKeys, logger: this.logger
+      secrets: this.secrets, relayKeys: this.relayKeys, customUpstreams: this.customUpstreams, logger: this.logger
     });
     this.agent.onAgentPort = (tenantId, port) => this.tenants.setAgentPort(tenantId, port);
     this.qq = new QQService({
@@ -98,7 +99,6 @@ export class CloudManager {
     this.qq.onLinksChanged = (tenant, info) => this.hosting.handleLinksChanged(tenant, info);
     this.bili.onLinksChanged = (tenant, info) => this.hosting.handleLinksChanged(tenant, info);
     this.tenants.onExpired = (tenantId) => this.hosting.onExpired(tenantId);
-    this.customUpstreams = new CustomUpstreamService({ db: this.db, secrets: this.secrets, config: this.config });
     this.relay = new RelayService({
       config: this.config, db: this.db, billing: this.billing, relayKeys: this.relayKeys,
       tenants: this.tenants, settings: this.settings, customUpstreams: this.customUpstreams, logger: this.logger

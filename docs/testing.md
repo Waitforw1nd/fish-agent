@@ -213,7 +213,7 @@ Windows 本地工作区，Node v24.22.1、npm 11.19.1；其他模块并行修改
 
 浏览器使用 fake 验证了两类实例相关流程，不能代表真实 QQ。核心测试覆盖 NapCat HTTP 图片首发 base64、发送超时与断开后不重发、媒体路径拒绝、下载超限及公网首跳重定向至私网拒绝；Agent 健康和 HTTPS 网关使用本地 fixture 验证。
 
-这些结果不构成 P0 或 P1 真实验收：目标 VPS 的 SSH 返回 `Permission denied (publickey)`，真实 NapCat 容器、扫码、QQ 消息、模型对话及 HTTPS 控制台均未验证。P1 是本地实现待 P0 真实容器及 P1 单实例闭环验收，不能标为完整交付；P2 集成和 P3 全量恢复需单独验收。
+本节是初次 P1 本地测试时的历史记录：当时目标 VPS SSH 返回 `Permission denied (publickey)`，本地测试不能代替真实验收。后续服务器修复包及用户确认的 QQ 对话通过记录见第 13 节；P2 双向切换、P3 全量恢复和 HTTPS 控制台仍需单独验收。
 
 ## 12. P2 API 与面板回归（2026-10-29）
 
@@ -226,3 +226,13 @@ Windows 便携 Node 24 执行 `node --test test/*.test.mjs`（目录 `packages/c
 `node --test packages/cloud-manager/test/qq-switch-api.test.mjs` 最终复验 2/2 通过，使用真实 HTTP、SQLite、会话及 FakeDockerRunner。保留 `QQ_SWITCH_NOT_IMPLEMENTED` 防占位断言，并要求目标实际启动进入 waiting_qr；覆盖 viewer/跨租户、CSRF/Origin、只读 GET 不推进、暂停时取消且不恢复目标，以及 POST advance 成功提交后核实生效 driver/UIN。此前审计调用错误已修复，本次成功路径不再触发该错误回滚。
 
 以上均为本地模拟协议，不证明真实容器、手机扫码、有效 LLBot AT、双向真实切换或 Linux 进程组停止。真机逐项证据见 [P2 VPS 验收](linux-vps-acceptance.md#p2-真机验收待执行)。
+
+## 13. 服务器修复合并与 QQ 对话确认（2026-10-29）
+
+输入为用户提供的 `fish-server-fixes-2026-10-29.zip`。已核验 manifest 中 15 个文件的 SHA-256，以及 13 个基线文件与 Git `0d2e31f9c84051181a14f595d57bececcf139e29` 的一致性；逐项合并到 P2 `1e0eac8`，没有用 P1 文件覆盖 P2。未纳入运行密钥、账号 session、二维码或白名单配置。
+
+服务器包记录 NapCat v4.18.41、镜像 digest `sha256:b101b8968cc31ae428ec0f8e117386e4ced7773b2d8226ed9f7ddfcec55f1b7e`，真实容器创建/启停、QQ 登录、自定义模型调用与二维码刷新通过。用户在本轮另行确认“VPS QQ 对话测试已跑通”，更新包内较早的对话待验结论；未据此推断私聊、群聊、多轮上下文分别全部验收。本轮未重新连接或部署 VPS，合并后的 P2 版本仍须独立真机复验。
+
+合并内容为 Docker 停止/未启动容器的网络身份校验、自定义模型同步与独立上游查询、普通 NapCat 会话获取新二维码。P2 兼容回归覆盖活动切换拒绝刷新或模型/Key 写入、串行锁竞争、刷新后 profile/凭据/generation/claim、扫码确认竞态、失败不误恢复 Agent，以及过期租户不启动。切换二维码仍按 operation 与代次隔离，不允许重启式刷新。
+
+本地 Node 24 后端全量 118 项：116 通过、0 失败、2 项 Linux 进程组测试跳过；面板 105/105 通过；根 `npm run check` 通过。标准根测试的 QQ 环境限制仍按第 12 节记录，不能因服务器对话成功而把本地 CLIENT_BUILD 失败改为通过。服务器报告的偶发 gateway-ws 首帧超时、重启后自动登录可靠性、HTTPS 和 P2/P3 真机测试仍分别跟踪，不扩展本轮合并范围。

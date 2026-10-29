@@ -5,13 +5,14 @@ import { deepMerge, ensureDir, randomToken, readJsonFile, writeJsonPrivate } fro
 import { isolateQqSwitchTasks } from '../../qq-agent-core/src/qq-switch-isolation.js';
 
 export class AgentRuntime {
-  constructor({ config, allocator, supervisor, secrets, relayKeys, logger, db }) {
+  constructor({ config, allocator, supervisor, secrets, relayKeys, customUpstreams, logger, db }) {
     this.db = db || supervisor?.db;
     this.config = config;
     this.allocator = allocator;
     this.supervisor = supervisor;
     this.secrets = secrets;
     this.relayKeys = relayKeys;
+    this.customUpstreams = customUpstreams;
     this.logger = logger;
     this.linksResolver = null;
     this.healthCache = new Map();
@@ -58,13 +59,14 @@ export class AgentRuntime {
     const existing = readJsonFile(this.configPath(tenant), {});
     const links = this.linksResolver ? await this.linksResolver(tenant) : { qq: null, bili: null };
     const relayBaseUrl = `http://127.0.0.1:${this.config.relayPort}/v1`;
+    const custom = this.customUpstreams?.get(tenant.id);
     const base = {
       ...existing,
       api: {
         ...(existing.api || {}),
         baseUrl: relayBaseUrl,
         apiKey: ensured.relayKey,
-        model: tenant.default_model || existing.api?.model || this.config.defaultModel
+        model: custom?.configured ? custom.model : (tenant.default_model || existing.api?.model || this.config.defaultModel)
       },
       server: { ...(existing.server || {}), port: ensured.port, token: ensured.consoleToken },
       allow: existing.allow || { groups: [], private: [] },

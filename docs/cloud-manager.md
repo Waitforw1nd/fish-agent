@@ -1,6 +1,6 @@
 # cloud-manager、panel 与 Relay 开发契约
 
-NapCat P1 已有本地实现，真实 VPS、QQ 登录、模型消息和 HTTPS 控制台尚未验收；VPS SSH 目前被 publickey 鉴权阻塞。P2 切换事务及 Agent 生命周期正在集成，不能视为真实双向切换通过；P3 全量多实例恢复尚未交付。Host 网关使用配置或可信代理提供的 scheme；域名、DNS 和证书需部署者提供。
+2026-10-29 用户确认 VPS QQ 对话测试已跑通；服务器修复包记录 NapCat v4.18.41 的真实容器、登录和自定义模型调用结果。本轮将该 P1 基线修复合并到已发布的 P2 代码，并进行本地回归，未重新部署 VPS。P2 双向切换、Linux 进程组及 P3 多实例恢复仍需真机验收；HTTPS 控制台尚未完成部署验收。Host 网关使用配置或可信代理提供的 scheme；域名、DNS 和证书需部署者提供。
 
 主要源码：`packages/cloud-manager/src/{app,api,config,db,gateway,agent-runtime,qq-service,bili-service,relay/server,billing,plans,ports,crypto}.js`。API 表以 `src/api.js` 为唯一准绳，panel 静态文件由 `src/app.js` 直接托管。
 
@@ -12,8 +12,8 @@ NapCat P1 已有本地实现，真实 VPS、QQ 登录、模型消息和 HTTPS �
 
 1. **交钱**：没有支付成功校验作为创建或续费的前置条件。用户先有平台账号；用户面板的充值需要选择已有实例，提交后只是 pending 订单，不自动扣款、不代表支付成功，管理员确认后才入钱包。管理员也可直接给钱包充值。支付方式、付款核验和开通规则仍待确定。
 2. **创建实例**：用户面板填写名称并可选择套餐，默认 trial；服务端创建 active 租户、初始钱包额度和本地 Relay Key，并不检查支付。普通用户可创建多实例，数量按本次新建所选套餐限制，详见第 5 节。创建不等于进程已启动，实例页提供启动操作。续费接口由 owner 调用，可延长时长、选择套餐并发放套餐续费额度，同样不检查支付；只有管理员可指定 `creditMicros`。
-3. **登录 QQ**：普通用户从 `#/user/instances` 的实例卡片进入 `#/user/instances/:tenantId`，输入 5–12 位 QQ 号后按实例配置准备、启动 QQ 内核并打开扫码窗口；新实例默认 NapCat，已配置实例保留原内核。viewer 只读，owner 和 operator 可操作。普通用户无需提供平台 token；LLBot direct 仍依赖平台预先配置有效授权，缺失或无效时请联系平台管理员。管理员可从 `#/users` 进入 `#/users/:userId/instances` 管理该用户拥有的实例，并进入托管视图。具体可用性依赖部署环境和协议端；桌面模式需要外部独立 QQ 与 PMHQ 组件，平台不自带启动器或注入器。提供 QQ 号本身不等于登录成功，真实 QQ 与 VPS 环境尚未验收。
-4. **绑定 Key**：创建时已自动签发本平台的租户 Relay Key，Agent 启动或写配置时会使用它。用户渠道页保留“平台 Relay Key”输入框和“绑定平台 Key”按钮，可替换这个本地 Bearer 凭据；本地格式及唯一性校验通过不代表外部上游 Key 有效，也不会验证远端。若用户自带模型服务，应在同页的自定义渠道填写 Base URL、上游 API Key 和模型；当前保存时不提供连接测试，也不会自动修改 Agent 默认模型，实际请求模型必须与自定义模型一致。平台渠道则依赖管理员配置平台上游 URL 和 API Key。
+3. **登录 QQ**：普通用户从 `#/user/instances` 的实例卡片进入 `#/user/instances/:tenantId`，输入 5–12 位 QQ 号后按实例配置准备、启动 QQ 内核并打开扫码窗口；新实例默认 NapCat，已配置实例保留原内核。viewer 只读，owner 和 operator 可操作。普通用户无需提供平台 token；LLBot direct 仍依赖平台预先配置有效授权，缺失或无效时请联系平台管理员。管理员可从 `#/users` 进入 `#/users/:userId/instances` 管理该用户拥有的实例，并进入托管视图。具体可用性依赖部署环境和协议端；桌面模式需要外部独立 QQ 与 PMHQ 组件，平台不自带启动器或注入器。提供 QQ 号本身不等于登录成功，须完成扫码；用户已确认 VPS QQ 对话跑通，具体内核与场景仍以验收记录为准。普通 NapCat 扫码窗口可“获取新二维码”，通过重启尚未登录的会话换码，保留账号数据；在线或确认中的会话不重启。切换扫码窗口不提供重启式换码，可继续扫码或安全取消后重新发起。
+4. **绑定 Key**：创建时已自动签发本平台的租户 Relay Key，Agent 启动或写配置时会使用它。用户渠道页保留“平台 Relay Key”输入框和“绑定平台 Key”按钮，可替换这个本地 Bearer 凭据；本地格式及唯一性校验通过不代表外部上游 Key 有效，也不会验证远端。若用户自带模型服务，应在同页的自定义渠道填写 Base URL、上游 API Key 和模型；保存时不提供连接测试，但会同步 Agent 使用的模型，原先运行且仍有效的实例会重启 Agent 应用配置，失败返回 `restartRequired`。删除自定义渠道后恢复平台模型，更换本地 Relay Key 保留自定义模型。切换进行中修改渠道或 Key 返回 `QQ_SWITCH_ACTIVE`，不写入部分配置。平台渠道依赖管理员配置平台上游 URL 和 API Key。
 5. **开始养鱼**：需要租户有效、Agent 和 QQ 协议端可运行且 QQ 已登录，模型渠道和模型可用；平台渠道还需要可用钱包余额。还需按实际场景配置允许互动的对象（空白 allowlist 不默认放行）。这些条件并非由一条已验证的一键开通流程自动保证。
 
 平台技术职责包括隔离租户数据和进程、管理端口及秘密、提供 QQ 协议接入、Relay 鉴权与用量记录。支付方式、付款核验和开通规则尚待确定。
@@ -165,7 +165,7 @@ Agent 的 `data/config.json` 必须含 Relay Key 才能调用模型，因此该�
 | GET | `/qq/operations/:operationId` | 成员，只读持久化状态，不推进。 |
 | POST | `/qq/operations/:operationId/advance` | 操作员 active；CSRF 保护，检查登录并推进同一 operation。 |
 | POST | `/qq/operations/:operationId/cancel` | 操作员；暂停/到期允许清理，是否恢复由服务端判断。 |
-| POST | `/qq/qrcode/refresh` | 操作员 active；当前返回 501 `QRCODE_REFRESH_UNSUPPORTED`，不宣称上游已支持刷新。 |
+| POST | `/qq/qrcode/refresh` | 操作员 active、CSRF；可传 `runtimeGeneration`。NapCat 重启尚未登录会话换码并返回新码；在线不重启，确认中拒绝；活动切换返回 `QQ_SWITCH_ACTIVE`，旧代次返回 `QRCODE_STALE`，其他内核返回 501。 |
 | GET | `/qq/qrcode` | 操作员 active；受 token 状态门控制。 |
 | PUT / DELETE | `/qq/auth-token` | 操作员；PUT 必须有 `token` 字段。 |
 | GET | `/qq/logs` | 操作员。 |

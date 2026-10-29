@@ -208,12 +208,14 @@ export class RelayService {
     if (cached && now() - cached.at < this.config.upstreamModelsTtlMs) return cached.value;
     let response;
     try {
-      let url = this.upstreamUrl('models');
+      let url;
       let lookup;
       if (custom?.configured) {
         const resolved = await this.customUpstreams.resolve(up.baseUrl);
         url = this.customUpstreams.url(resolved.url.toString(), 'models');
         lookup = resolved.lookup;
+      } else {
+        url = this.upstreamUrl('models');
       }
       response = await requestJson(url, {
         headers: { authorization: `Bearer ${up.apiKey}` },

@@ -108,14 +108,15 @@ test('二维码刷新使用 POST 并丢弃先前请求，运行代次不匹配�
   const api = { getTenant: async () => ({ tenant: { id: 't', role: 'owner', status: 'running' }, role: 'owner' }), getQQDrivers: async () => driverList,
     getQQStatus: async () => ({ kernel: 'napcat', runtimeState: 'ready', loginState: 'waiting_qr', expectedUin: '123456', runtimeGeneration: 2 }),
     getQQQrcode: () => ++reads === 1 ? new Promise(resolve => { firstResolve = resolve; }) : Promise.resolve({ status: 'ready', runtimeGeneration: 2, qrGeneration: 2, imageDataUrl: 'data:image/png;base64,QkI=' }),
-    refreshQQQrcode: async () => { refreshes++; } };
+    refreshQQQrcode: async (_id, generation) => { assert.equal(generation, 2); refreshes++; return { status: 'ready', runtimeGeneration: 3, qrGeneration: 1, imageDataUrl: 'data:image/png;base64,Q0M=' }; } };
   const view = mountUserInstance({ root, modalRoot, api, tenantId: 't', toast, timers }); await settle();
   findByText(root, 'button', '继续扫码登录').click(); await settle();
   findByText(root, 'button', '继续扫码登录').click(); await settle();
   assert.match(modalRoot.querySelector('img').src, /QkI=/);
   firstResolve({ status: 'ready', runtimeGeneration: 1, imageDataUrl: 'data:image/png;base64,QUE=' }); await settle();
   assert.match(modalRoot.querySelector('img').src, /QkI=/);
-  findByText(modalRoot, 'button', '刷新二维码').click(); await settle(); assert.equal(refreshes, 1);
+  findByText(modalRoot, 'button', '获取新二维码').click(); await settle(); assert.equal(refreshes, 1);
+  assert.match(modalRoot.querySelector('img').src, /Q0M=/);
   assert.equal(modalRoot.querySelector('.qr-countdown').textContent, ''); view.destroy();
 });
 

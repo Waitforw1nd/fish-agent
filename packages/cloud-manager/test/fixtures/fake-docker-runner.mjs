@@ -10,7 +10,7 @@ export class FakeDockerRunner {
     if (args[0] === 'network' && args[1] === 'create') {
       const id = `network-${++this.counter}`;
       const labels = this.labels(args);
-      this.networks.set(id, { Labels: labels }); return id;
+      this.networks.set(id, { Id: id, Name: args.at(-1), Driver: 'bridge', Labels: labels }); return id;
     }
     if (args[0] === 'network' && args[1] === 'inspect') {
       if (!this.networks.has(args[2])) throw Object.assign(new Error('no such network'), { code: 'DOCKER_NETWORK_NOT_FOUND' });
@@ -26,22 +26,28 @@ export class FakeDockerRunner {
       const portBindings = Object.fromEntries(ports.map(([external, internal]) => [`${internal}/tcp`, [{ HostIp: '127.0.0.1', HostPort: String(external) }]]));
       const logOptions = Object.fromEntries(this.values(args, '--log-opt').map(value => value.split('=')));
       const host = { Privileged: false, PidMode: '', NetworkMode: networkId, PublishAllPorts: false, Memory: parseInt(option('--memory')) * 1048576, NanoCpus: Number(option('--cpus')) * 1e9, PidsLimit: Number(option('--pids-limit')), ShmSize: parseInt(option('--shm-size')) * 1048576, PortBindings: portBindings, LogConfig: { Config: logOptions }, RestartPolicy: { Name: 'no' } };
-      this.containers.set(id, { Image: `sha256:${'b'.repeat(64)}`, Config: { Labels: this.labels(args), Image: args.at(-1) }, HostConfig: host, Mounts: mounts, NetworkSettings: { Networks: { fish: { NetworkID: networkId } } }, State: { Running: false }, ports, servers: [] });
+      const networkName = this.networks.get(networkId).Name;
+      this.containers.set(id, { Image: `sha256:${'b'.repeat(64)}`, Config: { Labels: this.labels(args), Image: args.at(-1) }, HostConfig: host, Mounts: mounts, NetworkSettings: { Networks: { [networkName]: { NetworkID: '' } } }, State: { Running: false, Status: 'created' }, ports, servers: [] });
       return id;
     }
     if (args[0] === 'inspect') return JSON.stringify([this.containers.get(args[1])]);
     if (args[0] === 'start') {
       if (this.failBind > 0) { this.failBind--; throw Object.assign(new Error('binding conflict'), { code: 'NAPCAT_PORT_CONFLICT' }); }
-      const container = this.containers.get(args[1]); container.State.Running = true;
+      const container = this.containers.get(args[1]); container.State.Running = true; container.State.Status = 'running';
+      Object.values(container.NetworkSettings.Networks)[0].NetworkID = container.HostConfig.NetworkMode;
+      const credential = `credential-${args[1]}`;
       if (this.ready) for (const [hostPort, internal] of container.ports) {
         if (internal !== 6099 && internal !== 3000) continue;
         const server = http.createServer((req, res) => {
           let data = ''; req.on('data', part => { data += part; }); req.on('end', () => {
             res.setHeader('content-type', 'application/json');
-            if (req.url === '/api/auth/login') return res.end(JSON.stringify({ code: 0, data: { Credential: 'credential' } }));
-            if (req.headers.authorization !== 'Bearer credential' && internal === 6099) { res.statusCode = 401; return res.end('{}'); }
-            if (req.url === '/api/QQLogin/CheckLoginStatus') return res.end(JSON.stringify({ code: 0, data: { isLogin: this.online, coreReady: this.online } }));
-            if (req.url === '/api/QQLogin/GetQQLoginQrcode') return res.end(JSON.stringify({ code: 0, data: { qrcode: 'https://example.com/qr' } }));
+            if (req.url === '/api/auth/login') return res.end(JSON.stringify({ code: 0, data: { Credential: credential } }));
+            if (req.headers.authorization !== `Bearer ${credential}` && internal === 6099) { res.statusCode = 401; return res.end('{}'); }
+            if (req.url === '/api/QQLogin/CheckLoginStatus') return res.end(JSON.stringify({ code: 0, data: { isLogin: this.online, coreReady: this.online, loginPhase: this.loginPhase || 'waiting_qrcode' } }));
+            if (req.url === '/api/QQLogin/GetQQLoginQrcode') {
+              if (this.qrPendingReads > 0) { this.qrPendingReads--; return res.end(JSON.stringify({ code: -1, message: 'not ready' })); }
+              return res.end(JSON.stringify({ code: 0, data: { qrcode: `https://example.com/qr?runtime=${args[1]}` } }));
+            }
             if (req.url === '/get_login_info') return res.end(JSON.stringify({ status: 'ok', retcode: 0, data: { user_id: this.uin, nickname: 'Fake' } }));
             res.statusCode = 404; res.end('{}');
           });
@@ -52,7 +58,8 @@ export class FakeDockerRunner {
       return args[1];
     }
     if (args[0] === 'stop' || args[0] === 'kill') {
-      const container = this.containers.get(args.at(-1)); container.State.Running = false;
+      const container = this.containers.get(args.at(-1)); container.State.Running = false; container.State.Status = 'exited';
+      Object.values(container.NetworkSettings.Networks)[0].NetworkID = '';
       await Promise.all(container.servers.map(server => new Promise(resolve => server.close(resolve)))); container.servers = [];
       return '';
     }

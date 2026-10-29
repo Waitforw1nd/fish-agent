@@ -32,6 +32,7 @@ export class QQService {
     this.docker = new DockerRuntime({ db, config });
     this.locks = new Map();
     this.qrRequests = new Map();
+    this.qrRefreshRequests = new Map();
     this.statusRequests = new Map();
     this.agentRuntime = null;
     this.switches = new QQSwitchExecutor(this);
@@ -742,6 +743,66 @@ export class QQService {
       snowluma: this.config.snowlumaEntry
     };
     return Boolean(map[driverId] && fs.existsSync(map[driverId]));
+  }
+
+  async refreshQrcode(tenant, { runtimeGeneration } = {}) {
+    this.assertNoSwitch(tenant.id);
+    if (runtimeGeneration != null && (!Number.isSafeInteger(runtimeGeneration) || runtimeGeneration < 0)) {
+      throw fail(400, 'INVALID_RUNTIME_GENERATION', '运行代次无效');
+    }
+    const generation = () => this.account(tenant.id)?.runtime_generation || this.docker.row(tenant.id)?.generation || 0;
+    const expectedGeneration = runtimeGeneration ?? generation();
+    const existing = this.qrRefreshRequests.get(tenant.id);
+    if (existing) {
+      if (existing.generation !== expectedGeneration) throw fail(409, 'QRCODE_STALE', '登录状态已变化，请重新打开二维码');
+      return existing.promise;
+    }
+    const promise = this.serial(tenant.id, async () => {
+      this.assertNoSwitch(tenant.id);
+      const pendingStatus = this.statusRequests.get(tenant.id);
+      if (pendingStatus) await pendingStatus;
+      const account = this.account(tenant.id);
+      if (!account) throw fail(409, 'QQ_NOT_PREPARED', '请先准备 QQ 协议端配置');
+      if (account.driver !== 'napcat') throw fail(501, 'QRCODE_REFRESH_UNSUPPORTED', '当前内核暂不支持获取新二维码');
+      if (generation() !== expectedGeneration) throw fail(409, 'QRCODE_STALE', '登录状态已变化，请重新打开二维码');
+      const currentTenant = () => {
+        const current = this.db.prepare('SELECT * FROM tenants WHERE id=?').get(tenant.id);
+        if (!current || current.status !== 'active' || Number(current.expires_at) <= now()) throw fail(409, 'TENANT_INACTIVE', '实例不可用');
+        return current;
+      };
+      currentTenant();
+      const runtime = await this.runtimeStatus(tenant, account);
+      if (runtime.state !== 'running') throw fail(409, 'QQ_NOT_RUNNING', '请先启动 QQ 登录服务');
+      const driver = this.driver(account.driver);
+      const ctx = this.driverContext(tenant, account, account.driver, this.tokens(tenant, account), driver);
+      const status = await driver.status(ctx);
+      if (status.error || status.uinMismatch) throw fail(409, 'QQ_LOGIN_UNCONFIRMED', '无法确认 QQ 登录状态，请稍后重试');
+      if (['waiting_confirm', 'initializing'].includes(status.loginState)) throw fail(409, 'QQ_LOGIN_IN_PROGRESS', '已扫码，请先在手机完成确认');
+      const qr = await driver.qrcode(ctx);
+      if (status.online || qr.state === 'success') return this.qrcodeUnlocked(tenant);
+      if (qr.state === 'scanned') throw fail(409, 'QQ_LOGIN_IN_PROGRESS', '已扫码，请先在手机完成确认');
+      const resumeAgent = this.supervisor.status(tenant.id, 'agent').state === 'running';
+      await this.stopUnlocked(currentTenant());
+      await this.startUnlocked(currentTenant());
+      const deadline = Date.now() + Math.min(this.config.processStartTimeoutMs, 15_000);
+      do {
+        const renewed = await this.qrcodeUnlocked(tenant);
+        if (renewed.state === 'success' || (renewed.qrcodeUrl && renewed.qrcodeUrl !== qr.qrcodeUrl)) {
+          const fresh = currentTenant();
+          if (resumeAgent && !['running', 'starting', 'restarting'].includes(this.supervisor.status(tenant.id, 'agent').state)) {
+            this.agentRuntime.assertNoUnconfirmedAgent?.(fresh);
+            await this.agentRuntime.start(fresh);
+          }
+          return renewed;
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } while (Date.now() < deadline);
+      throw fail(504, 'QRCODE_GENERATION_TIMEOUT', '新二维码仍在生成，请稍后重新打开查看');
+    });
+    this.qrRefreshRequests.set(tenant.id, { generation: expectedGeneration, promise });
+    try { return await promise; } finally {
+      if (this.qrRefreshRequests.get(tenant.id)?.promise === promise) this.qrRefreshRequests.delete(tenant.id);
+    }
   }
 
   async qrcode(tenant) {

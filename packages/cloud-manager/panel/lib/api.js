@@ -240,8 +240,8 @@ export function createApi({
         method: 'POST', body: qqBody(kernel, uin)
       });
     },
-    refreshQQQrcode(tenantId) {
-      return request(tenantPath(tenantId, '/qq/qrcode/refresh'), { method: 'POST' });
+    refreshQQQrcode(tenantId, runtimeGeneration = null) {
+      return request(tenantPath(tenantId, '/qq/qrcode/refresh'), { method: 'POST', body: { runtimeGeneration } });
     },
     getQQQrcode(tenantId) {
       return request(tenantPath(tenantId, '/qq/qrcode'));

@@ -99,6 +99,7 @@ export function createApiRouter(deps) {
   };
   const relaySummary = (tenant) => {
     const key = relayKeys.active(tenant.id);
+    const custom = customUpstreams.public(tenant);
     const wallet = billing.wallet(tenant.id);
     const plan = getPlan(tenant.plan_id) || getPlan('trial');
     return {
@@ -107,7 +108,8 @@ export function createApiRouter(deps) {
       keyStatus: key ? 'active' : 'missing',
       keyStatusLabel: key ? 'Key 有效' : '未绑定 Key',
       keyStatusTone: key ? 'ok' : 'warn',
-      model: tenant.default_model || config.defaultModel,
+      model: custom.model,
+      source: custom.source,
       plan: { id: plan.id, name: plan.name, rpm: plan.rpm, tpm: plan.tpm },
       quota: { planName: plan.name, rpm: plan.rpm, tpm: plan.tpm, tokenLimit: null, tokenUsed: null, costLimitMicros: null, costUsedMicros: null },
       billing: { ...wallet, currency: 'CNY' }
@@ -143,6 +145,29 @@ export function createApiRouter(deps) {
 
   const listSummaries = (user) => tenants.listForUser(user)
     .map((item) => summary(tenants.row(item.id), item.role));
+
+  const syncAgentRelayConfig = async (tenant) => {
+    await agent.writeConfig(tenant);
+    if (deps.supervisor.status(tenant.id, 'agent').state !== 'running') return false;
+    const active = (row) => row?.status === 'active' && Number(row.expires_at) > now();
+    if (!active(tenants.row(tenant.id))) return false;
+    try {
+      await agent.stop(tenant);
+      const fresh = tenants.row(tenant.id);
+      if (active(fresh)) await agent.start(fresh);
+      return false;
+    } catch (error) {
+      logger?.warn?.('agent restart after relay configuration change failed', { tenantId: tenant.id, error: error.message });
+      return true;
+    }
+  };
+  const updateAgentRelayConfig = (tenant, update) => qq.serial(tenant.id, async () => {
+    qq.assertNoSwitch(tenant.id);
+    const result = await update(tenants.row(tenant.id));
+    const fresh = tenants.row(tenant.id);
+    const restartRequired = await syncAgentRelayConfig(fresh);
+    return { result, fresh, restartRequired };
+  });
 
   router.post('/api/auth/login', async (ctx) => {
     const body = await readBody(ctx);
@@ -320,6 +345,14 @@ export function createApiRouter(deps) {
   });
 
   // QQ protocol driver
+  const qrView = (qrcode) => ({
+    ...qrcode,
+    imageDataUrl: qrcode.pngBase64,
+    imageUrl: qrcode.pngBase64,
+    pngBase64QrcodeData: qrcode.pngBase64,
+    expiresAt: qrcode.expireAt,
+    status: qrcode.state === 'ready' ? 'waiting' : qrcode.state
+  });
   router.get('/api/qq/drivers', async (ctx) => {
     auth.require(ctx.req);
     sendJson(ctx.res, 200, { ok: true, defaultDriver: config.defaultQqDriver || 'napcat', drivers: await qq.drivers() });
@@ -349,8 +382,11 @@ export function createApiRouter(deps) {
     sendJson(ctx.res, 200, { ok: true, operation: safeQQOperation(operation) });
   });
   router.post('/api/tenants/:id/qq/qrcode/refresh', async (ctx) => {
-    activeTenant(ctx);
-    throw httpError(501, 'QRCODE_REFRESH_UNSUPPORTED', '当前发行版尚未验证二维码刷新接口');
+    const { tenant } = activeTenant(ctx);
+    const body = await readBody(ctx);
+    const qrcode = await qq.refreshQrcode(tenant, { runtimeGeneration: body.runtimeGeneration });
+    audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.qrcode.refresh', detail: { driver: qrcode.driver, runtimeGeneration: qrcode.runtimeGeneration }, ip: ctx.ip });
+    sendJson(ctx.res, 200, { ok: true, qrcode: qrView(qrcode) });
   });
   router.post('/api/tenants/:id/qq/prepare', async (ctx) => {
     const { tenant } = activeTenant(ctx);
@@ -405,13 +441,8 @@ export function createApiRouter(deps) {
       }
       throw error;
     }
-    qrcode.imageDataUrl = qrcode.pngBase64;
-    qrcode.imageUrl = qrcode.pngBase64;
-    qrcode.pngBase64QrcodeData = qrcode.pngBase64;
-    qrcode.expiresAt = qrcode.expireAt;
-    qrcode.status = qrcode.state === 'ready' ? 'waiting' : qrcode.state;
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.qrcode', detail: { driver: qrcode.driver }, ip: ctx.ip });
-    sendJson(ctx.res, 200, { ok: true, qrcode });
+    sendJson(ctx.res, 200, { ok: true, qrcode: qrView(qrcode) });
   });
 
   router.put('/api/tenants/:id/qq/auth-token', async (ctx) => {
@@ -499,7 +530,8 @@ export function createApiRouter(deps) {
     const usage = billing.usageSummary(tenant.id, { days: Number(ctx.url.searchParams.get('days')) || 30 });
     const models = await relay.panelModels(tenant);
     const keyMasked = key ? `${key.key_prefix}••••` : '';
-    const model = tenant.default_model || config.defaultModel;
+    const custom = customUpstreams.public(tenant);
+    const model = custom.model;
     const totalsView = { ...usage.totals, currency: 'CNY', available: true, totalTokens: usage.totals.promptTokens + usage.totals.completionTokens };
     const usageView = {
       ...usage,
@@ -527,6 +559,7 @@ export function createApiRouter(deps) {
       keyMasked,
       keyStatus: key ? 'active' : 'missing',
       model,
+      source: custom.source,
       key: key ? { prefix: key.key_prefix, createdAt: key.created_at, lastUsedAt: key.last_used_at } : null,
       plan: {
         id: plan.id, name: plan.name, rpm: plan.rpm, tpm: plan.tpm,
@@ -547,7 +580,8 @@ export function createApiRouter(deps) {
         periodEnd: tenant.expires_at || null
       },
       upstream: {
-        configured: relay.upstreamPublic().configured,
+        configured: custom.configured ? custom.hasKey : relay.upstreamPublic().configured,
+        source: custom.source,
         ok: models.upstream.ok,
         error: models.upstream.error,
         modelCount: models.upstream.count
@@ -582,19 +616,19 @@ export function createApiRouter(deps) {
   router.put('/api/tenants/:id/relay/custom', async (ctx) => {
     const { tenant } = tenantCtx(ctx, 'owner');
     const body = await readBody(ctx);
-    const custom = await customUpstreams.update(tenant, body);
+    const { result: custom, restartRequired } = await updateAgentRelayConfig(tenant, (fresh) => customUpstreams.update(fresh, body));
     audit.record({
       actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'relay.custom.update',
       detail: { baseUrl: custom.baseUrl, model: custom.model, hasKey: custom.hasKey }, ip: ctx.ip
     });
-    sendJson(ctx.res, 200, { ok: true, ...custom, custom });
+    sendJson(ctx.res, 200, { ok: true, ...custom, custom, restartRequired });
   });
 
   router.delete('/api/tenants/:id/relay/custom', async (ctx) => {
     const { tenant } = tenantCtx(ctx, 'owner');
-    const custom = customUpstreams.delete(tenant);
+    const { result: custom, restartRequired } = await updateAgentRelayConfig(tenant, (fresh) => customUpstreams.delete(fresh));
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'relay.custom.delete', ip: ctx.ip });
-    sendJson(ctx.res, 200, { ok: true, ...custom, custom });
+    sendJson(ctx.res, 200, { ok: true, ...custom, custom, restartRequired });
   });
 
   router.get('/api/tenants/:id/relay/logs', async (ctx) => {
@@ -627,34 +661,23 @@ export function createApiRouter(deps) {
   router.put('/api/tenants/:id/relay/key', async (ctx) => {
     const { tenant } = tenantCtx(ctx, 'owner');
     const body = await readBody(ctx);
-    const plan = getPlan(tenant.plan_id) || getPlan('trial');
     const providedKey = typeof body.key === 'string' ? body.key.trim() : '';
     const providedModel = typeof body.model === 'string' ? body.model.trim() : '';
-    if (!providedKey && !providedModel && !relayKeys.active(tenant.id)) {
-      throw httpError(400, 'RELAY_KEY_REQUIRED', '请输入 Relay Key 或选择默认模型');
-    }
-    if (providedModel) {
-      if (providedModel.length > 200 || !(plan.models.includes('*') || plan.models.includes(providedModel))) {
-        throw httpError(400, 'MODEL_NOT_ALLOWED', `模型 ${providedModel} 不在当前套餐白名单内`);
+    const { result: issued, fresh, restartRequired } = await updateAgentRelayConfig(tenant, (current) => {
+      const plan = getPlan(current.plan_id) || getPlan('trial');
+      if (!providedKey && !providedModel && !relayKeys.active(tenant.id)) {
+        throw httpError(400, 'RELAY_KEY_REQUIRED', '请输入 Relay Key 或选择默认模型');
       }
-      tenants.setDefaultModel(tenant.id, providedModel);
-    }
-    let issued = null;
-    if (providedKey) {
-      issued = relayKeys.bind(tenant.id, providedKey);
-    } else if (!relayKeys.active(tenant.id)) {
-      issued = relayKeys.issue(tenant.id);
-    }
-    const fresh = tenants.row(tenant.id);
-    await agent.writeConfig(fresh);
-    const process = deps.supervisor.status(tenant.id, 'agent');
-    let restartRequired = false;
-    if (process.state === 'running') {
-      restartRequired = true;
-      try { await agent.restart(fresh); restartRequired = false; } catch (error) {
-        logger?.warn?.('agent restart after relay key change failed', { tenantId: tenant.id, error: error.message });
+      if (providedModel) {
+        if (providedModel.length > 200 || !(plan.models.includes('*') || plan.models.includes(providedModel))) {
+          throw httpError(400, 'MODEL_NOT_ALLOWED', `模型 ${providedModel} 不在当前套餐白名单内`);
+        }
+        tenants.setDefaultModel(tenant.id, providedModel);
       }
-    }
+      if (providedKey) return relayKeys.bind(tenant.id, providedKey);
+      if (!relayKeys.active(tenant.id)) return relayKeys.issue(tenant.id);
+      return null;
+    });
     audit.record({
       actorUserId: ctx.auth.user.id,
       tenantId: tenant.id,
@@ -663,11 +686,13 @@ export function createApiRouter(deps) {
       ip: ctx.ip
     });
     const active = relayKeys.active(tenant.id);
+    const { model, source } = customUpstreams.public(fresh);
     sendJson(ctx.res, 200, {
       ok: true,
       key: issued?.key || undefined,
       keyPrefix: active?.key_prefix || null,
-      model: fresh.default_model || config.defaultModel,
+      model,
+      source,
       createdAt: active?.created_at || null,
       configured: Boolean(active),
       restartRequired,
@@ -675,7 +700,8 @@ export function createApiRouter(deps) {
         configured: Boolean(active),
         keyMasked: active ? `${active.key_prefix}••••` : '',
         keyStatus: active ? 'active' : 'missing',
-        model: fresh.default_model || config.defaultModel
+        model,
+        source
       }
     });
   });

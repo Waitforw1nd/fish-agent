@@ -44,9 +44,16 @@ export class DockerRuntime {
     try { spec = JSON.parse(row.spec_json); } catch { throw fail('NAPCAT_IDENTITY_MISMATCH', '缺少受信任的容器规格'); }
     const mounts = container?.Mounts || [];
     const mountsMatch = mounts.length === 2 && [['qq', '/app/.config/QQ'], ['config', '/app/napcat/config']].every(([local, target]) => mounts.some((mount) => mount.Type === 'bind' && mount.RW === true && mount.Destination === target && path.resolve(mount.Source) === path.resolve(spec.dir, local)));
-    const networks = Object.values(container?.NetworkSettings?.Networks || {});
-    const networkMatch = networks.length === 1 && networks[0].NetworkID === row.network_id;
     const host = container?.HostConfig || {};
+    const networks = Object.entries(container?.NetworkSettings?.Networks || {});
+    let networkMatch = networks.length === 1 && networks[0][1]?.NetworkID === row.network_id && host.NetworkMode === row.network_id;
+    if (!networkMatch && networks.length === 1 && networks[0][1]?.NetworkID === ''
+      && container?.State?.Running === false && ['created', 'exited', 'dead'].includes(container.State.Status)
+      && host.NetworkMode === row.network_id) {
+      const [network] = JSON.parse(await this.command(['network', 'inspect', row.network_id]));
+      networkMatch = network?.Id === row.network_id && network.Name === networks[0][0] && network.Driver === 'bridge'
+        && Object.entries(this.labels(row)).every(([key, value]) => network.Labels?.[key] === value);
+    }
     const ports = host.PortBindings || {};
     const portMatch = Object.keys(ports).length === 3 && Object.entries(spec.ports).every(([internal, external]) => ports[`${internal}/tcp`]?.length === 1 && ports[`${internal}/tcp`][0].HostIp === '127.0.0.1' && Number(ports[`${internal}/tcp`][0].HostPort) === external);
     const limits = host.Memory === spec.memoryMb * 1048576 && host.NanoCpus === spec.cpuMillis * 1000000 && host.PidsLimit === spec.pids && host.ShmSize === spec.shmMb * 1048576 && host.LogConfig?.Config?.['max-size'] === `${spec.logMb}m` && host.LogConfig?.Config?.['max-file'] === String(spec.logFiles);

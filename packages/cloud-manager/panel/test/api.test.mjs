@@ -144,9 +144,12 @@ test('QQ prepare/start 未提供 uin 时保持原有请求体，不注入空字�
 test('QQ 驱动清单与刷新二维码的路径及 CSRF', async () => {
   const { fetchImpl, calls } = recorder(() => jsonResponse(200, { ok: true }));
   const api = createApi({ fetchImpl }); api.setCsrfToken('csrf');
-  await api.getQQDrivers(); await api.refreshQQQrcode('t/1');
+  await api.getQQDrivers(); await api.refreshQQQrcode('t/1', 7);
   assert.equal(calls[0].path, '/api/qq/drivers'); assert.equal(calls[0].init.method, 'GET');
   assert.equal(calls[1].path, '/api/tenants/t%2F1/qq/qrcode/refresh'); assert.equal(calls[1].init.method, 'POST'); assert.equal(calls[1].init.headers['X-CSRF-Token'], 'csrf');
+  assert.deepEqual(JSON.parse(calls[1].init.body), { runtimeGeneration: 7 });
+  await api.refreshQQQrcode('t/1');
+  assert.deepEqual(JSON.parse(calls[2].init.body), { runtimeGeneration: null });
 });
 
 test('QQ 请求不透传运行参数或密钥', async () => {
