@@ -1,6 +1,6 @@
 # 测试、fake、E2E 与故障排查
 
-2026-10-29 视图与接口模块化的最终本地验证见 [阶段五记录](view-api-stage-5.md)。本轮未重新部署 VPS 或使用真实账号；既有 VPS QQ 对话基线以 [云端文档](cloud-manager.md) 和 [部署验收记录](linux-vps-acceptance.md) 为准，P2 双向切换和 P3 多实例恢复另行验收。
+2026-10-29 视图与接口模块化的 Windows 本地验证见 [阶段五记录](view-api-stage-5.md)，后续服务器更新及 Linux 自动化结果见 [宁波 Linux 验收](view-api-linux-acceptance.md)。Linux 更新后的真实账号测试仍待用户执行；既有 VPS QQ 对话基线以 [云端文档](cloud-manager.md) 和 [部署验收记录](linux-vps-acceptance.md) 为准，P2 双向切换和 P3 多实例恢复另行验收。
 
 已有 `headless-runtime/headless-transport/napcat-media/napcat-redirect` 用例验证 HTTP/WS fixture、媒体下载、断开与短超时、宿主文件读取拒绝及重定向私网拦截；云端 `headless/napcat-agent-contract` 验证配置代际、身份、健康缓存及 HTTPS 网关跳转。Windows 不运行 Linux 进程组用例。本机缺少 SnowLuma/便携 QQ，核心标准链中的 `setup-qq-version.mjs` CLIENT_BUILD 检查仍失败；其后的测试需单独运行并记录，不能据此声称标准链全绿。
 

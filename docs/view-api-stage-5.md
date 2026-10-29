@@ -4,6 +4,8 @@
 
 当前状态：本地实施、集成验证与文档同步已完成。最终云端和面板完整套件均通过；核心标准测试仍有本机桌面组件缺失的环境阻塞，整套标准命令尚未全绿。
 
+本页保留 Windows 本地阶段的结果。用户随后授权的服务器更新、Linux 测试及人工账号验收准备见 [宁波 Linux 验收](view-api-linux-acceptance.md)。
+
 ## 验证结果
 
 所有 npm 命令从仓库根目录通过 `node .tools/node/node_modules/npm/bin/npm-cli.js` 调用；下表省略该公共前缀。
