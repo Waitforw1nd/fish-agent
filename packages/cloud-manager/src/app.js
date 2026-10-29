@@ -68,7 +68,7 @@ export class CloudManager {
       relayKeys: this.relayKeys, audit: this.audit, logger: this.logger
     });
     this.agent = new AgentRuntime({
-      config: this.config, allocator: this.allocator, supervisor: this.supervisor,
+      config: this.config, allocator: this.allocator, supervisor: this.supervisor, db: this.db,
       secrets: this.secrets, relayKeys: this.relayKeys, logger: this.logger
     });
     this.agent.onAgentPort = (tenantId, port) => this.tenants.setAgentPort(tenantId, port);
@@ -89,6 +89,11 @@ export class CloudManager {
       config: this.config, tenants: this.tenants, agent: this.agent, qq: this.qq, bili: this.bili,
       gateway: this.gateway, supervisor: this.supervisor, logger: this.logger, db: this.db
     });
+    this.qq.switchLifecycle = {
+      snapshot: (tenant) => this.agent.switchSnapshot(tenant),
+      quiesce: (tenant, operation) => this.agent.switchQuiesce(tenant, operation),
+      resume: (tenant, operation, options) => this.agent.switchResume(this.tenants.row(tenant.id), operation, options)
+    };
     this.agent.setLinksResolver((tenant) => this.hosting.describeChannels(tenant));
     this.qq.onLinksChanged = (tenant, info) => this.hosting.handleLinksChanged(tenant, info);
     this.bili.onLinksChanged = (tenant, info) => this.hosting.handleLinksChanged(tenant, info);
@@ -117,7 +122,6 @@ export class CloudManager {
 
   async start() {
     this.bootstrap = this.auth.bootstrap();
-    await this.hosting.reconcile();
     this.relayServer = this.relay.createServer();
     await new Promise((resolve, reject) => {
       this.relayServer.once('error', reject);
@@ -127,6 +131,7 @@ export class CloudManager {
         resolve();
       });
     });
+    await this.hosting.reconcile();
     this.server = http.createServer((req, res) => this.handleRequest(req, res));
     this.server.on('upgrade', (req, socket, head) => {
       try {
@@ -282,6 +287,7 @@ export class CloudManager {
   }
 
   async stop() {
+    if (this.stopped) return;
     for (const timer of this.timers) clearInterval(timer);
     this.timers = [];
     this.gateway.closeAll();
@@ -291,8 +297,9 @@ export class CloudManager {
       closeServer(this.server),
       closeServer(this.relayServer)
     ]);
-    try { this.db.close(); } catch { /* ignore */ }
     if (shutdownError) throw shutdownError;
+    this.db.close();
+    this.stopped = true;
   }
 }
 

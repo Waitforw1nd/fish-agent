@@ -99,9 +99,25 @@ export class Supervisor {
 
   get(tenantId, kind) { return this.services.get(this.key(tenantId, kind)) || null; }
 
+  unconfirmedRuns(tenantId = null, kind = null) {
+    return this.db.prepare(`SELECT * FROM process_runs
+      WHERE (status NOT IN ('stopped', 'exited', 'failed', 'crashed') OR stopped_at IS NULL)
+        AND (? IS NULL OR tenant_id = ?) AND (? IS NULL OR kind = ?)`)
+      .all(tenantId, tenantId, kind, kind);
+  }
+
+  assertStopped(tenantId, kind) {
+    if (this.unconfirmedRuns(tenantId, kind).length) {
+      throw Object.assign(new Error('无法确认旧进程已退出'), { status: 503, code: 'PROCESS_STOP_UNCONFIRMED' });
+    }
+  }
+
   status(tenantId, kind) {
     const service = this.get(tenantId, kind);
-    if (!service) return { state: 'stopped', pid: null };
+    if (!service) {
+      const run = this.unconfirmedRuns(tenantId, kind)[0];
+      return run ? { state: 'stop_unconfirmed', pid: run.pid, lastError: '旧进程停止状态未确认' } : { state: 'stopped', pid: null };
+    }
     return {
       state: service.state,
       pid: service.child?.pid || null,
@@ -134,6 +150,10 @@ export class Supervisor {
     if (existing && ['starting', 'running', 'restarting'].includes(existing.state)) {
       return this.status(tenantId, kind);
     }
+    if (existing?.child || existing?.processGroup || existing?.state === 'stop_unconfirmed') {
+      throw Object.assign(new Error('旧进程停止状态未确认'), { status: 503, code: 'PROCESS_STOP_UNCONFIRMED' });
+    }
+    this.assertStopped(tenantId, kind);
     if (!command) throw new Error(`service ${key} has no command`);
     const service = {
       tenantId,
@@ -155,7 +175,6 @@ export class Supervisor {
       restarts: 0,
       lastError: null,
       intentionalStop: false,
-      exitWaiters: [],
       restartTimer: null,
       runId: null,
       logs: new LogSink({ file: logFile, maxBytes: this.config.logMaxBytes })
@@ -175,12 +194,17 @@ export class Supervisor {
     const runId = id('run');
     service.runId = runId;
     this._recordRun(runId, service, 'starting', null);
+    if (service.bookkeepingError) {
+      service.state = 'stop_unconfirmed';
+      throw Object.assign(new Error('无法持久化进程运行记录', { cause: service.bookkeepingError }), { code: 'PROCESS_STOP_UNCONFIRMED' });
+    }
     let child;
     try {
       child = spawn(service.command, service.args, {
         cwd: service.cwd,
         env: minimalEnv({ ...service.env, NODE_ENV: service.env.NODE_ENV || 'production' }),
         stdio: ['ignore', 'pipe', 'pipe'],
+        detached: process.platform === 'linux',
         windowsHide: true
       });
     } catch (error) {
@@ -190,6 +214,9 @@ export class Supervisor {
       throw Object.assign(new Error(`无法启动 ${service.kind}: ${service.lastError}`), { status: 503, code: 'SPAWN_FAILED' });
     }
     service.child = child;
+    service.processGroup = process.platform === 'linux' ? child.pid : null;
+    service.exitCode = null;
+    service.signalCode = null;
     service.state = isRestart ? 'restarting' : 'starting';
     this._recordRun(runId, service, service.state, null);
 
@@ -217,59 +244,75 @@ export class Supervisor {
     attach(child.stdout);
     attach(child.stderr);
 
+    const spawned = new Promise((resolve, reject) => {
+      child.once('spawn', resolve);
+      child.once('error', reject);
+    });
     child.once('error', (error) => {
       service.lastError = String(error?.message || error);
       service.logs.write('err', service.lastError);
+      if (!child.pid) {
+        service.child = null;
+        service.state = 'failed';
+        this._recordRun(runId, service, 'failed', service.lastError);
+      }
+    });
+    child.once('exit', (code, signal) => {
+      this._onExit(service, runId, code, signal).catch((error) => {
+        service.state = 'stop_unconfirmed';
+        service.lastError = String(error?.message || error);
+        this._recordRun(runId, service, 'stop_unconfirmed', service.lastError, code);
+      });
     });
 
-    const exitPromise = new Promise((resolve) => {
-      child.once('exit', (code, signal) => resolve({ code, signal }));
-    });
-    exitPromise.then(({ code, signal }) => this._onExit(service, runId, code, signal));
-
-    if (service.ready) {
-      try {
+    try {
+      await spawned;
+      if (service.ready) {
         await waitForPort({
           host: service.ready.host || '127.0.0.1',
           port: Number(service.ready.port),
           timeoutMs: service.ready.timeoutMs || this.config.processStartTimeoutMs,
-          shouldAbort: () => child.exitCode !== null || service.child !== child
+          shouldAbort: () => child.exitCode !== null || child.signalCode !== null || service.child !== child || service.intentionalStop
         });
-        service.readyAt = now();
-        service.state = 'running';
-        this._recordRun(runId, service, 'running', null);
-      } catch (error) {
-        service.lastError = String(error?.message || error);
-        service.logs.write('err', `readiness failed: ${service.lastError}`);
-        service.intentionalStop = true;
-        await this._terminate(service, true);
-        service.state = 'failed';
-        this._recordRun(runId, service, 'failed', service.lastError);
-        throw Object.assign(new Error(`${service.kind} 启动失败: ${service.lastError}`), { status: 503, code: 'READY_FAILED' });
       }
-    } else {
+      if (service.child !== child || service.intentionalStop || child.exitCode !== null || child.signalCode !== null) {
+        throw new Error('进程在就绪前退出');
+      }
       service.readyAt = now();
       service.state = 'running';
       this._recordRun(runId, service, 'running', null);
+      if (service.bookkeepingError) throw service.bookkeepingError;
+    } catch (error) {
+      service.lastError = String(error?.message || error);
+      service.logs.write('err', `readiness failed: ${service.lastError}`);
+      service.intentionalStop = true;
+      if (service.restartTimer) clearTimeout(service.restartTimer);
+      service.restartTimer = null;
+      await this._terminate(service, true);
+      service.state = 'failed';
+      this._recordRun(runId, service, 'failed', service.lastError, service.exitCode);
+      throw Object.assign(new Error(`${service.kind} 启动失败: ${service.lastError}`), { status: 503, code: child.pid ? 'READY_FAILED' : 'SPAWN_FAILED' });
     }
   }
 
   async _onExit(service, runId, code, signal) {
     if (service.runId !== runId) return;
     const uptime = now() - service.startedAt;
-    const intentional = service.intentionalStop;
+    service.exitCode = code;
+    service.signalCode = signal;
     service.child = null;
-    for (const resolve of service.exitWaiters.splice(0)) resolve({ code, signal });
-    if (intentional) {
-      service.state = 'stopped';
-      this._recordRun(runId, service, 'stopped', null, code);
+    service.lastError = `进程退出 code=${code} signal=${signal || ''}`.trim();
+    const groupAlive = this._groupAlive(service);
+    this._recordRun(runId, service, groupAlive ? 'stop_unconfirmed' : service.intentionalStop ? 'stopped' : 'exited', service.lastError, code);
+    if (service.intentionalStop) {
+      service.state = groupAlive ? 'stopping' : 'stopped';
       return;
     }
-    service.lastError = `进程退出 code=${code} signal=${signal || ''}`.trim();
-    service.logs.write('err', service.lastError);
+    if (groupAlive) await this._terminate(service, true);
     this._recordRun(runId, service, 'exited', service.lastError, code);
-    if (!service.restart || this.closing) {
-      service.state = 'crashed';
+    service.processGroup = null;
+    if (!service.restart || service.intentionalStop || this.closing || service.bookkeepingError) {
+      service.state = service.intentionalStop ? 'stopped' : 'crashed';
       return;
     }
     if (uptime > 60_000) service.restarts = 0;
@@ -286,7 +329,7 @@ export class Supervisor {
       if (this.closing || service.state !== 'restarting') return;
       this._launch(service, true).catch((error) => {
         service.lastError = String(error?.message || error);
-        this._onExit(service, service.runId, null, null);
+        if (service.state !== 'stop_unconfirmed') service.state = 'crashed';
       });
     }, delay);
     service.restartTimer.unref?.();
@@ -296,64 +339,113 @@ export class Supervisor {
     try {
       const existing = this.db.prepare('SELECT id FROM process_runs WHERE id = ?').get(runId);
       const ts = now();
+      const terminal = ['stopped', 'crashed', 'failed', 'exited'].includes(state);
+      const pid = service.child?.pid || service.processGroup || null;
       if (!existing) {
         this.db.prepare(`
           INSERT INTO process_runs (id, tenant_id, kind, pid, status, started_at, stopped_at, exit_code, last_error)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(runId, service.tenantId, service.kind, service.child?.pid || null, state, ts, null, null, error ? truncate(error, 500) : null);
+        `).run(runId, service.tenantId, service.kind, pid, state, ts, terminal ? ts : null, exitCode, error ? truncate(error, 500) : null);
       } else {
-        const terminal = ['stopped', 'crashed', 'failed', 'exited'].includes(state);
         this.db.prepare(`
-          UPDATE process_runs SET status = ?, pid = ?, stopped_at = ?, exit_code = ?, last_error = ? WHERE id = ?
-        `).run(state, service.child?.pid || null, terminal ? ts : null, exitCode, error ? truncate(error, 500) : null, runId);
+          UPDATE process_runs SET status = ?, pid = COALESCE(?, pid), stopped_at = ?, exit_code = ?, last_error = ? WHERE id = ?
+        `).run(state, pid, terminal ? ts : null, exitCode, error ? truncate(error, 500) : null, runId);
       }
-    } catch { /* process bookkeeping must not break lifecycle */ }
+      service.bookkeepingError = null;
+    } catch (error) {
+      service.bookkeepingError = error;
+      this.logger?.error?.('process lifecycle persistence failed', error);
+    }
   }
 
   async stop(tenantId, kind, { force = false } = {}) {
     const service = this.get(tenantId, kind);
-    if (!service) return { state: 'stopped' };
+    if (!service) {
+      this.assertStopped(tenantId, kind);
+      return { state: 'stopped' };
+    }
+    if (service.stopPromise) return service.stopPromise;
     service.intentionalStop = true;
     service.restart = false;
+    service.state = 'stopping';
     if (service.restartTimer) {
       clearTimeout(service.restartTimer);
       service.restartTimer = null;
     }
-    await this._terminate(service, force);
-    service.state = 'stopped';
-    this.services.delete(this.key(tenantId, kind));
-    return { state: 'stopped' };
+    service.stopPromise = (async () => {
+      try {
+        await this._terminate(service, force);
+        this._recordRun(service.runId, service, 'stopped', service.signalCode ? `进程退出 signal=${service.signalCode}` : null, service.exitCode);
+        if (service.bookkeepingError) throw service.bookkeepingError;
+        this.assertStopped(tenantId, kind);
+        service.state = 'stopped';
+        service.processGroup = null;
+        this.services.delete(this.key(tenantId, kind));
+        return { state: 'stopped' };
+      } catch (error) {
+        service.state = 'stop_unconfirmed';
+        throw Object.assign(new Error('无法确认进程已退出并持久化停止记录', { cause: error }), { status: 503, code: 'PROCESS_STOP_UNCONFIRMED' });
+      } finally {
+        service.stopPromise = null;
+      }
+    })();
+    return service.stopPromise;
+  }
+
+  _groupAlive(service) {
+    if (!service.processGroup) return false;
+    try { process.kill(-service.processGroup, 0); return true; }
+    catch (error) { return error.code !== 'ESRCH'; }
   }
 
   async _terminate(service, force = false) {
     const child = service.child;
-    if (!child || child.exitCode !== null) return;
-    const exited = new Promise((resolve) => service.exitWaiters.push(resolve));
-    try { child.kill('SIGTERM'); } catch { /* ignore */ }
-    const timeout = force ? 500 : service.stopTimeoutMs;
-    const result = await Promise.race([exited, sleep(timeout).then(() => null)]);
-    if (result === null && child.exitCode === null) {
-      service.logs.write('err', 'SIGTERM 超时，强制终止');
-      try { child.kill('SIGKILL'); } catch { /* ignore */ }
-      if (process.platform === 'win32' && child.pid) {
-        try {
-          const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
-          killer.unref();
-        } catch { /* ignore */ }
+    const gone = () => !service.child && !this._groupAlive(service);
+    if (gone()) return;
+    const signal = (name) => {
+      try {
+        if (service.processGroup) process.kill(-service.processGroup, name);
+        else if (child && child.exitCode === null && child.signalCode === null) child.kill(name);
+      } catch (error) {
+        if (error.code !== 'ESRCH') service.logs.write('err', `stop signal failed: ${error.code || error.message}`);
       }
-      await Promise.race([exited, sleep(3000)]);
+    };
+    const wait = async (timeoutMs) => {
+      const deadline = now() + timeoutMs;
+      while (!gone() && now() < deadline) await sleep(25);
+      return gone();
+    };
+    signal('SIGTERM');
+    if (await wait(force ? 500 : service.stopTimeoutMs)) return;
+    service.logs.write('err', '检查并终止剩余进程');
+    signal('SIGKILL');
+    if (process.platform === 'win32' && child?.pid) {
+      const killer = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+      killer.on('error', (error) => service.logs.write('err', `taskkill failed: ${error.message}`));
+      killer.unref();
     }
+    if (await wait(3000)) return;
+    service.state = 'stop_unconfirmed';
+    this._recordRun(service.runId, service, 'stop_unconfirmed', '进程或进程组未确认退出', service.exitCode);
+    throw Object.assign(new Error('无法确认进程或进程组已退出'), { status: 503, code: 'PROCESS_STOP_UNCONFIRMED' });
   }
 
   async stopTenant(tenantId) {
-    const kinds = [...this.services.values()].filter((s) => s.tenantId === tenantId).map((s) => s.kind);
-    await Promise.allSettled(kinds.map((kind) => this.stop(tenantId, kind, { force: true })));
+    const kinds = new Set([
+      ...[...this.services.values()].filter((s) => s.tenantId === tenantId).map((s) => s.kind),
+      ...this.unconfirmedRuns(tenantId).map((s) => s.kind)
+    ]);
+    const results = await Promise.allSettled([...kinds].map((kind) => this.stop(tenantId, kind, { force: true })));
+    const errors = results.filter((result) => result.status === 'rejected').map((result) => result.reason);
+    if (errors.length) throw new AggregateError(errors, '租户进程停止失败');
   }
 
   async shutdown() {
     this.closing = true;
-    const entries = [...this.services.values()];
-    await Promise.allSettled(entries.map((service) => this.stop(service.tenantId, service.kind, { force: true })));
+    const tenants = new Set([...this.services.values(), ...this.unconfirmedRuns()].map((service) => service.tenantId || service.tenant_id));
+    const results = await Promise.allSettled([...tenants].map((tenantId) => this.stopTenant(tenantId)));
+    const errors = results.filter((result) => result.status === 'rejected').map((result) => result.reason);
+    if (errors.length) throw new AggregateError(errors, '部分进程停止失败');
   }
 
   logs(tenantId, kind, limit = 100) {

@@ -23,6 +23,7 @@ export class HostingService {
   }
 
   async handleLinksChanged(tenant, { reason } = {}) {
+    if (this.qq.hasActiveSwitch?.(tenant.id)) return;
     const cfgPath = this.agent.configPath(tenant);
     const before = readJsonFile(cfgPath, {});
     await this.agent.writeConfig(tenant);
@@ -42,6 +43,7 @@ export class HostingService {
 
   async start(tenant) {
     this.tenants.assertActive(tenant);
+    this.assertNoSwitch(tenant);
     if (this.starting.has(tenant.id)) {
       throw Object.assign(new Error('租户正在启动中'), { status: 409, code: 'TENANT_STARTING' });
     }
@@ -77,6 +79,21 @@ export class HostingService {
   }
 
   async stop(tenant, { reason = 'user' } = {}) {
+    if (this.qq.hasActiveSwitch?.(tenant.id)) {
+      const operation = this.db.prepare("SELECT id FROM qq_operations WHERE tenant_id = ? AND status IN ('running', 'needs_attention') ORDER BY created_at DESC LIMIT 1").get(tenant.id);
+      if (!operation) throw Object.assign(new Error('无法确认正在进行的 QQ 切换'), { code: 'QQ_SWITCH_UNCONFIRMED' });
+      this.gateway.closeTenant(tenant.id);
+      try { await this.qq.cancelSwitch(tenant, operation.id, { restore: false }); }
+      catch (error) {
+        try { await this.agent.stop(tenant, { force: true }); }
+        catch (stopError) { throw new AggregateError([error, stopError], 'QQ 切换取消与 Agent 停止均失败'); }
+        throw error;
+      }
+      if (this.qq.hasActiveSwitch(tenant.id)) {
+        await this.agent.stop(tenant, { force: true });
+        throw Object.assign(new Error('QQ 切换资源尚未安全停止'), { code: 'QQ_SWITCH_UNCONFIRMED' });
+      }
+    }
     this.gateway.closeTenant(tenant.id);
     await this.agent.stop(tenant, { force: true });
     await this.qq.stop(tenant, { releasePorts: true });
@@ -85,7 +102,12 @@ export class HostingService {
     return this.status(tenant);
   }
 
+  assertNoSwitch(tenant) {
+    if (this.qq.hasActiveSwitch?.(tenant.id)) throw Object.assign(new Error('QQ 内核切换进行中'), { status: 409, code: 'QQ_SWITCH_ACTIVE' });
+  }
+
   async restart(tenant) {
+    this.assertNoSwitch(tenant);
     await this.stop(tenant, { reason: 'restart' });
     return this.start(tenant);
   }
@@ -119,8 +141,10 @@ export class HostingService {
   }
 
   async reconcile() {
+    await this.qq.recoverSwitches?.();
     const ts = Date.now();
     for (const runtime of this.db.prepare("SELECT * FROM qq_runtimes WHERE driver = 'napcat' AND (container_id IS NOT NULL OR network_id IS NOT NULL)").all()) {
+      if (this.qq.hasActiveSwitch?.(runtime.tenant_id)) continue;
       const tenant = this.tenants.row(runtime.tenant_id);
       try {
         if (!tenant || tenant.status !== 'active' || tenant.expires_at <= ts || runtime.desired_state !== 'running') await this.qq.docker.stop(runtime.tenant_id);
@@ -129,12 +153,9 @@ export class HostingService {
       } catch (error) { this.logger?.error?.('NapCat reconcile failed', { tenantId: runtime.tenant_id, error: error.message }); }
     }
     this.db.prepare(`
-      UPDATE process_runs SET status = 'interrupted', stopped_at = ?
-      WHERE status IN ('starting', 'running', 'restarting')
-    `).run(ts);
-    this.db.prepare(`
       UPDATE qq_accounts SET state = 'prepared'
       WHERE state IN ('online', 'awaiting_login', 'auth_required', 'starting')
+        AND tenant_id NOT IN (SELECT tenant_id FROM qq_operations WHERE status IN ('running', 'needs_attention'))
     `).run();
     for (const row of this.db.prepare('SELECT id, agent_port FROM tenants').all()) {
       const lease = this.agent.allocator.find(row.id, 'agent.http');
@@ -159,9 +180,19 @@ export class HostingService {
   async shutdown() {
     this.gateway?.closeAll();
     const failures = [];
+    const operations = this.db.prepare("SELECT id, tenant_id FROM qq_operations WHERE status IN ('running', 'needs_attention')").all();
+    for (const operation of operations) {
+      const tenant = this.tenants.row(operation.tenant_id);
+      try {
+        if (!tenant) throw new Error('切换租户不存在');
+        await this.qq.cancelSwitch(tenant, operation.id, { restore: false });
+        if (this.qq.hasActiveSwitch(tenant.id)) throw new Error('切换资源停止状态未确认');
+      } catch (error) { failures.push(error); }
+    }
     try { await this.supervisor.shutdown(); } catch (error) { failures.push(error); }
     const rows = this.db.prepare("SELECT tenant_id FROM qq_runtimes WHERE driver = 'napcat' AND (container_id IS NOT NULL OR network_id IS NOT NULL)").all();
     for (const row of rows) {
+      if (this.qq.hasActiveSwitch?.(row.tenant_id)) continue;
       try { await this.qq.serial(row.tenant_id, () => this.qq.docker.stop(row.tenant_id)); }
       catch (error) { failures.push(error); this.logger?.error?.('NapCat shutdown failed', { tenantId: row.tenant_id, error: error.message }); }
     }

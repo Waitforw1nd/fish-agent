@@ -213,4 +213,16 @@ Windows 本地工作区，Node v24.22.1、npm 11.19.1；其他模块并行修改
 
 浏览器使用 fake 验证了两类实例相关流程，不能代表真实 QQ。核心测试覆盖 NapCat HTTP 图片首发 base64、发送超时与断开后不重发、媒体路径拒绝、下载超限及公网首跳重定向至私网拒绝；Agent 健康和 HTTPS 网关使用本地 fixture 验证。
 
-这些结果不构成 P0 或 P1 真实验收：目标 VPS 的 SSH 返回 `Permission denied (publickey)`，真实 NapCat 容器、扫码、QQ 消息、模型对话及 HTTPS 控制台均未验证。P1 是本地实现待 P0 真实容器及 P1 单实例闭环验收，不能标为完整交付；P2 完整切换事务和 P3 全量恢复尚未完成。
+这些结果不构成 P0 或 P1 真实验收：目标 VPS 的 SSH 返回 `Permission denied (publickey)`，真实 NapCat 容器、扫码、QQ 消息、模型对话及 HTTPS 控制台均未验证。P1 是本地实现待 P0 真实容器及 P1 单实例闭环验收，不能标为完整交付；P2 集成和 P3 全量恢复需单独验收。
+
+## 12. P2 API 与面板回归（2026-10-29）
+
+Windows 便携 Node 24 执行 `node --test test/*.test.mjs`（目录 `packages/cloud-manager/panel`）：最终复验 93/93 通过。覆盖受 CSRF 保护的 operation advance POST、viewer 只读、取消响应不被旧轮询覆盖、请求结果未知时幂等键复用、页面重载恢复 operation、二维码代次错配时隐藏旧图、错号及回滚失败文案、终态停止轮询；新增取消按钮同时遵循服务端 canCancel 与 running 状态、离开页面停止 advance 并在返回后恢复，以及提交后取消返回 409 的回归。
+
+后端全量 `node --test packages/cloud-manager/test/*.test.mjs` 为 99 通过、0 失败、2 跳过；两项跳过为 Linux 进程组终止测试。覆盖双向切换、无 AT 预检不影响旧运行、错号、失败回滚、取消、过期停止、运行凭据轮换、账号占用身份比较、创建响应丢失保留资源以及重启恢复阻断。Docker 创建意图缺少资源 ID 时采用保守阻断，需要管理员核对；本版不自动发现或接管孤儿资源。
+
+核心 `npm run test:coverage` 为 336 通过，`npm run test:headless` 为 14 通过、1 项 Windows SIGTERM 跳过。根 `npm run check` 通过。标准根 `npm test` 的 Bili 阶段 73/73、cloud-manager 阶段通过；core 在 `test/setup-qq-version.mjs:119` 的 CLIENT_BUILD 断言失败，该脚本 84 通过、1 失败。本机缺少 SnowLuma 和便携 QQ，后续串联脚本未执行；独立测试通过不等于标准根测试全绿。
+
+`node --test packages/cloud-manager/test/qq-switch-api.test.mjs` 最终复验 2/2 通过，使用真实 HTTP、SQLite、会话及 FakeDockerRunner。保留 `QQ_SWITCH_NOT_IMPLEMENTED` 防占位断言，并要求目标实际启动进入 waiting_qr；覆盖 viewer/跨租户、CSRF/Origin、只读 GET 不推进、暂停时取消且不恢复目标，以及 POST advance 成功提交后核实生效 driver/UIN。此前审计调用错误已修复，本次成功路径不再触发该错误回滚。
+
+以上均为本地模拟协议，不证明真实容器、手机扫码、有效 LLBot AT、双向真实切换或 Linux 进程组停止。真机逐项证据见 [P2 VPS 验收](linux-vps-acceptance.md#p2-真机验收待执行)。

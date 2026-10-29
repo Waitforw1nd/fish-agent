@@ -1,6 +1,12 @@
 import { getPlan, listPlans } from './plans.js';
 import { createRouter, readJson, sendJson } from './http.js';
-import { now } from './util.js';
+import { now, redactSecrets } from './util.js';
+
+function safeQQOperation(operation) {
+  const message = (value) => redactSecrets(value).replace(/(credential["']?\s*[:=]\s*["']?)[^"'\s,;}]+/gi, '$1[redacted]');
+  const detail = (value) => typeof value === 'string' ? message(value) : value && { ...value, ...(value.message ? { message: message(value.message) } : {}) };
+  return { ...operation, ...(operation.error ? { error: detail(operation.error) } : {}), ...(operation.rollback ? { rollback: detail(operation.rollback) } : {}) };
+}
 
 function httpError(status, code, message, extra = {}) {
   return Object.assign(new Error(message), { status, code, ...extra });
@@ -317,6 +323,30 @@ export function createApiRouter(deps) {
   router.get('/api/qq/drivers', async (ctx) => {
     auth.require(ctx.req);
     sendJson(ctx.res, 200, { ok: true, defaultDriver: config.defaultQqDriver || 'napcat', drivers: await qq.drivers() });
+  });
+  router.post('/api/tenants/:id/qq/switch', async (ctx) => {
+    const { tenant } = activeTenant(ctx);
+    const body = await readBody(ctx);
+    const operation = await qq.startSwitch(tenant, {
+      driver: body.driver, expectedRevision: body.expectedRevision,
+      idempotencyKey: body.idempotencyKey, ...(body.uin === undefined ? {} : { uin: body.uin })
+    });
+    sendJson(ctx.res, 202, { ok: true, operation: safeQQOperation(operation) });
+  });
+  router.get('/api/tenants/:id/qq/operations/:operationId', async (ctx) => {
+    const { tenant } = tenantCtx(ctx);
+    const operation = qq.publicOperation(db.prepare('SELECT * FROM qq_operations WHERE tenant_id = ? AND id = ?').get(tenant.id, ctx.params.operationId));
+    sendJson(ctx.res, 200, { ok: true, operation: safeQQOperation(operation) });
+  });
+  router.post('/api/tenants/:id/qq/operations/:operationId/advance', async (ctx) => {
+    const { tenant } = activeTenant(ctx);
+    const operation = await qq.getOperation(tenant, ctx.params.operationId);
+    sendJson(ctx.res, 200, { ok: true, operation: safeQQOperation(operation) });
+  });
+  router.post('/api/tenants/:id/qq/operations/:operationId/cancel', async (ctx) => {
+    const { tenant } = tenantCtx(ctx, 'operator');
+    const operation = await qq.cancelSwitch(tenant, ctx.params.operationId);
+    sendJson(ctx.res, 200, { ok: true, operation: safeQQOperation(operation) });
   });
   router.post('/api/tenants/:id/qq/qrcode/refresh', async (ctx) => {
     activeTenant(ctx);

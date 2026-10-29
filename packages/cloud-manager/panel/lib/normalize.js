@@ -267,6 +267,20 @@ export function normalizeQQDrivers(value) {
   };
 }
 
+export function normalizeQQOperation(value) {
+  const root = toObject(value);
+  const source = toObject(root.operation || root);
+  const error = toObject(source.error);
+  return {
+    operationId: asString(source.operationId), status: asString(source.status), phase: asString(source.phase),
+    sourceDriver: asString(source.sourceDriver), targetDriver: asString(source.targetDriver),
+    expectedUin: asString(source.expectedUin), expectedRevision: source.expectedRevision ?? null,
+    runtimeGeneration: source.runtimeGeneration ?? null, qrGeneration: source.qrGeneration ?? null,
+    canCancel: source.canCancel === true, error: asString(error.message || source.error),
+    rollback: toObject(source.rollback), createdAt: source.createdAt ?? null, updatedAt: source.updatedAt ?? null
+  };
+}
+
 export function normalizeQQStatus(value) {
   if (value === undefined || value === null) {
     return {
@@ -329,6 +343,9 @@ export function normalizeQQStatus(value) {
     kernelLabel: QQ_KERNEL_LABELS[normalizeKernel(first(source, ['kernel', 'driver', 'protocol', 'adapter', 'type']))] || '未识别',
     runtimeState, loginState, agentChannelState, canChat,
     runtimeGeneration: source.runtimeGeneration ?? null,
+    revision: source.revision ?? null,
+    activeOperationId: asString(source.activeOperationId),
+    latestOperationId: asString(source.latestOperationId),
     phase,
     phaseLabel: QQ_PHASE_LABELS[phase] || '未知',
     tone,
@@ -399,6 +416,7 @@ export function normalizeQr(value, { now = Date.now() } = {}) {
   const finalStatus = expired ? 'expired' : status;
   return {
     available: Boolean(imageSrc || content || statusRaw),
+    operationId: isObject(source) ? asString(source.operationId) : '',
     runtimeGeneration: isObject(source) ? source.runtimeGeneration ?? null : null,
     qrGeneration: isObject(source) ? source.qrGeneration ?? source.generation ?? null : null,
     imageSrc,

@@ -287,6 +287,48 @@ const MIGRATIONS = [
     version: 6,
     sql: `ALTER TABLE qq_runtimes ADD COLUMN image_id TEXT;
           ALTER TABLE qq_runtimes ADD COLUMN spec_json TEXT;`
+  },
+  {
+    version: 7,
+    sql: `
+      CREATE TABLE IF NOT EXISTS qq_accounts (
+        tenant_id TEXT PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+        driver TEXT NOT NULL, uin TEXT, expected_uin TEXT, nickname TEXT,
+        state TEXT NOT NULL DEFAULT 'unprepared', webui_port INTEGER, ob11_port INTEGER,
+        http_port INTEGER, auth_source TEXT, last_error TEXT, updated_at INTEGER NOT NULL
+      );
+      ALTER TABLE qq_accounts ADD COLUMN revision INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE qq_accounts ADD COLUMN effective_profile_id TEXT;
+      ALTER TABLE qq_accounts ADD COLUMN effective_runtime_id TEXT;
+      CREATE TABLE qq_profiles (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        driver TEXT NOT NULL, expected_uin TEXT NOT NULL, directory TEXT NOT NULL,
+        config_json TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        UNIQUE (tenant_id, driver, expected_uin)
+      );
+      CREATE TABLE qq_operations (
+        id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        idempotency_key TEXT NOT NULL, request_hash TEXT NOT NULL, status TEXT NOT NULL,
+        phase TEXT NOT NULL, source_driver TEXT, target_driver TEXT NOT NULL,
+        expected_uin TEXT NOT NULL, expected_revision INTEGER NOT NULL,
+        source_json TEXT, target_json TEXT, runtime_generation INTEGER, qr_generation INTEGER NOT NULL DEFAULT 0,
+        agent_was_running INTEGER NOT NULL DEFAULT 0, error_json TEXT, rollback_json TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        UNIQUE (tenant_id, idempotency_key)
+      );
+      CREATE UNIQUE INDEX qq_operations_one_active ON qq_operations(tenant_id)
+        WHERE status IN ('running', 'needs_attention');
+      CREATE TABLE qq_account_claims (
+        uin TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        operation_id TEXT, runtime_id TEXT, created_at INTEGER NOT NULL
+      );
+      CREATE INDEX qq_profiles_tenant ON qq_profiles(tenant_id);
+    `
+  },
+  {
+    version: 8,
+    sql: `ALTER TABLE qq_accounts ADD COLUMN runtime_generation INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE qq_accounts ADD COLUMN runtime_secret_namespace TEXT;`
   }
 ];
 

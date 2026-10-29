@@ -218,7 +218,7 @@ test('Hosting 渲染状态、保存 B 站四类订阅、准备内核与启动托
 
   const napcat = [...root.querySelectorAll('input[name="qq-kernel"]')].find((input) => input.value === 'napcat');
   assert.ok(napcat);
-  assert.equal(napcat.disabled, true);
+  assert.equal(napcat.disabled, false);
   const prepare = findByText(root, 'button', '准备内核');
   assert.equal(prepare.disabled, true);
   prepare.click();

@@ -39,6 +39,7 @@ import {
   switchRow
 } from '../lib/ui.js';
 import { openQrFlow } from './qr.js';
+import { createSwitchController } from './qq-switch.js';
 import { validateUin } from '../lib/validate.js';
 
 export function mountHosting({
@@ -60,6 +61,7 @@ export function mountHosting({
   let pollError = '';
   let poller = null;
   let qrFlow = null;
+  const switcher = createSwitchController({ api, tenantId, modalRoot, toast, timers, onChange: () => updateQQ() });
 
   let selectedKernel = '';
   let drivers = { defaultDriver: '', drivers: [] };
@@ -122,6 +124,7 @@ export function mountHosting({
     drivers = driversResult.status === 'fulfilled' ? normalizeQQDrivers(driversResult.value) : { defaultDriver: '', drivers: [] };
     if (driversResult.status === 'rejected') qqLoadError = '无法读取平台允许的 QQ 内核。';
     selectedKernel = qq.kernel !== 'unknown' ? qq.kernel : drivers.defaultDriver;
+    void switcher.restore(qq.activeOperationId || qq.latestOperationId);
     subscriptions = resolveSubscriptions(config, bili);
     savedSubscriptions = { ...subscriptions };
     subsDirty = false;
@@ -332,7 +335,13 @@ export function mountHosting({
 
     const prepareButton = h('button', { class: 'btn btn-soft', type: 'button' }, '准备内核');
     const startQqButton = h('button', { class: 'btn btn-primary', type: 'button' }, '启动 QQ 并扫码');
-    const actionRow = h('div', { class: 'inline-buttons mt-14' }, prepareButton, startQqButton);
+    const switchButton = h('button', { class: 'btn btn-soft', type: 'button' }, '切换内核');
+    const actionRow = h('div', { class: 'inline-buttons mt-14' }, prepareButton, startQqButton, switchButton);
+    switchButton.addEventListener('click', () => {
+      if (switcher.busy || !selectedDriver()?.available || !tenant?.running || tenant?.expiry?.state === 'expired') return;
+      const uin = readUin();
+      if (uin) void switcher.start({ driver: selectedKernel, expectedRevision: qq?.revision, uin });
+    });
 
     const qrButton = h('button', { class: 'btn btn-ghost btn-sm', type: 'button' }, '打开二维码');
     const qrCopyStrong = h('strong', {}, '登录二维码');
@@ -374,9 +383,10 @@ export function mountHosting({
       kernelBlock,
       uinBlock,
       actionRow,
+      switcher.node,
       qrBlock,
       statusList,
-      note('二维码有效期以协议端返回为准。运行中的内核不能直接切换。')
+      note('二维码有效期以协议端返回为准。')
     );
 
     prepareButton.addEventListener('click', () => { void prepareQq(); });
@@ -468,7 +478,7 @@ export function mountHosting({
     }
     if (nodes.uinInput) nodes.uinInput.disabled = qqBusy;
 
-    const locked = qq.running || qq.phase === 'preparing' || qqBusy;
+    const locked = qq.phase === 'preparing' || qqBusy || switcher.busy;
     for (const { input, label } of nodes.kernelInputs || []) {
       input.disabled = locked;
       label.classList.toggle('is-disabled', locked);
@@ -717,6 +727,7 @@ export function mountHosting({
       if (next.available) {
         const wasOnline = prevQqPhase === 'online';
         qq = next;
+        void switcher.restore(next.activeOperationId || next.latestOperationId);
         qqLoadError = '';
         if (firstStatusApplied && next.phase === 'online' && !wasOnline) {
           toast?.show?.('QQ 已成功上线', { tone: 'success' });
@@ -862,9 +873,10 @@ export function mountHosting({
   }
 
   async function prepareQq() {
-    if (qqBusy || !active || !selectedDriver()?.available || tenant?.expiry?.state === 'expired' || !tenant?.running || qq?.running) return;
+    if (qqBusy || switcher.busy || !active || !selectedDriver()?.available || tenant?.expiry?.state === 'expired' || !tenant?.running || qq?.running) return;
     const uin = readUin();
     if (!uin) return;
+    if (qq?.kernel !== 'unknown' && qq?.kernel !== selectedKernel) { setAlert(nodes.qqAlert, '请使用切换内核按钮。', 'danger'); return; }
     qqBusy = true;
     setBusy(nodes.prepareButton, true);
     updateQQ();
@@ -887,6 +899,8 @@ export function mountHosting({
     if (qqBusy || !active || !selectedDriver()?.available || tenant?.expiry?.state === 'expired') return;
     const uin = readUin();
     if (!uin) return;
+    if (qq?.kernel !== 'unknown' && qq?.kernel !== selectedKernel) { setAlert(nodes.qqAlert, '请使用切换内核按钮。', 'danger'); return; }
+    if (switcher.busy) return;
     if (qq?.running) {
       if ((qq.kernel !== 'unknown' && qq.kernel !== selectedKernel) || (qq.expectedUin && qq.expectedUin !== uin)) {
         setAlert(nodes.qqAlert, 'QQ 正在运行，请先停止后再更改内核或账号。', 'danger');
@@ -1026,6 +1040,7 @@ export function mountHosting({
       if (!active) return null;
       if (next.available) {
         qq = next;
+        void switcher.restore(next.activeOperationId || next.latestOperationId);
         qqLoadError = '';
         prevQqPhase = next.phase;
         updateQQ();
@@ -1095,6 +1110,7 @@ export function mountHosting({
       poller = null;
       qrFlow?.close?.();
       qrFlow = null;
+      switcher.destroy();
       root.replaceChildren();
     },
     refresh: loadAll

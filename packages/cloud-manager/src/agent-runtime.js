@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { deepMerge, ensureDir, randomToken, readJsonFile, writeJsonPrivate } from './util.js';
+import { isolateQqSwitchTasks } from '../../qq-agent-core/src/qq-switch-isolation.js';
 
 export class AgentRuntime {
-  constructor({ config, allocator, supervisor, secrets, relayKeys, logger }) {
+  constructor({ config, allocator, supervisor, secrets, relayKeys, logger, db }) {
+    this.db = db || supervisor?.db;
     this.config = config;
     this.allocator = allocator;
     this.supervisor = supervisor;
@@ -179,7 +181,47 @@ export class AgentRuntime {
 
   async stop(tenant, { force = false } = {}) {
     await this.supervisor.stop(tenant.id, 'agent', { force });
+    this.assertNoUnconfirmedAgent(tenant);
     this.allocator.release(tenant.id, 'agent.http');
+  }
+
+  assertNoUnconfirmedAgent(tenant) {
+    const row = this.db.prepare(`SELECT id FROM process_runs WHERE tenant_id = ? AND kind = 'agent'
+      AND (status NOT IN ('stopped', 'exited', 'failed', 'crashed') OR stopped_at IS NULL) LIMIT 1`).get(tenant.id);
+    if (row || ['stop_unconfirmed', 'stopping'].includes(this.supervisor.status(tenant.id, 'agent').state)) {
+      throw Object.assign(new Error('旧 Agent 进程停止状态未确认'), { status: 409, code: 'PROCESS_STOP_UNCONFIRMED' });
+    }
+  }
+
+  switchSnapshot(tenant) {
+    const running = ['running', 'starting', 'restarting'].includes(this.supervisor.status(tenant.id, 'agent').state);
+    if (!running) this.assertNoUnconfirmedAgent(tenant);
+    return { agentWasRunning: running };
+  }
+
+  async switchQuiesce(tenant, operation) {
+    const stoppedAt = Number(operation.createdAt || operation.created_at || Date.now());
+    await this.supervisor.stop(tenant.id, 'agent');
+    this.assertNoUnconfirmedAgent(tenant);
+    this.allocator.release(tenant.id, 'agent.http');
+    isolateQqSwitchTasks(this.dataDir(tenant), { operationId: operation.id || operation.operationId, stoppedAt });
+  }
+
+  async switchResume(tenant, operation, { restore = true } = {}) {
+    if (!restore) return;
+    if (!tenant || tenant.status !== 'active' || Number(tenant.expires_at) <= Date.now()) return;
+    if (!operation.agentWasRunning) {
+      this.assertNoUnconfirmedAgent(tenant);
+      return;
+    }
+    this.switchResumes ||= new Map();
+    if (this.switchResumes.has(tenant.id)) return this.switchResumes.get(tenant.id);
+    if (['running', 'starting', 'restarting'].includes(this.supervisor.status(tenant.id, 'agent').state)) return;
+    this.assertNoUnconfirmedAgent(tenant);
+    const resume = Promise.resolve().then(() => this.start(tenant));
+    this.switchResumes.set(tenant.id, resume);
+    try { await resume; }
+    finally { this.switchResumes.delete(tenant.id); }
   }
 
   port(tenant) {

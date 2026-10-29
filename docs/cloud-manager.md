@@ -1,6 +1,6 @@
 # cloud-manager、panel 与 Relay 开发契约
 
-NapCat P1 当前为本地实现和模拟测试，真实 VPS、QQ 登录、模型消息和 HTTPS 控制台尚未验收。Host 网关使用配置或可信代理提供的 scheme；域名、DNS 和证书需部署者提供。完整切换事务（P2）和全量恢复（P3）尚未交付。
+NapCat P1 已有本地实现，真实 VPS、QQ 登录、模型消息和 HTTPS 控制台尚未验收；VPS SSH 目前被 publickey 鉴权阻塞。P2 切换事务及 Agent 生命周期正在集成，不能视为真实双向切换通过；P3 全量多实例恢复尚未交付。Host 网关使用配置或可信代理提供的 scheme；域名、DNS 和证书需部署者提供。
 
 主要源码：`packages/cloud-manager/src/{app,api,config,db,gateway,agent-runtime,qq-service,bili-service,relay/server,billing,plans,ports,crypto}.js`。API 表以 `src/api.js` 为唯一准绳，panel 静态文件由 `src/app.js` 直接托管。
 
@@ -17,6 +17,18 @@ NapCat P1 当前为本地实现和模拟测试，真实 VPS、QQ 登录、模型
 5. **开始养鱼**：需要租户有效、Agent 和 QQ 协议端可运行且 QQ 已登录，模型渠道和模型可用；平台渠道还需要可用钱包余额。还需按实际场景配置允许互动的对象（空白 allowlist 不默认放行）。这些条件并非由一条已验证的一键开通流程自动保证。
 
 平台技术职责包括隔离租户数据和进程、管理端口及秘密、提供 QQ 协议接入、Relay 鉴权与用量记录。支付方式、付款核验和开通规则尚待确定。
+
+### P2 切换生命周期与操作边界
+
+普通用户进入“我的鱼 → 实例详情”，核对当前 QQ 和内核，在下拉框选择目标并点击“切换内核”。管理员在托管视图执行同一流程。切换期间 QQ 暂停，人设、记忆和群白名单保留；两个内核的登录态独立，可能需要重新扫码。界面显示检查环境、停止旧内核、启动目标、等待扫码、提交或回滚。选择另一内核后点击普通“扫码登录”不会隐式跨内核 prepare，而会提示使用切换按钮。
+
+出现“等待扫码”时点击“继续切换扫码”。关闭弹窗仅停止二维码轮询，仍留在可操作实例页时 operation 轮询继续。离开实例页、关闭页面或页面处于后台隐藏状态会停止前端推进请求；没有其他可操作页面或 API 客户端推进时，扫码后 operation 也可能保持 waiting_qr，需返回可操作页面继续检查并提交。管理器重启时另有一次恢复检查，不等于持续后台推进。重新进入实例会读取同一 operation。“取消切换”只在服务端返回 `canCancel=true` 且操作仍为 running 时显示；前端不把某个 phase 自行视为可取消，needs_attention 需管理员核实处理。网络中断导致发起结果未知时，同一选择重试复用幂等键；修改 QQ、目标或配置版本后属于新请求。二维码必须与 operation、runtimeGeneration 和 qrGeneration 一致，代次变化时隐藏旧图。错号或旧内核恢复失败会保留错误结果，需按提示处理，不能把扫码确认当作切换成功。
+
+切换由 owner/operator 发起并检查实例有效期：`POST /api/tenants/:id/qq/switch` 提交 `driver`、`expectedRevision`、`idempotencyKey` 及可选 `uin`；`GET /api/tenants/:id/qq/operations/:operationId` 只读查询，`POST /api/tenants/:id/qq/operations/:operationId/cancel` 取消。viewer 仅查看；GET 不受写请求 CSRF 校验，因此不能推进、提交或回滚操作。面板的可操作用户轮询 `POST /api/tenants/:id/qq/operations/:operationId/advance` 以检查目标登录并推进事务；该接口要求 operator、有效实例与 CSRF/同源，viewer 仅轮询 GET。切换与取消 POST 同样须通过 CSRF/同源和角色检查。取消允许暂停/过期实例进入安全清理；是否恢复旧端由服务端按实时有效状态判定，不能恢复已暂停或到期实例。预检缺少 LLBot 授权时必须保留原 QQ 运行状态。
+
+切换生命周期的本地实现会记录 Agent 是否运行并停止该 Agent，保留 B站桥进程、端口、人设、记忆和消息文件；共享 Agent 停机时 B站互动会短暂中断，B站在途任务可能中止，不保证续跑。确认停止后，按配置号码段把旧 QQ 未读标记为切换中断、将未结束的 QQ 会话标记为中止和发送结果未知，避免自动重发；B站未读及记忆保留。提交或回滚后只在原 Agent 运行且实例仍有效时启动一次，并读取生效连接；启动失败必须上报。切换进行时常规启动、重启和连接变更不能绕过事务，停止及过期先安全取消操作。管理器恢复时先处理未完成操作；若数据库保留未确认的 Agent 运行记录，拒绝隔离和恢复并返回 `PROCESS_STOP_UNCONFIRMED`，需要核实真实进程后处理，不能把记录直接改成停止。
+
+此机制需要配合后端资源停止确认、账号占用、事务和恢复实现，模拟测试不能证明真实 QQ、Docker、双向切换或 P3 多实例恢复。
 
 ## 1. 进程与网络模型
 
@@ -78,7 +90,9 @@ Supervisor 注入租户专属 `QQ_AGENT_TOKEN`、回环 `QQ_AGENT_HOST`、租约
 └── logs/
 ```
 
-`cloud.sqlite` 当前最新迁移版本为 4，表包括：users/sessions、tenants/memberships、tenant_keys/tenant_secrets、port_leases、qq_accounts、bili_config、relay_keys、wallets/wallet_transactions、reservations/ledger、settings、audit_log、process_runs、backups、tenant_relay_custom、relay_logs、recharges。版本 4 为 ledger 增加 platform、chat_key、run_id、vision、usage_source 归因字段。
+`cloud.sqlite` 当前最新迁移版本为 8。版本 4 为 ledger 增加 platform、chat_key、run_id、vision、usage_source；版本 5/6 新增 `qq_runtimes` 及镜像身份和规格字段；版本 7 为 `qq_accounts` 增加 revision、生效 profile/runtime 引用，并新增 `qq_profiles`、`qq_operations`、`qq_account_claims`；版本 8 为 `qq_accounts` 增加 `runtime_generation` 和 `runtime_secret_namespace`，持久保存运行代次与凭据命名空间。同实例只允许一个 running/needs_attention operation，活动 QQ 号有唯一占用约束。原有用户、租户、秘密、租约、计费、备份和审计表保留。
+
+迁移前使用 SQLite 一致性备份，配合原主密钥和对应 profile/data 快照；不能只复制运行中的主库文件。回滚旧版本需同时处理 schema 与仍在运行的容器/进程，不可只换代码留下无人管理的 QQ。
 
 备份包含租户文件与密钥状态，使用主密钥 AES-256-GCM 加密并做 SHA-256 完整性校验；恢复会重分端口、重写配置，失败时回滚文件和运行状态。**只复制 `cloud.sqlite` 不足以恢复；主密钥丢失会导致秘密和备份不可解密。**
 
@@ -147,6 +161,11 @@ Agent 的 `data/config.json` 必须含 Relay Key 才能调用模型，因此该�
 | POST | `/qq/start` | 操作员 active；可按需隐式 prepare。 |
 | POST | `/qq/stop` | 操作员。 |
 | GET | `/qq/status` | 成员。 |
+| POST | `/qq/switch` | 操作员 active；目标 driver、expectedRevision、idempotencyKey、可选 uin，返回 operation。 |
+| GET | `/qq/operations/:operationId` | 成员，只读持久化状态，不推进。 |
+| POST | `/qq/operations/:operationId/advance` | 操作员 active；CSRF 保护，检查登录并推进同一 operation。 |
+| POST | `/qq/operations/:operationId/cancel` | 操作员；暂停/到期允许清理，是否恢复由服务端判断。 |
+| POST | `/qq/qrcode/refresh` | 操作员 active；当前返回 501 `QRCODE_REFRESH_UNSUPPORTED`，不宣称上游已支持刷新。 |
 | GET | `/qq/qrcode` | 操作员 active；受 token 状态门控制。 |
 | PUT / DELETE | `/qq/auth-token` | 操作员；PUT 必须有 `token` 字段。 |
 | GET | `/qq/logs` | 操作员。 |

@@ -1,6 +1,6 @@
 # 开发总览
 
-本文是二次开发入口。契约细节分别见 [协议](docs/protocols.md)、[云端](docs/cloud-manager.md)、[扩展](docs/extensions.md) 和 [测试](docs/testing.md)。NapCat P1 本地实现不代表真实 VPS 或 QQ 验收；P2 完整切换事务和 P3 全量恢复仍待实现。所有说明以当前源码为准；修改实现后必须同步更新对应文档和测试。
+本文是二次开发入口。契约细节分别见 [协议](docs/protocols.md)、[云端](docs/cloud-manager.md)、[扩展](docs/extensions.md) 和 [测试](docs/testing.md)。NapCat P1 本地实现不代表真实 VPS 或 QQ 验收；P2 切换执行器、API 与面板正在集成，真实双向切换未验收，P3 全量恢复仍待交付。P2 操作步骤、权限和中断边界见 [云端切换说明](docs/cloud-manager.md#p2-切换生命周期与操作边界)，真机证据门槛见 [VPS 验收](docs/linux-vps-acceptance.md#p2-真机验收待执行)。所有说明以当前源码为准；修改实现后必须同步更新对应文档和测试。
 
 ## 1. 仓库与运行边界
 

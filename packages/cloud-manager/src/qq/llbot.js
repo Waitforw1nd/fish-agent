@@ -1,5 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { createRequire } from 'node:module';
+
+const execute = promisify(execFile);
 import { ensureDir, readJsonFile, writeFilePrivate, writeJsonPrivate } from '../util.js';
 import { llbotWebuiHeaders, requestJson } from './common.js';
 
@@ -124,6 +129,30 @@ export const llbotDriver = {
     onebotHttp: false,
     loginInfo: true,
     logout: true
+  },
+
+  async preflight({ config }) {
+    const entry = config.llbotEntry;
+    try {
+      if (!entry || !fs.statSync(entry).isFile() || fs.statSync(entry).size === 0) throw new Error('missing entry');
+      fs.accessSync(entry, fs.constants.R_OK);
+      await execute(config.nodePath || process.execPath, ['--check', entry], { timeout: 10000, maxBuffer: 65536, windowsHide: true });
+      if (path.basename(entry) === 'llbot.js') {
+        const dir = path.dirname(entry);
+        const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+        if (pkg.type !== 'module') throw new Error('invalid package');
+        JSON.parse(fs.readFileSync(path.join(dir, 'default_config.json'), 'utf8'));
+        const require = createRequire(path.resolve(entry));
+        for (const dependency of new Set(['ws', 'silk-wasm', 'reggol', 'file-type', ...Object.keys(pkg.dependencies || {})])) require.resolve(dependency);
+        const musl = process.platform === 'linux' && !process.report.getReport().header.glibcVersionRuntime;
+        const triple = `${process.platform === 'win32' ? 'win' : process.platform}-${process.arch}${process.platform === 'linux' ? musl ? '-musl' : '-glibc' : ''}`;
+        const native = path.join(dir, `sign-proxy.${triple}.node`);
+        if (!fs.statSync(native).isFile() || !fs.statSync(native).size) throw new Error('missing native module');
+        fs.accessSync(native, fs.constants.R_OK);
+      }
+    } catch {
+      throw fail(503, 'LLBOT_NOT_BUILT', 'LLBot 构建或运行依赖不完整，请先完成构建与安装');
+    }
   },
 
   async prepare(ctx) {

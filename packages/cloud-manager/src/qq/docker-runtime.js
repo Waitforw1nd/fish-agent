@@ -61,23 +61,37 @@ export class DockerRuntime {
       VALUES (@tenant_id,@runtime_id,@driver,@generation,@container_id,@network_id,@image,@desired_state,@state,@updated_at,@image_id,@spec_json)
       ON CONFLICT(tenant_id) DO UPDATE SET runtime_id=excluded.runtime_id,driver=excluded.driver,generation=excluded.generation,container_id=excluded.container_id,network_id=excluded.network_id,image=excluded.image,desired_state=excluded.desired_state,state=excluded.state,updated_at=excluded.updated_at,image_id=excluded.image_id,spec_json=excluded.spec_json`).run({ image_id: null, spec_json: null, ...row });
   }
-  async start(tenant, account, dir) {
-    const { image, imageId } = await this.preflight();
+  assertResourceIdentity(row) {
+    if (!row || row.driver !== 'napcat') return;
+    if ((row.state === 'stopped' && row.desired_state !== 'stopped' && !row.container_id) ||
+        (!row.container_id && !['allocated', 'network_ready', 'container_removed', 'stopped'].includes(row.state)) ||
+        (!row.network_id && !['allocated', 'stopped'].includes(row.state))) {
+      throw fail('NAPCAT_RESOURCE_UNCONFIRMED', 'Docker 创建意图缺少资源身份，需人工核对后恢复');
+    }
+  }
+  async start(tenant, account, dir, { runtimeId = null, generation = null } = {}) {
     const old = this.row(tenant.id);
+    this.assertResourceIdentity(old);
+    const { image, imageId } = await this.preflight();
     if (old?.container_id) {
       const existing = await this.inspect(old);
-      if (existing.State?.Running && old.desired_state === 'running') return old;
+      if (existing.State?.Running && old.desired_state === 'running') {
+        if (runtimeId && runtimeId !== old.runtime_id) throw fail('QQ_RUNTIME_UNCONFIRMED', '旧 QQ 容器仍在运行');
+        return old;
+      }
     }
     if (old?.container_id || old?.network_id) await this.stop(tenant.id);
     const spec = { dir, ports: { 6099: account.webui_port, 3001: account.ob11_port, 3000: account.http_port }, memoryMb: this.config.napcatMemoryMb, cpuMillis: this.config.napcatCpuMillis, pids: this.config.napcatPids, shmMb: this.config.napcatShmMb, logMb: this.config.napcatLogMb, logFiles: this.config.napcatLogFiles };
-    const row = { tenant_id: tenant.id, runtime_id: randomUUID(), driver: 'napcat', generation: (old?.generation || 0) + 1, container_id: null, network_id: null, image, image_id: imageId, spec_json: JSON.stringify(spec), desired_state: 'running', state: 'starting', updated_at: Date.now() };
+    const row = { tenant_id: tenant.id, runtime_id: runtimeId || randomUUID(), driver: 'napcat', generation: generation ?? (old?.generation || 0) + 1, container_id: null, network_id: null, image, image_id: imageId, spec_json: JSON.stringify(spec), desired_state: 'running', state: 'allocated', updated_at: Date.now() };
     this.save(row);
     const labels = Object.entries(this.labels(row)).flatMap(([key, value]) => ['--label', `${key}=${value}`]);
     const network = `fish-${row.runtime_id}`;
     try {
+      row.state = 'network_create_intent'; this.save(row);
       row.network_id = await this.command(['network', 'create', '--driver', 'bridge', ...labels, network]);
-      this.save(row);
+      row.state = 'network_ready'; this.save(row);
       for (const sub of ['qq', 'config']) ensureDir(path.join(dir, sub), 0o700);
+      row.state = 'container_create_intent'; this.save(row);
       row.container_id = await this.command(['create', '--pull=never', '--restart=no', ...labels, '--network', row.network_id,
         '--memory', `${spec.memoryMb}m`, '--cpus', String(spec.cpuMillis / 1000), '--pids-limit', String(spec.pids), '--shm-size', `${spec.shmMb}m`, '--log-opt', `max-size=${spec.logMb}m`, '--log-opt', `max-file=${spec.logFiles}`,
         '-p', `127.0.0.1:${account.webui_port}:6099`, '-p', `127.0.0.1:${account.ob11_port}:3001`, '-p', `127.0.0.1:${account.http_port}:3000`,
@@ -88,17 +102,16 @@ export class DockerRuntime {
       await this.command(['start', row.container_id]);
       return row;
     } catch (error) {
-      row.desired_state = 'stopped'; row.state = 'failed'; row.updated_at = Date.now(); this.save(row);
-      if (row.container_id || row.network_id) {
-        try { await this.stop(tenant.id); }
-        catch { throw fail('NAPCAT_CLEANUP_UNCONFIRMED', 'NapCat 清理未确认，禁止重试'); }
-      }
+      row.desired_state = 'stopped'; row.updated_at = Date.now(); this.save(row);
+      try { await this.stop(tenant.id); }
+      catch { throw fail('NAPCAT_CLEANUP_UNCONFIRMED', 'NapCat 清理未确认，禁止重试'); }
       throw error;
     }
   }
   async stop(tenantId) {
     const row = this.row(tenantId);
     if (!row) return;
+    this.assertResourceIdentity(row);
     row.desired_state = 'stopped'; row.updated_at = Date.now(); this.save(row);
     if (row.container_id) {
       let container = await this.inspect(row);
@@ -109,7 +122,7 @@ export class DockerRuntime {
         if (container.State?.Running) throw fail('NAPCAT_STOP_UNCONFIRMED', '无法确认 NapCat 已停止');
       }
       await this.command(['rm', row.container_id]);
-      row.container_id = null; this.save(row);
+      row.container_id = null; row.state = 'container_removed'; this.save(row);
     }
     if (row.network_id) {
       let networks;

@@ -3,7 +3,7 @@
 
 import { h, setHidden, setText } from '../lib/dom.js';
 import { openModal } from '../lib/modal.js';
-import { normalizeBiliLogin, normalizeQr, normalizeQQStatus } from '../lib/normalize.js';
+import { normalizeBiliLogin, normalizeQr, normalizeQQStatus, normalizeQQOperation } from '../lib/normalize.js';
 import { createPoller } from '../lib/polling.js';
 import { defaultTimers } from '../lib/timers.js';
 import { apiErrorMessage, qrCountdown } from '../lib/view-data.js';
@@ -20,6 +20,8 @@ export function openQrFlow({
   safeMessages = false,
   capabilities = {},
   runtimeGeneration = null,
+  operationId = null,
+  qrGeneration = null,
   timers = defaultTimers(),
   nowFn = Date.now
 } = {}) {
@@ -32,10 +34,37 @@ export function openQrFlow({
   let currentQr = null;
   let expireHandled = false;
   let expectedRuntime = runtimeGeneration;
-  let expectedQr = null;
+  let expectedQr = qrGeneration;
+  function matchesOperation(value) {
+    if (!operationId || String(value || '') === String(operationId)) return true;
+    stopBackground();
+    setPlaceholder('切换操作已变化，请重新打开二维码。');
+    setState('切换操作已变化', 'danger');
+    refresh.disabled = true;
+    return false;
+  }
+  async function matchesQr(qr, run) {
+    if (!operationId) {
+      expectedQr = qr.qrGeneration;
+      return true;
+    }
+    const operation = normalizeQQOperation(await api.getQQOperation(tenantId, operationId));
+    if (closed || run !== generation) return false;
+    if (operation.operationId !== operationId || operation.status !== 'running' || operation.phase !== 'waiting_qr' || String(operation.runtimeGeneration) !== String(expectedRuntime)) {
+      stopBackground(); setPlaceholder('切换状态已变化，请重新打开二维码。'); setState('切换状态已变化', 'danger'); return false;
+    }
+    if (operation.qrGeneration == null || qr.qrGeneration == null || String(operation.qrGeneration) !== String(qr.qrGeneration)) {
+      setPlaceholder('正在等待最新二维码…', true);
+      setText(countdown, '');
+      if (countdownTimer !== null) { timers.clearInterval(countdownTimer); countdownTimer = null; }
+      return false;
+    }
+    expectedQr = operation.qrGeneration;
+    return true;
+  }
   const canRefresh = !isQq || capabilities.qrcodeRefresh === true || capabilities.refreshQrcode === true || capabilities.qrRefresh === true;
   function matchesRuntime(value) {
-    if (value == null) return true;
+    if (value == null) return !operationId;
     if (expectedRuntime == null) { expectedRuntime = value; return true; }
     if (String(value) === String(expectedRuntime)) return true;
     stopBackground();
@@ -222,8 +251,11 @@ export function openQrFlow({
       } else payload = await api.biliLoginQr(tenantId);
       if (closed || run !== generation) return;
       const qr = normalizeQr(payload, { now: nowFn() });
-      if (isQq && !matchesRuntime(qr.runtimeGeneration)) return;
-      if (isQq) expectedQr = qr.qrGeneration;
+      if (isQq && (!matchesOperation(qr.operationId) || !matchesRuntime(qr.runtimeGeneration))) return;
+      if (isQq && !(await matchesQr(qr, run))) {
+        if (!closed && run === generation) { setPlaceholder('正在等待最新二维码…', true); startStatusPolling(run); }
+        return;
+      }
       if (isQq && qr.status === 'confirmed') {
         setPlaceholder('正在确认 QQ 登录状态…', true);
         setState('正在确认 QQ 登录状态…', 'info');
@@ -263,26 +295,21 @@ export function openQrFlow({
       task: async () => {
         if (closed || run !== generation) return;
         if (isQq) {
-          const status = normalizeQQStatus(await api.getQQStatus(tenantId));
-          if (closed || run !== generation || !matchesRuntime(status.runtimeGeneration)) return;
-          if (status.loginState === 'online' && status.loggedIn && status.uin && status.expectedUin && status.uin === status.expectedUin) {
+          const status = operationId ? null : normalizeQQStatus(await api.getQQStatus(tenantId));
+          if (closed || run !== generation || (status && !matchesRuntime(status.runtimeGeneration))) return;
+          if (status && status.loginState === 'online' && status.loggedIn && status.uin && status.expectedUin && status.uin === status.expectedUin) {
             onSuccess({ nickname: status.nickname, mid: status.uin });
-          } else if (status.phase === 'waiting_confirm') {
+          } else if (status?.phase === 'waiting_confirm') {
             setState('已扫码，请在手机确认', 'info', '已扫码，请在手机确认');
-          } else if (status.phase === 'error') {
+          } else if (status?.phase === 'error') {
             setAlert(error, safeMessages ? 'QQ 登录异常，请联系平台管理员。' : status.error || status.message || 'QQ 登录异常，请检查内核日志。', 'danger');
-          } else if (status.phase === 'stopped') {
+          } else if (status?.phase === 'stopped') {
             setAlert(error, safeMessages ? 'QQ 登录服务未运行，请重试。' : 'QQ 进程未运行，请先在 Hosting Center 启动。', 'warning');
           } else {
             const qr = normalizeQr(await api.getQQQrcode(tenantId), { now: nowFn() });
-            if (closed || run !== generation || !matchesRuntime(qr.runtimeGeneration)) return;
-            if (expectedQr != null && qr.qrGeneration != null && String(expectedQr) !== String(qr.qrGeneration)) {
-              stopBackground();
-              setPlaceholder('二维码已变化，请关闭并重新打开。');
-              setState('二维码已变化', 'danger');
-              return;
-            }
-            if (expectedQr == null) expectedQr = qr.qrGeneration;
+            if (closed || run !== generation || !matchesOperation(qr.operationId) || !matchesRuntime(qr.runtimeGeneration)) return;
+            if (!(await matchesQr(qr, run))) return;
+            if (closed || run !== generation) return;
             if (qr.status === 'confirmed') {
               setPlaceholder('正在确认 QQ 登录状态…', true);
               setState('正在确认 QQ 登录状态…', 'info');
