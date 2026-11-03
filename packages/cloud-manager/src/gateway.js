@@ -114,9 +114,10 @@ export class Gateway {
   }
 
   closeTenant(tenantId) {
+    const desktopCount = this.desktop?.closeTenant(tenantId) || 0;
     const set = this.connections.get(tenantId);
-    if (!set) return 0;
-    let count = 0;
+    if (!set) return desktopCount;
+    let count = desktopCount;
     for (const cleanup of [...set]) {
       try { cleanup(); count += 1; } catch { /* ignore */ }
     }
@@ -125,6 +126,7 @@ export class Gateway {
   }
 
   closeAll() {
+    this.desktop?.closeAll();
     for (const tenantId of [...this.connections.keys()]) this.closeTenant(tenantId);
   }
 

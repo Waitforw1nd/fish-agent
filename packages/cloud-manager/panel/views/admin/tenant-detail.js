@@ -6,6 +6,8 @@ import { pageHead, badge, alertBox, setAlert, cardHead } from '../../lib/ui.js';
 import { confirmDialog } from '../../lib/modal.js';
 import { mountRelay } from '../relay.js';
 import { mountQQPanel } from '../../components/qq-panel.js';
+import { mountEntries } from '../../components/entries.js';
+import { mountBiliExplore } from '../../components/bili-explore.js';
 import { mountBiliPanel } from '../../components/bili-panel.js';
 import { mountAgentStudio } from '../../components/agent-studio/index.js';
 import { mountExtensionManager } from '../../components/extension-manager.js';
@@ -99,12 +101,15 @@ export function mountTenantDetail(root, ctx = {}) {
     if (section === 'hosting') {
       const qqRoot = h('div', {});
       const biliRoot = h('div', {});
-      body.replaceChildren(h('h3', { class: 'workspace-subtitle' }, 'QQ 内核托管与 B 站接入'), h('div', { class: 'workspace-grid' }, qqRoot, biliRoot));
+      const entryRoot = h('div', {}), exploreRoot = h('div', {});
+      body.replaceChildren(entryRoot, h('h3', { class: 'workspace-subtitle' }, 'QQ \u5185\u6838\u6258\u7ba1\u4e0e B \u7ad9\u63a5\u5165'), h('div', { class: 'workspace-grid' }, qqRoot, biliRoot), exploreRoot);
+      const entryPanel = typeof ctx.api.getEntries === 'function' ? mountEntries(entryRoot, { ...options, onConfigure: (key) => (key === 'bili' ? biliRoot : qqRoot).scrollIntoView?.({ behavior: 'smooth' }) }) : null;
+      const explorePanel = typeof ctx.api.getBiliExplore === 'function' ? mountBiliExplore(exploreRoot, options) : null;
       const qqPanel = mountQQPanel(qqRoot, options);
       const biliPanel = mountBiliPanel(biliRoot, options);
       child = {
-        destroy() { qqPanel.destroy(); biliPanel.destroy(); },
-        reload: () => Promise.all([qqPanel.reload(), biliPanel.reload()]),
+        destroy() { qqPanel.destroy(); biliPanel.destroy(); entryPanel?.destroy(); explorePanel?.destroy(); },
+        reload: () => Promise.all([qqPanel.reload(), biliPanel.reload(), entryPanel?.reload(), explorePanel?.reload()]),
         canLeave: () => qqPanel.canLeave() && biliPanel.canLeave(),
         hasUnsavedChanges: () => qqPanel.hasUnsavedChanges() || biliPanel.hasUnsavedChanges()
       };

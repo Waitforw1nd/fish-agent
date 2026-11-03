@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -115,8 +116,9 @@ class LogSink {
   }
 }
 
-export class Supervisor {
+export class Supervisor extends EventEmitter {
   constructor({ db, config, logger }) {
+    super();
     this.db = db;
     this.config = config;
     this.logger = logger;
@@ -127,6 +129,15 @@ export class Supervisor {
   key(tenantId, kind) { return `${tenantId}:${kind}`; }
 
   get(tenantId, kind) { return this.services.get(this.key(tenantId, kind)) || null; }
+
+  // This is process-local evidence, never inferred from a stale database row.
+  meterObservation(runId) {
+    const service = [...this.services.values()].find(item => item.runId === runId);
+    if (!service) return null;
+    return { endedAt: service.runEndedAt ?? null,
+      chargeable: !service.bookkeepingError && !service.exitObserved
+        && ['starting', 'running', 'restarting'].includes(service.state) };
+  }
 
   unconfirmedRuns(tenantId = null, kind = null) {
     return this.db.prepare(`SELECT * FROM process_runs
@@ -222,6 +233,8 @@ export class Supervisor {
     ensureDir(service.cwd, 0o700);
     const runId = id('run');
     service.runId = runId;
+    service.runEndedAt = null;
+    service.exitObserved = false;
     this._recordRun(runId, service, 'starting', null);
     if (service.bookkeepingError) {
       service.state = 'stop_unconfirmed';
@@ -335,6 +348,7 @@ export class Supervisor {
 
   async _onExit(service, runId, code, signal) {
     if (service.runId !== runId) return;
+    service.exitObserved = true;
     const uptime = now() - service.startedAt;
     service.exitCode = code;
     service.signalCode = signal;
@@ -374,10 +388,12 @@ export class Supervisor {
   }
 
   _recordRun(runId, service, state, error, exitCode = null) {
+    const terminal = ['stopped', 'crashed', 'failed', 'exited'].includes(state);
+    // Preserve the first confirmed end even if writing it fails and is retried.
+    if (terminal && service.runId === runId) service.runEndedAt ??= now();
     try {
       const existing = this.db.prepare('SELECT id FROM process_runs WHERE id = ?').get(runId);
-      const ts = now();
-      const terminal = ['stopped', 'crashed', 'failed', 'exited'].includes(state);
+      const ts = terminal ? service.runEndedAt : now();
       const pid = service.child?.pid || service.processGroup || null;
       if (!existing) {
         this.db.prepare(`
@@ -390,6 +406,7 @@ export class Supervisor {
         `).run(state, pid, terminal ? ts : null, exitCode, error ? truncate(error, 500) : null, runId);
       }
       service.bookkeepingError = null;
+      this.emit('run-state', {runId, tenantId: service.tenantId, kind: service.kind, state, startedAt: service.startedAt, endedAt: terminal ? ts : null});
     } catch (error) {
       service.bookkeepingError = error;
       this.logger?.error?.('process lifecycle persistence failed', error);

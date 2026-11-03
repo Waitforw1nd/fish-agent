@@ -17,6 +17,7 @@ const QQ_KERNEL_LABELS = {
   llbot: 'LLBot',
   napcat: 'NapCat',
   snowluma: 'SnowLuma',
+  qqbot: '官方机器人',
   unknown: '未识别'
 };
 
@@ -26,6 +27,7 @@ export function normalizeKernel(raw) {
   if (text.includes('llbot') || text.includes('llonebot')) return 'llbot';
   if (text.includes('napcat')) return 'napcat';
   if (text.includes('snowluma')) return 'snowluma';
+  if (text.includes('qqbot') || text.includes('official')) return 'qqbot';
   return 'unknown';
 }
 

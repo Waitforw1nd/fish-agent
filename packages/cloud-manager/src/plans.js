@@ -1,3 +1,5 @@
+import { ENTRY_TYPES } from './entry-types.js';
+
 export const MODEL_CATALOG = {
   'deepseek-chat': {
     label: 'DeepSeek Chat',
@@ -58,6 +60,8 @@ export const MODEL_CATALOG = {
 };
 
 const ALL_MODELS = Object.keys(MODEL_CATALOG);
+export const BILLING_ENTRIES = ENTRY_TYPES;
+const BILLING_ENTITLEMENTS = { 'desktop.device.seats':{window:'concurrent',limit:null}, 'bili.comment.posted':{window:'day',limit:null}, 'bili.video.browsed':{window:'day',limit:null}, 'qq_protocol.hosting.seconds':{window:'month',limit:null}, 'qq_official.message.out':{window:'month',limit:null} };
 
 export const PLANS = {
   trial: {
@@ -71,6 +75,7 @@ export const PLANS = {
     maxOutputTokens: 2_048,
     maxConcurrent: 2,
     maxTenants: 1,
+    entries: BILLING_ENTRIES, entitlements: BILLING_ENTITLEMENTS, enforce: 'off',
     models: ALL_MODELS
   },
   starter: {
@@ -84,6 +89,7 @@ export const PLANS = {
     maxOutputTokens: 4_096,
     maxConcurrent: 4,
     maxTenants: 3,
+    entries: BILLING_ENTRIES, entitlements: BILLING_ENTITLEMENTS, enforce: 'off',
     models: ALL_MODELS
   },
   pro: {
@@ -97,6 +103,7 @@ export const PLANS = {
     maxOutputTokens: 8_192,
     maxConcurrent: 12,
     maxTenants: 10,
+    entries: BILLING_ENTRIES, entitlements: BILLING_ENTITLEMENTS, enforce: 'off',
     models: ALL_MODELS
   }
 };

@@ -19,6 +19,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { createHash } from 'node:crypto';
 
 /** 人类可读的字节数。 */
@@ -168,34 +170,33 @@ export async function download(url, dest, {
   const startedAt = Date.now();
   let got = 0;
   let stream;
+  let sourceFailed = false;
+  let destinationError = null;
 
   try {
     stream = fs.createWriteStream(partPath);
-    // 逐个 chunk 落盘：内存占用与文件大小无关
-    for await (const chunk of res.body) {
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      got += buf.length;
-      hash.update(buf);
-      if (!stream.write(buf)) {
-        // 等这波写完再继续读，避免磁盘慢时内存里堆积
-        await new Promise((resolve, reject) => {
-          stream.once('drain', resolve);
-          stream.once('error', reject);
-        });
-      }
-      const elapsedMs = Date.now() - startedAt;
-      renderer.update({ got, total, elapsedMs });
-      onProgress?.({ got, total, elapsedMs });
-    }
-    await new Promise((resolve, reject) => {
-      stream.end(() => resolve());
-      stream.once('error', reject);
-    });
+    const source = Readable.fromWeb(res.body);
+    source.on('error', () => { sourceFailed = true; });
+    stream.on('error', error => { if (!sourceFailed) destinationError = error; });
+    // pipeline 管理整个读取/写入生命周期：保持背压，并在等待下一网络块时
+    // 也监听磁盘错误，避免成功 drain 后遗留监听器或漏掉异步写入失败。
+    const meter = new Transform({ transform(chunk, _encoding, callback) {
+      try {
+        got += chunk.length;
+        hash.update(chunk);
+        const elapsedMs = Date.now() - startedAt;
+        renderer.update({ got, total, elapsedMs });
+        onProgress?.({ got, total, elapsedMs });
+        callback(null, chunk);
+      } catch (error) { callback(error); }
+    } });
+    await pipeline(source, meter, stream);
     stream = null;
   } catch (error) {
     try { stream?.destroy(); } catch { /* ignore */ }
     renderer.fail();
     try { if (fs.existsSync(partPath)) fs.unlinkSync(partPath); } catch { /* ignore */ }
+    if (destinationError) throw destinationError;
 
     // 连接中途断开时，Node 的 fetch 只抛一个光秃秃的 "TypeError: fetch failed"，
     // 真正的原因埋在 error.cause 里。对用户来说，"fetch failed" 无法区分
@@ -217,8 +218,6 @@ export async function download(url, dest, {
     throw error;
   }
 
-  renderer.done({ got, total, elapsedMs: Date.now() - startedAt });
-
   // 先校验再改名：不合格的半个文件绝不允许出现在目标路径上
   if (total && got !== total) {
     try { fs.unlinkSync(partPath); } catch { /* ignore */ }
@@ -230,7 +229,14 @@ export async function download(url, dest, {
     throw new Error(`SHA256 校验失败：期望 ${expectSha}，实际 ${sha256}`);
   }
 
-  fs.renameSync(partPath, dest);
+  try {
+    fs.renameSync(partPath, dest);
+  } catch (error) {
+    renderer.fail();
+    try { fs.unlinkSync(partPath); } catch { /* preserve the rename error */ }
+    throw error;
+  }
+  renderer.done({ got, total, elapsedMs: Date.now() - startedAt });
   return { bytes: got, sha256 };
 }
 

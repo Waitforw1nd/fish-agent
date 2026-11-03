@@ -8,7 +8,7 @@ import {
   looksLikeThinkingRejection, extractReasoning, extractReasoningTokens, THINKING_BODY_KEYS
 } from './thinking.js';
 
-function isCloudRelay(api) {
+export function isCloudRelay(api) {
   if (process.env.QQ_AGENT_CLOUD !== '1' || !/^sk-fish-/.test(String(api.apiKey || ''))) return false;
   try { const url = new URL(api.baseUrl); return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname); } catch { return false; }
 }
@@ -379,7 +379,7 @@ export async function chatCompletion({ messages, tools = null, toolChoice = 'aut
       method: 'POST',
       headers: { 'content-type': 'application/json', ...authHeaders(api.apiKey, api.baseUrl, api.model) },
       body: JSON.stringify(isCloudRelay(api)
-        ? { ...body, _fish_attribution: { ...Object.fromEntries(['platform', 'chatKey', 'runId'].map(key => [key, attribution?.[key] ?? skillContext?.[key]]).filter(([, value]) => value != null && value !== '')), vision: Boolean(attribution?.vision || body.messages?.some(m => Array.isArray(m.content) && m.content.some(part => ['image_url', 'image', 'video_url', 'video'].includes(part?.type)))) } }
+        ? { ...body, _fish_attribution: { ...Object.fromEntries(['platform', 'chatKey', 'runId'].map(key => [key, key === 'platform' && /^(group|private):qqbot_/.test(String(attribution?.chatKey ?? skillContext?.chatKey ?? '')) ? 'qqbot' : attribution?.[key] ?? skillContext?.[key]]).filter(([, value]) => value != null && value !== '')), vision: Boolean(attribution?.vision || body.messages?.some(m => Array.isArray(m.content) && m.content.some(part => ['image_url', 'image', 'video_url', 'video'].includes(part?.type)))) } }
         : body),
       signal: controller.signal
     });
@@ -400,7 +400,7 @@ export async function chatCompletion({ messages, tools = null, toolChoice = 'aut
     clearTimeout(timer);
     // 网络/超时失败也要回报账号池（只报 HTTP 失败的话，死端点永远不冷却，调度反复踩坑）
     if (poolAccountId) {
-      reportPoolFeedback({ accountId: poolAccountId, ok: false, status: 0, error: String(error?.cause?.message ?? error?.message ?? error).slice(0, 300) });
+      reportPoolFeedback({ accountId: poolAccountId, ok: false, status: 0, error: '网络请求失败' });
     }
     // 外部 signal 中止（会话级「中止」按钮）：controller.abort(signal.reason) 的
     // reason 会成为 error.cause —— 必须原样上抛（消息含"中止"），
@@ -408,7 +408,7 @@ export async function chatCompletion({ messages, tools = null, toolChoice = 'aut
     // 不能走下面的"AbortError → 模型请求超时"分支：那条文案会被当成可重试的超时。
     if (signal?.aborted) throw signal.reason ?? new Error('aborted');
     if (error?.name === 'AbortError') throw new Error(`模型请求超时（${timeoutMs}ms）`);
-    throw new Error(`模型请求失败：${error?.cause?.message ?? error?.message ?? error}`);
+    throw new Error('模型请求失败：网络请求失败');
   }
 
   // ── 参数被网关拒绝时的一次性降级重试 ──
@@ -431,11 +431,11 @@ export async function chatCompletion({ messages, tools = null, toolChoice = 'aut
         clearTimeout(timer);
         // 降级重试的网络失败同样回报账号池
         if (poolAccountId) {
-          reportPoolFeedback({ accountId: poolAccountId, ok: false, status: 0, error: String(error?.cause?.message ?? error?.message ?? error).slice(0, 300) });
+          reportPoolFeedback({ accountId: poolAccountId, ok: false, status: 0, error: '网络请求失败' });
         }
         if (signal?.aborted) throw signal.reason ?? new Error('aborted');
         if (error?.name === 'AbortError') throw new Error(`模型请求超时（${timeoutMs}ms）`);
-        throw new Error(`模型请求失败：${error?.cause?.message ?? error?.message ?? error}`);
+        throw new Error('模型请求失败：网络请求失败');
       }
     }
   }
@@ -444,17 +444,16 @@ export async function chatCompletion({ messages, tools = null, toolChoice = 'aut
   if (!res.ok) {
     // 回报账号池：失败要降权，限流还要冷却
     if (poolAccountId) {
-      reportPoolFeedback({ accountId: poolAccountId, ok: false, status: res.status, error: res.text.slice(0, 300) });
+      reportPoolFeedback({ accountId: poolAccountId, ok: false, status: res.status, error: `HTTP ${res.status}` });
     }
-    throw new Error(`模型 API HTTP ${res.status}：${res.text.slice(0, 500)}`);
+    throw new Error(`模型 API HTTP ${res.status}`);
   }
 
   // ── "返回了无法解析的 JSON" 根因治理 ──
   // 根因：中转站/网关在高负载或流式截断时，会返回**非 JSON 的响应体**（空串、
   // HTML 错误页、或被截断的半截 JSON）。res.json() 直接抛 SyntaxError，
   // 上层只看到一句"无法解析的 JSON"，完全不知道实际收到了什么。
-  // 治理：先读原文，尝试解析；失败时把**实际收到的内容摘要**（前 200 字符 +
-  // 内容类型 + 长度）写进错误，便于定位是网关返回了 HTML、空响应还是截断。
+  // 报告响应形态和长度，不回显未经信任的响应正文或头部。
   const rawText = res.text;
   let data;
   try {
@@ -464,17 +463,16 @@ export async function chatCompletion({ messages, tools = null, toolChoice = 'aut
     if (poolAccountId) {
       reportPoolFeedback({ accountId: poolAccountId, ok: false, status: res.status, error: 'JSON 解析失败（坏响应体）' });
     }
-    const preview = rawText.replace(/\s+/g, ' ').trim().slice(0, 200);
     const looksLikeHtml = /^\s*</.test(rawText);
     const hint = !rawText.trim()
       ? '响应体为空（网关可能提前断流）'
       : looksLikeHtml
         ? '响应是 HTML 而非 JSON（可能是网关错误页/鉴权页）'
         : '响应不是合法 JSON（可能被截断）';
-    throw new Error(`模型 API 返回了无法解析的 JSON：${hint}。content-type=${res.contentType || '未知'}，长度=${rawText.length}，内容预览：${preview || '（空）'}`);
+    throw new Error(`模型 API 返回了无法解析的 JSON：${hint}。长度=${rawText.length}`);
   }
   const choice = data?.choices?.[0];
-  if (!choice) throw new Error(`模型 API 响应缺少 choices：${JSON.stringify(data).slice(0, 300)}`);
+  if (!choice) throw new Error('模型 API 响应缺少 choices');
 
   const result = {
     message: choice.message ?? {},

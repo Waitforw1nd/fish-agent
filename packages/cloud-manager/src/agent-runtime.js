@@ -58,6 +58,9 @@ export class AgentRuntime {
     const ensured = port && consoleToken && relayKey ? { port, consoleToken, relayKey } : await this.ensureValues(tenant);
     const existing = readJsonFile(this.configPath(tenant), {});
     const links = this.linksResolver ? await this.linksResolver(tenant) : { qq: null, bili: null };
+    // 官方 QQ 机器人：无本地协议端，Agent 直连官方网关；AppSecret 从托管密钥取回
+    const qqbotLink = links.qq?.driver === 'qqbot' ? links.qq : null;
+    const qqbotSecret = qqbotLink ? String(this.secrets.get(tenant.id, 'qq.qqbot.appSecret', '') || '') : '';
     const relayBaseUrl = `http://127.0.0.1:${this.config.relayPort}/v1`;
     const custom = this.customUpstreams?.get(tenant.id);
     const base = {
@@ -73,7 +76,17 @@ export class AgentRuntime {
       allowAllWhenEmpty: false,
       tools: { ...(existing.tools || {}), crossChatSend: false },
       security: { ...(existing.security || {}), allowPrivateImageHosts: false },
-      connection: {
+      connection: qqbotLink ? {
+        ...(existing.connection || {}),
+        enabled: Boolean(qqbotLink.enabled),
+        type: 'qqbot',
+        qqbot: {
+          appId: String(qqbotLink.appId || ''),
+          appSecret: qqbotSecret,
+          sandbox: qqbotLink.sandbox === true,
+          intents: Number(qqbotLink.intents) > 0 ? Number(qqbotLink.intents) : (1 << 25)
+        }
+      } : {
         ...(existing.connection || {}),
         enabled: Boolean(links.qq?.enabled),
         type: 'onebot',
@@ -90,7 +103,9 @@ export class AgentRuntime {
       },
       channels: {
         ...(existing.channels || {}),
-        qq: links.qq ? {
+        desktop: { ...(existing.channels?.desktop || {}), enabled: Boolean(this.entries?.enabled(tenant.id, 'desktop')), idRange: { start: 7318349394477056, end: 7881299347898367 }, maxDevicesPerUser: 3, outboxSize: 200, maxImageBytes: 2097152 },
+        qq: qqbotLink ? { ...(existing.channels?.qq || {}), enabled: false, driver: 'qqbot', generation: qqbotLink.generation ?? null }
+          : links.qq ? {
           ...(existing.channels?.qq || {}),
           enabled: Boolean(links.qq.enabled),
           apiTransport: links.qq.apiTransport || 'http',

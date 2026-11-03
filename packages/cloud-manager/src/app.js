@@ -12,6 +12,11 @@ import { UsersService } from './users.js';
 import { PortAllocator } from './ports.js';
 import { Supervisor } from './supervisor.js';
 import { BillingService } from './billing.js';
+import { LedgerBillingProvider } from './billing/provider.js';
+import { attachHostingMeters } from './billing/hosting-meter.js';
+import { TenantEntryService } from './entries.js';
+import { DesktopDeviceService } from './desktop/device-service.js';
+import { DesktopGateway } from './desktop/gateway.js';
 import { RelayKeyService } from './relay-keys.js';
 import { TenantService } from './tenants.js';
 import { AgentRuntime } from './agent-runtime.js';
@@ -25,6 +30,7 @@ import { RelayService } from './relay/server.js';
 import { CustomUpstreamService } from './relay/custom-upstreams.js';
 import { BackupService } from './backup.js';
 import { createApiRouter } from './api.js';
+import { LifecycleLock } from './lifecycle-lock.js';
 import {
   applySecurityHeaders, createRouter, errorPayload, parseUrl, readJson, requestIp, sendHtml, sendJson, sendText
 } from './http.js';
@@ -64,17 +70,21 @@ export class CloudManager {
     this.allocator = new PortAllocator({ db: this.db, config: this.config, logger: this.logger });
     this.supervisor = new Supervisor({ db: this.db, config: this.config, logger: this.logger });
     this.billing = new BillingService({ db: this.db, logger: this.logger });
+    this.billingProvider = new LedgerBillingProvider({ db: this.db, wallet: this.billing });
+    this.stopHostingMeters = attachHostingMeters({ supervisor: this.supervisor, billing: this.billingProvider, logger: this.logger });
     this.relayKeys = new RelayKeyService({ db: this.db, secrets: this.secrets, config: this.config, logger: this.logger });
     this.tenants = new TenantService({
       db: this.db, config: this.config, billing: this.billing,
       relayKeys: this.relayKeys, audit: this.audit, logger: this.logger
     });
+    this.entries = new TenantEntryService({ db: this.db, tenants: this.tenants });
     this.customUpstreams = new CustomUpstreamService({ db: this.db, secrets: this.secrets, config: this.config });
     this.agent = new AgentRuntime({
       config: this.config, allocator: this.allocator, supervisor: this.supervisor, db: this.db,
       secrets: this.secrets, relayKeys: this.relayKeys, customUpstreams: this.customUpstreams, logger: this.logger
     });
     this.agent.onAgentPort = (tenantId, port) => this.tenants.setAgentPort(tenantId, port);
+    this.agent.entries = this.entries;
     this.qq = new QQService({
       db: this.db, config: this.config, allocator: this.allocator, supervisor: this.supervisor,
       secrets: this.secrets, settings: this.settings, logger: this.logger, audit: this.audit
@@ -82,15 +92,18 @@ export class CloudManager {
     this.qq.agentRuntime = this.agent;
     this.bili = new BiliService({
       db: this.db, config: this.config, allocator: this.allocator, supervisor: this.supervisor,
-      secrets: this.secrets, logger: this.logger
+      secrets: this.secrets, logger: this.logger, agentRuntime: this.agent
     });
     this.gateway = new Gateway({
       config: this.config, tenants: this.tenants, auth: this.auth,
       agentRuntime: this.agent, logger: this.logger
     });
+    this.desktopDevices = new DesktopDeviceService({ db: this.db, tenants: this.tenants, entries: this.entries, billingProvider: this.billingProvider, config: this.config });
+    this.desktopGateway = new DesktopGateway({ devices: this.desktopDevices, agentRuntime: this.agent, billingProvider: this.billingProvider, logger: this.logger });
+    this.gateway.desktop = this.desktopGateway;
     this.hosting = new HostingService({
       config: this.config, tenants: this.tenants, agent: this.agent, qq: this.qq, bili: this.bili,
-      gateway: this.gateway, supervisor: this.supervisor, logger: this.logger, db: this.db
+      gateway: this.gateway, supervisor: this.supervisor, logger: this.logger, db: this.db, entries: this.entries
     });
     this.qq.switchLifecycle = {
       snapshot: (tenant) => this.agent.switchSnapshot(tenant),
@@ -100,9 +113,13 @@ export class CloudManager {
     this.agent.setLinksResolver((tenant) => this.hosting.describeChannels(tenant));
     this.qq.onLinksChanged = (tenant, info) => this.hosting.handleLinksChanged(tenant, info);
     this.bili.onLinksChanged = (tenant, info) => this.hosting.handleLinksChanged(tenant, info);
-    this.tenants.onExpired = (tenantId) => this.hosting.onExpired(tenantId);
+    this.lifecycleLock = new LifecycleLock();
+    this.tenants.onExpired = (tenantId) => this.lifecycleLock.run(tenantId, () => {
+      const tenant = this.tenants.row(tenantId);
+      if (tenant && (tenant.status !== 'active' || Number(tenant.expires_at) <= Date.now())) return this.hosting.onExpired(tenantId);
+    }, { mandatory: true });
     this.relay = new RelayService({
-      config: this.config, db: this.db, billing: this.billing, relayKeys: this.relayKeys,
+      config: this.config, db: this.db, billing: this.billing, billingProvider: this.billingProvider, relayKeys: this.relayKeys,
       tenants: this.tenants, settings: this.settings, customUpstreams: this.customUpstreams, logger: this.logger
     });
     this.backup = new BackupService({
@@ -124,7 +141,9 @@ export class CloudManager {
       billing: this.billing, backup: this.backup, settings: this.settings, audit: this.audit,
       users: this.users, agent: this.agent, customUpstreams: this.customUpstreams,
       logger: this.logger, db: this.db, supervisor: this.supervisor,
-      agentSettings: this.agentSettings, extensionService: this.extensionService
+      agentSettings: this.agentSettings, extensionService: this.extensionService,
+      billingProvider: this.billingProvider, entries: this.entries, desktopDevices: this.desktopDevices, desktopGateway: this.desktopGateway,
+      lifecycleLock: this.lifecycleLock
     });
     this.server = null;
     this.relayServer = null;
@@ -147,6 +166,9 @@ export class CloudManager {
     this.server = http.createServer((req, res) => this.handleRequest(req, res));
     this.server.on('upgrade', (req, socket, head) => {
       try {
+        if (new URL(req.url, 'http://localhost').pathname.startsWith('/desktop/v1/')) {
+          this.desktopGateway.upgrade(req, socket, head); return;
+        }
         const info = classifyHost(req.headers.host, this.config.baseDomain);
         if (info.type === 'tenant') this.gateway.upgrade(req, socket, head);
         else {
@@ -192,6 +214,10 @@ export class CloudManager {
   async handleRequest(req, res) {
     try {
       applySecurityHeaders(res);
+      const requestUrl = parseUrl(req);
+      if (requestUrl.pathname.startsWith('/desktop/v1/')) {
+        await this.desktopGateway.handle(req, res, requestUrl); return;
+      }
       const hostInfo = classifyHost(req.headers.host, this.config.baseDomain);
       if (hostInfo.type === 'tenant') {
         const handled = await this.gateway.handle(req, res);
@@ -247,12 +273,16 @@ export class CloudManager {
       return;
     }
     if (!isLogin && authed && !safeMethod) {
-      const strictCsrf = /^\/api\/tenants\/[^/]+\/(?:agent|extensions)(?:\/|$)/.test(url.pathname)
-        || /^\/api\/tenants\/[^/]+\/relay\/custom\/test$/.test(url.pathname)
-        || /^\/api\/admin\/extensions(?:\/|$)/.test(url.pathname)
-        || /^\/api\/admin\/recharges\/[^/]+\/reject$/.test(url.pathname)
-        || /^\/api\/admin\/users\/[^/]+$/.test(url.pathname)
-        || url.pathname === '/api/auth/password';
+      // Match the route's canonical path: the router accepts repeated slashes,
+      // so testing the raw URL here could weaken a route's CSRF policy.
+      const routePath = match.route.path;
+      const strictCsrf = /^\/api\/tenants\/[^/]+\/(?:agent|extensions|desktop|entries|bili\/explore)(?:\/|$)/.test(routePath)
+        || /^\/api\/admin\/tenants\/[^/]+\/entitlements$/.test(routePath)
+        || /^\/api\/tenants\/[^/]+\/relay\/custom\/test$/.test(routePath)
+        || /^\/api\/admin\/extensions(?:\/|$)/.test(routePath)
+        || /^\/api\/admin\/recharges\/[^/]+\/reject$/.test(routePath)
+        || /^\/api\/admin\/users\/[^/]+$/.test(routePath)
+        || routePath === '/api/auth/password';
       try { this.auth.verifyCsrf(req, authed, { strict: strictCsrf }); } catch (error) {
         const { status, payload } = errorPayload(error);
         sendJson(res, status, payload);
@@ -315,6 +345,7 @@ export class CloudManager {
     this.gateway.closeAll();
     let shutdownError;
     try { await this.hosting.shutdown(); } catch (error) { shutdownError = error; this.logger.error('shutdown failed', error); }
+    this.stopHostingMeters?.();
     await Promise.all([
       closeServer(this.server),
       closeServer(this.relayServer)

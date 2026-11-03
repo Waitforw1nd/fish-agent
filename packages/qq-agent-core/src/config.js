@@ -2,9 +2,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_CONFIG, BILI_VIRTUAL_ID_START, BILI_VIRTUAL_ID_END } from './config-defaults.js';
+import { DEFAULT_CONFIG, BILI_VIRTUAL_ID_START, BILI_VIRTUAL_ID_END, DESKTOP_ID_START, DESKTOP_ID_END } from './config-defaults.js';
 import { normalizeStoredAgentConfig, mergeAgentConfigPatch } from './config-codec.js';
-export { DEFAULT_CONFIG, BILI_VIRTUAL_ID_START, BILI_VIRTUAL_ID_END } from './config-defaults.js';
+export { DEFAULT_CONFIG, BILI_VIRTUAL_ID_START, BILI_VIRTUAL_ID_END, DESKTOP_ID_START, DESKTOP_ID_END } from './config-defaults.js';
 export { deepMerge, migrateLegacySkills, stripObsoleteFields } from './config-codec.js';
 import { sliderToTier } from './tier-slider.js';
 
@@ -111,6 +111,8 @@ export function resolveChannels(config = getConfig()) {
     ? biliRaw.extraActions.map((x) => String(x || '').trim()).filter(Boolean)
     : [];
 
+  const oldBiliRange = normalizeChannelIdRange(biliRaw.idRange, biliDefaults.idRange, 'channels.bili.idRange');
+  if (oldBiliRange.start === BILI_VIRTUAL_ID_START && oldBiliRange.end === Number.MAX_SAFE_INTEGER) oldBiliRange.end = BILI_VIRTUAL_ID_END;
   const bili = {
     enabled: biliRaw.enabled === true,
     wsUrl: firstNonEmpty(biliRaw.wsUrl, biliDefaults.wsUrl),
@@ -120,7 +122,7 @@ export function resolveChannels(config = getConfig()) {
     selfUserId: firstNonEmpty(biliRaw.selfUserId),
     selfNickname: firstNonEmpty(biliRaw.selfNickname),
     extraActions,
-    idRange: normalizeChannelIdRange(biliRaw.idRange, biliDefaults.idRange, 'channels.bili.idRange')
+    idRange: oldBiliRange
   };
 
   const overlap = !(qq.idRange.end < bili.idRange.start || bili.idRange.end < qq.idRange.start);
@@ -131,7 +133,15 @@ export function resolveChannels(config = getConfig()) {
       + '同一 ID 可能属于两个平台，已拒绝启动（请修改配置，确保两段互不相交）'
     );
   }
-  return { qq, bili };
+  const desktopRaw = rawChannels.desktop && typeof rawChannels.desktop === 'object' ? rawChannels.desktop : {};
+  const desktop = { ...desktopRaw, enabled: desktopRaw.enabled === true,
+    idRange: normalizeChannelIdRange(desktopRaw.idRange, DEFAULT_CONFIG.channels.desktop.idRange, 'channels.desktop.idRange') };
+  const ranges = [qq.idRange, bili.idRange, desktop.idRange];
+  for (let i = 0; i < ranges.length; i++) for (let j = i + 1; j < ranges.length; j++) {
+    if (!(ranges[i].end < ranges[j].start || ranges[j].end < ranges[i].start)) throw new Error('channel ID ranges overlap');
+  }
+  if (ranges.some(r => r.end > DESKTOP_ID_END)) throw new Error('channel ID range overlaps reserved blocks');
+  return { qq, bili, desktop };
 }
 
 export function loadConfig() {

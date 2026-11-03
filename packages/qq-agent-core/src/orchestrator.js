@@ -9,17 +9,19 @@
 // 同一会话（群/私聊）同时最多一个运行；运行期间新消息只写 JSON（未读），不叠加触发。
 // 不同会话之间并行，受 maxConcurrentRuns 全局限流。
 import { getConfig, storeConfigForChat, personaForChat } from './config.js';
+import { memberNotesForChat } from './member-notes.js';
 import { vendorOfConfig } from './model-prices.js';
 import { randInt } from './util.js';
 import { buildSystemPrompt, buildUserPrompt, resolveContextTier } from './prompt.js';
 import { chatCompletion, chatCompletionWithRetry, addUsage, isRetryableError } from './llm.js';
-import { buildToolDefs, toOpenAiTools, executeTool } from './tools.js';
+import { buildToolDefs, toOpenAiTools, executeTool, desktopOrUnverified } from './tools.js';
 import { modelImageVerdict } from './vision-scan.js';
 import { currentProviders } from './providers.js';
 import { skillManager } from './skills/manager.js';
 import { getToolAvailability } from './tool-registry.js';
 import { rescueUnsentReply } from './reply-rescue.js';
 import { BiliContextCache } from './bili-context.js';
+import { randomUUID } from 'node:crypto';
 
 export class Orchestrator {
   constructor({ store, memory, stickers, sender, sessions, onebot, emit = null, reminders = null, videoReader = null }) {
@@ -348,6 +350,7 @@ export class Orchestrator {
   // ── 核心循环 ───────────────────────────────────────────────────────────
 
   async wake(chatKey, { proactive = false, waitingSessionId = null, reuseSessionId = null } = {}) {
+    if (proactive && /^(group|private):qqbot_/.test(String(chatKey))) return;
     if (this.aborted) { if (waitingSessionId) this.#finishWaiting(waitingSessionId, 'aborted'); return; }
     if (this.paused && !proactive) { if (waitingSessionId) this.#finishWaiting(waitingSessionId, 'aborted'); return; }
     if (this.runningChats.has(chatKey)) return;
@@ -751,7 +754,7 @@ export class Orchestrator {
 
     // 表情库快照（提示词用）
     let stickerEntries = [];
-    if (cfg.sticker?.enabled !== false) {
+    if (cfg.sticker?.enabled !== false && !desktopOrUnverified({chatKey, onebot:this.onebot})) {
       try { stickerEntries = (await this.stickers.sync(false)).entries ?? []; } catch { stickerEntries = []; }
     }
 
@@ -1339,7 +1342,7 @@ export class Orchestrator {
   /** 触发一条提醒：往对应群/私聊发一条提醒消息（走正常发送管道，留档）。 */
   async #fireReminder(r) {
     const [kind, id] = String(r.chatKey || '').split(':');
-    if (!kind || !id) return;
+    if (!kind || !id || /^qqbot_/.test(id)) return;
     const text = `⏰ 提醒：${r.text}`;
     // 走统一发送管道（SendQueue）：与机器人发言共享限频 / 去重 / 超长切分 / CQ 转义，
     // 并自带留档（appendSelf）。原先直接调 onebot.sendText 会绕过这四项 ——
@@ -1509,7 +1512,7 @@ export class Orchestrator {
   async consolidateMemoryForChat(chatKey, { userIds = null, force = false } = {}) {
     const cfg = getConfig();
     if (!cfg.api?.model || !cfg.api?.baseUrl) throw new Error('模型未配置，无法整理记忆');
-    const notes = cfg.memberNotes || {};
+    const notes = memberNotesForChat(chatKey, cfg.memberNotes || {});
     const only = Array.isArray(userIds) && userIds.length
       ? new Set(userIds.map((u) => String(u ?? '').trim()).filter(Boolean))
       : null;
@@ -1741,7 +1744,7 @@ export class Orchestrator {
     const res = await this.#memoryChat([
       { role: 'system', content: system },
       { role: 'user', content: user }
-    ]);
+    ], chatKey);
 
     const parsed = extractJsonObject(String(res?.message?.content ?? ''));
     if (!parsed) {
@@ -1820,12 +1823,19 @@ export class Orchestrator {
    * useChatModel=true 时跟随聊天模型（cfg.api.*）；
    * false 时使用 cfg.memory.provider/model 指向的目录模型（端点/密钥取自 providers）。
    */
-  async #memoryChat(messages) {
+  async #memoryChat(messages, chatKey) {
     const cfg = getConfig();
     const mem = cfg.memory || {};
+    const [kind, chatId] = chatKey.split(':');
+    const attribution = {
+      platform: this.onebot?.platformForArchive?.(kind, chatId) || this.onebot?.platformFor?.(kind, chatId) || 'qq',
+      chatKey,
+      runId: `memory-${randomUUID()}`
+    };
     if (mem.useChatModel !== false) {
-      return chatCompletion({ messages, temperature: 0.2 });
-    }    const providers = currentProviders();
+      return chatCompletion({ messages, temperature: 0.2, attribution });
+    }
+    const providers = currentProviders();
     const p = providers.find((x) => x.id === mem.provider);
     if (!p?.baseURL || !p?.apiKey || !mem.model) {
       throw new Error('记忆整理专用模型未配置：请在设置 → 记忆里选择提供商与模型');
@@ -1833,6 +1843,7 @@ export class Orchestrator {
     return chatCompletion({
       messages,
       temperature: 0.2,
+      attribution,
       overrides: { baseUrl: p.baseURL, apiKey: p.apiKey, model: mem.model, timeoutMs: 180000 }
     });
   }

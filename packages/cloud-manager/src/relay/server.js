@@ -1,10 +1,11 @@
 import http from 'node:http';
 import https from 'node:https';
 import crypto from 'node:crypto';
+import { StringDecoder } from 'node:string_decoder';
 import { getPlan } from '../plans.js';
 import { estimateHoldMicros } from '../pricing.js';
 import { estimateMessagesTokens, estimateTokens } from '../plans.js';
-import { now, truncate } from '../util.js';
+import { now } from '../util.js';
 import { requestJson } from '../qq/common.js';
 
 const OPENAI_ERROR_TYPES = {
@@ -30,6 +31,12 @@ const FORWARD_FIELDS = [
 
 function relayError(status, code, message, param = null) {
   return Object.assign(new Error(message), { status, code, param, relay: true });
+}
+
+function upstreamFailure(status, custom) {
+  if (status === 401 || status === 403) return relayError(502, 'upstream_auth_failed', '上游凭据不可用，请检查配置或联系管理员');
+  return relayError(status === 429 ? 429 : 502, status === 429 ? 'upstream_rate_limited' : 'upstream_error',
+    `${custom?.configured ? '自定义上游' : '上游'} HTTP ${status}`);
 }
 
 function sendOpenAIError(res, status, code, message, { param = null, headers = {} } = {}) {
@@ -113,15 +120,21 @@ function attributionOf(raw, messages) {
   if (raw != null && (typeof raw !== 'object' || Array.isArray(raw))) throw relayError(400, 'invalid_attribution', '归因信息必须是对象');
   const value = raw || {};
   if (Object.keys(value).some(key => !['platform', 'chatKey', 'runId', 'vision'].includes(key))) throw relayError(400, 'invalid_attribution', '归因字段无效');
-  const platform = value.platform == null || value.platform === '' ? null : value.platform;
+  let platform = value.platform == null || value.platform === '' ? null : value.platform;
   const chatKey = value.chatKey == null || value.chatKey === '' ? null : value.chatKey;
   const runId = value.runId == null || value.runId === '' ? null : value.runId;
-  if (platform !== null && !['qq', 'bili'].includes(platform)) throw relayError(400, 'invalid_attribution', '归因平台无效');
-  if (chatKey !== null && (typeof chatKey !== 'string' || !/^(group|private):[1-9]\d{0,15}$/.test(chatKey) || !Number.isSafeInteger(Number(chatKey.split(':')[1])))) throw relayError(400, 'invalid_attribution', '归因会话无效');
+  if (platform !== null && !['qq', 'qqbot', 'desktop', 'bili'].includes(platform)) throw relayError(400, 'invalid_attribution', '归因平台无效');
+  if (chatKey !== null) {
+    const official = typeof chatKey === 'string' && /^(?:group:qqbot_(?:group|channel)|private:qqbot_(?:user|dm))_[A-Za-z0-9_-]{1,128}$/.test(chatKey);
+    const numeric = typeof chatKey === 'string' && /^(group|private):[1-9]\d{0,15}$/.test(chatKey) && Number.isSafeInteger(Number(chatKey.split(':')[1]));
+    if (official && platform === 'qq') platform = 'qqbot';
+    if ((!official && !numeric) || (official && platform !== 'qqbot') || (platform === 'qqbot' && !official)) throw relayError(400, 'invalid_attribution', 'Invalid chat key');
+    if (numeric && platform) { const n=Number(chatKey.split(':')[1]); const ranges={qq:[1,4503599627370495],bili:[4503599627370496,7318349394477055],desktop:[7318349394477056,7881299347898367]}; const r=ranges[platform]; if (!r || n<r[0] || n>r[1]) throw relayError(400,'invalid_attribution','Invalid platform range'); }
+  }
   if (runId !== null && (typeof runId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(runId))) throw relayError(400, 'invalid_attribution', '归因运行标识无效');
   if (value.vision !== undefined && typeof value.vision !== 'boolean') throw relayError(400, 'invalid_attribution', '视觉标记无效');
   const vision = Boolean(value.vision || messages.some(m => Array.isArray(m?.content) && m.content.some(p => ['image_url', 'image', 'video_url', 'video'].includes(p?.type))));
-  return { platform, chatKey, runId, vision };
+  return { platform, entry: ({qq:'qq_protocol',qqbot:'qq_official',desktop:'desktop',bili:'bili'})[platform] || null, chatKey, runId, vision };
 }
 
 function completionText(payload) {
@@ -133,8 +146,22 @@ function completionText(payload) {
     const content = choice?.message?.content ?? choice?.delta?.content ?? choice?.text;
     if (typeof content === 'string') out += content;
     if (choice?.message?.tool_calls) out += JSON.stringify(choice.message.tool_calls);
+    if (Array.isArray(choice?.delta?.tool_calls)) out += choice.delta.tool_calls.map(call => `${call?.function?.name || ''}${call?.function?.arguments || ''}`).join('');
   }
   return out;
+}
+
+function validCompletionPayload(payload, stream = false) {
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!object(payload)) return false;
+  if (!Array.isArray(payload.choices)) return stream && payload.choices === undefined && Boolean(extractUsage(payload));
+  return payload.choices.every(choice => object(choice) && ['message', 'delta'].every(key => {
+    const part = choice[key];
+    if (part === undefined) return true;
+    if (!object(part)) return false;
+    return part.tool_calls == null || (Array.isArray(part.tool_calls)
+      && part.tool_calls.every(call => object(call) && (call.function === undefined || object(call.function))));
+  }));
 }
 
 function contentTextFromBody(body) {
@@ -142,10 +169,11 @@ function contentTextFromBody(body) {
 }
 
 export class RelayService {
-  constructor({ config, db, billing, relayKeys, tenants, settings, customUpstreams, logger }) {
+  constructor({ config, db, billing, billingProvider, relayKeys, tenants, settings, customUpstreams, logger }) {
     this.config = config;
     this.db = db;
     this.billing = billing;
+    this.billingProvider = billingProvider;
     this.relayKeys = relayKeys;
     this.tenants = tenants;
     this.settings = settings;
@@ -220,6 +248,8 @@ export class RelayService {
       response = await requestJson(url, {
         headers: { authorization: `Bearer ${up.apiKey}` },
         timeoutMs: 8000,
+        deadlineMs: 8000,
+        maxBytes: 1024 * 1024,
         lookup
       });
     } catch (error) {
@@ -234,7 +264,10 @@ export class RelayService {
     }
     const data = Array.isArray(response.body?.data) ? response.body.data
       : Array.isArray(response.body?.models) ? response.body.models : [];
-    const models = data.map((entry) => typeof entry === 'string' ? entry : entry?.id).filter(Boolean);
+    // Upstreams can reflect the Authorization header in otherwise successful
+    // model responses. Never expose that credential via panel or Relay APIs.
+    const models = data.map((entry) => typeof entry === 'string' ? entry : entry?.id)
+      .filter((id) => typeof id === 'string' && id.length > 0 && id.length <= 200 && !id.includes(up.apiKey));
     const value = { ok: true, models: [...new Set(models)], error: null };
     this.modelsCache.set(cacheKey, { at: now(), value });
     return value;
@@ -323,6 +356,16 @@ export class RelayService {
       if (req.method === 'GET' && (url.pathname === '/health' || url.pathname === '/v1/health')) {
         sendJson(res, 200, { ok: true, service: 'relay' });
         return;
+      }
+      if (url.pathname === '/v1/fish/meter-events' || url.pathname === '/v1/fish/entitlements') {
+        const auth = await this.authenticate(req);
+        if (!this.billingProvider) throw relayError(503,'metering_unavailable','Metering unavailable');
+        if (url.pathname.endsWith('/entitlements') && req.method === 'GET') { sendJson(res,200,await this.billingProvider.entitlements(auth.tenant.id)); return; }
+        if (url.pathname.endsWith('/meter-events') && req.method === 'POST') {
+          let body; try { body=JSON.parse((await readBody(req, this.config.relayMaxBodyBytes)).toString('utf8')); } catch { throw relayError(400,'invalid_json','Invalid JSON'); }
+          const result=await this.billingProvider.recordMeters(body?.events,{client:true,tenantId:auth.tenant.id}); sendJson(res,200,result); return;
+        }
+        throw relayError(405,'method_not_allowed','Method not allowed');
       }
       if (url.pathname === '/v1/models' || url.pathname === '/models') {
         if (req.method !== 'GET') { sendOpenAIError(res, 405, 'method_not_allowed', '仅支持 GET'); return; }
@@ -432,6 +475,9 @@ export class RelayService {
           maxTokens,
           ttlMs: Math.max(180_000, this.config.upstreamTimeoutMs)
         });
+        // Socket timeouts measure inactivity, so a live stream can outlast its
+        // crash-recovery TTL. Keep its reservation held until this request ends.
+        this.billing.activeHolds.add(reservation.id);
       } catch (error) {
         releaseInflight();
         throw error;
@@ -440,6 +486,7 @@ export class RelayService {
     const stream = body.stream === true;
     const payload = this.buildUpstreamBody(body, { model, maxTokens, stream });
     const cleanup = () => {
+      if (reservation) this.billing.activeHolds.delete(reservation.id);
       releaseInflight();
     };
     if (stream) {
@@ -499,9 +546,18 @@ export class RelayService {
     if (reservation) this.billing.release(reservation.id, reason);
   }
 
-  settleUsage({ custom, reservation, usage, upstreamStatus, requestId, attribution, usageSource }) {
-    if (custom?.configured) return { costMicros: 0 };
-    return this.billing.settle({ reservation, usage, upstreamStatus, requestId, attribution, usageSource });
+  settleUsage({ auth, custom, reservation, usage, upstreamStatus, requestId, attribution, usageSource }) {
+    if (custom?.configured) {
+      if (attribution.entry) this.billingProvider?.recordMeter({
+        tenantId: auth.tenant.id, entry: attribution.entry, meter: `${attribution.entry}.llm.tokens`,
+        quantity: usage.prompt_tokens + usage.completion_tokens, unit: 'tokens', source: 'relay',
+        occurredAt: now(), idempotencyKey: `tokens:custom:${requestId}`, attrs: { upstream: 'custom', usageSource }
+      });
+      return { costMicros: 0 };
+    }
+    const result = this.billing.settle({ reservation, usage, upstreamStatus, requestId, attribution, usageSource });
+    if (!result.settled) throw new Error('Reservation was not held at settlement');
+    return result;
   }
 
   async bufferedChat({ res, body, payload, auth, custom, reservation, requestId, cleanup, record, attribution }) {
@@ -509,8 +565,8 @@ export class RelayService {
     try {
       upstream = await this.upstreamRequest(payload, { timeoutMs: this.config.upstreamTimeoutMs, custom });
     } catch (error) {
-      this.releaseReservation(reservation, 'upstream-unavailable');
-      cleanup();
+      try { this.releaseReservation(reservation, 'upstream-unavailable'); }
+      finally { cleanup(); }
       throw error;
     }
     const result = await new Promise((resolve) => {
@@ -518,7 +574,17 @@ export class RelayService {
       const done = (value) => { if (!settled) { settled = true; resolve(value); } };
       upstream.on('response', (upstreamRes) => {
         const chunks = [];
-        upstreamRes.on('data', (chunk) => chunks.push(chunk));
+        let bytes = 0;
+        upstreamRes.on('data', (chunk) => {
+          if (settled) return;
+          bytes += chunk.length;
+          if (bytes > (this.config.upstreamMaxResponseBytes || 8 * 1024 * 1024)) {
+            done({ error: Object.assign(new Error('response too large'), { code: 'UPSTREAM_RESPONSE_TOO_LARGE' }) });
+            upstream.destroy();
+            return;
+          }
+          chunks.push(chunk);
+        });
         upstreamRes.on('end', () => done({ status: upstreamRes.statusCode, headers: upstreamRes.headers, text: Buffer.concat(chunks).toString('utf8') }));
         upstreamRes.on('error', (error) => done({ error }));
       });
@@ -528,20 +594,24 @@ export class RelayService {
     cleanup();
     if (result.error) {
       this.releaseReservation(reservation, 'upstream-error');
-      throw relayError(502, 'upstream_error', `上游请求失败: ${result.error.message}`);
+      throw result.error.code === 'UPSTREAM_RESPONSE_TOO_LARGE'
+        ? relayError(502, 'upstream_response_too_large', '上游响应超过大小限制')
+        : relayError(502, 'upstream_error', '上游连接失败');
     }
     let json = null;
     try { json = JSON.parse(result.text); } catch { /* non-json */ }
     if (result.status < 200 || result.status >= 300) {
       this.releaseReservation(reservation, `upstream-${result.status}`);
-      const message = custom?.configured ? `自定义上游 HTTP ${result.status}` : (json?.error?.message || truncate(result.text, 500) || `上游 HTTP ${result.status}`);
-      if (result.status === 429) throw relayError(429, 'upstream_rate_limited', message);
-      if (result.status === 401 || result.status === 403) throw relayError(502, 'upstream_auth_failed', '平台上游凭据不可用，请联系管理员');
-      throw relayError(502, 'upstream_error', message);
+      // Error bodies can reflect the platform API key or internal request headers.
+      throw upstreamFailure(result.status, custom);
     }
-    if (!json) {
+    if (!validCompletionPayload(json)) {
       this.releaseReservation(reservation, 'upstream-invalid-json');
-      throw relayError(502, 'upstream_invalid_response', '上游返回了非 JSON 响应');
+      throw relayError(502, 'upstream_invalid_response', '上游返回了无效响应');
+    }
+    if (json.error) {
+      this.releaseReservation(reservation, 'upstream-error-payload');
+      throw upstreamFailure(502, custom);
     }
     const reportedUsage = extractUsage(json);
     const usage = reportedUsage || fallbackUsage(body.messages, completionText(json));
@@ -553,7 +623,13 @@ export class RelayService {
         prompt_tokens_details: { cached_tokens: usage.cached_tokens }
       };
     }
-    const settlement = this.settleUsage({ custom, reservation, usage, upstreamStatus: result.status, requestId, attribution, usageSource: reportedUsage ? 'reported' : 'estimated' });
+    let settlement;
+    try {
+      settlement = this.settleUsage({ auth, custom, reservation, usage, upstreamStatus: result.status, requestId, attribution, usageSource: reportedUsage ? 'reported' : 'estimated' });
+    } catch {
+      try { this.releaseReservation(reservation, 'settlement-failed'); } catch { /* Recovery expires remaining holds. */ }
+      throw relayError(500, 'settlement_failed', '用量结算失败');
+    }
     record({ status: 200, tokens: usage.total_tokens, costMicros: settlement.costMicros });
     res.setHeader('x-fish-request-id', requestId);
     res.setHeader('x-fish-cost-micros', String(settlement.costMicros || 0));
@@ -565,29 +641,44 @@ export class RelayService {
     try {
       upstream = await this.upstreamRequest(payload, { timeoutMs: this.config.upstreamTimeoutMs, custom });
     } catch (error) {
-      this.releaseReservation(reservation, 'upstream-unavailable');
-      cleanup();
+      try { this.releaseReservation(reservation, 'upstream-unavailable'); }
+      finally { cleanup(); }
       throw error;
     }
     let headersSent = false;
     let buffer = '';
     let completion = '';
     let usage = null;
+    let doneEvent = '';
     let finalized = false;
     let clientClosed = false;
     const finalize = (upstreamStatus) => {
-      if (finalized) return;
+      if (finalized) return true;
       finalized = true;
       cleanup();
       const finalUsage = usage || fallbackUsage(body.messages, completion);
-      const settlement = this.settleUsage({ custom, reservation, usage: finalUsage, upstreamStatus, requestId, attribution, usageSource: usage ? 'reported' : 'estimated' });
-      record({ status: 200, tokens: finalUsage.total_tokens, costMicros: settlement.costMicros });
+      try {
+        const settlement = this.settleUsage({ auth, custom, reservation, usage: finalUsage, upstreamStatus, requestId, attribution, usageSource: usage ? 'reported' : 'estimated' });
+        record({ status: 200, tokens: finalUsage.total_tokens, costMicros: settlement.costMicros });
+        return true;
+      } catch {
+        // EventEmitter callbacks are outside handleChat's async error boundary.
+        // A rolled-back settlement must not crash the Relay or appear successful.
+        try { this.releaseReservation(reservation, 'settlement-failed'); } catch { /* Recovery expires remaining holds. */ }
+        record({ status: 500, error: 'settlement_failed' });
+        this.logger?.error?.('relay settlement failed', { requestId, tenantId: auth.tenant.id });
+        if (!res.headersSent) sendOpenAIError(res, 500, 'settlement_failed', '用量结算失败');
+        else res.destroy();
+        upstream.destroy();
+        return false;
+      }
     };
     const release = (reason, status = 502) => {
       if (finalized) return;
       finalized = true;
       cleanup();
-      this.releaseReservation(reservation, reason);
+      try { this.releaseReservation(reservation, reason); }
+      catch { this.logger?.error?.('relay reservation release failed', { requestId, tenantId: auth.tenant.id }); }
       record({ status, error: reason });
     };
     res.on('close', () => {
@@ -599,16 +690,33 @@ export class RelayService {
       }
     });
     upstream.on('response', (upstreamRes) => {
+      let bytes = 0;
+      upstreamRes.on('data', chunk => {
+        if (finalized) return;
+        bytes += chunk.length;
+        if (bytes <= (this.config.upstreamMaxResponseBytes || 8 * 1024 * 1024)) return;
+        // Only complete, accepted events contribute to a partial settlement.
+        if (usage || completion) { if (!finalize(200)) return; }
+        else release('upstream-response-too-large');
+        if (!res.headersSent) sendOpenAIError(res, 502, 'upstream_response_too_large', '上游响应超过大小限制');
+        else if (!res.writableEnded) res.end('data: ' + JSON.stringify({ error: { code: 'upstream_response_too_large', type: 'upstream_error', message: '上游响应超过大小限制' } }) + '\n\n');
+        upstream.destroy();
+      });
+      upstreamRes.on('error', () => {
+        if (finalized) return;
+        if (usage || completion) { if (!finalize(200)) return; }
+        else release('upstream-stream-error');
+        if (!res.headersSent) sendOpenAIError(res, 502, 'upstream_error', '上游连接中断');
+        else res.destroy();
+      });
       if (upstreamRes.statusCode < 200 || upstreamRes.statusCode >= 300) {
-        const chunks = [];
-        upstreamRes.on('data', (chunk) => chunks.push(chunk));
+        upstreamRes.resume();
         upstreamRes.on('end', () => {
-          release(`upstream-${upstreamRes.statusCode}`, upstreamRes.statusCode === 401 ? 502 : upstreamRes.statusCode);
+          if (finalized) return;
+          const error = upstreamFailure(upstreamRes.statusCode, custom);
+          release(`upstream-${upstreamRes.statusCode}`, error.status);
           if (!res.headersSent) {
-            let json = null;
-            try { json = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { /* ignore */ }
-            const message = custom?.configured ? `自定义上游 HTTP ${upstreamRes.statusCode}` : (json?.error?.message || truncate(Buffer.concat(chunks).toString('utf8'), 500) || `上游 HTTP ${upstreamRes.statusCode}`);
-            sendOpenAIError(res, upstreamRes.statusCode === 401 ? 502 : upstreamRes.statusCode, 'upstream_error', message);
+            sendOpenAIError(res, error.status, error.code, error.message);
           } else {
             try { res.end(); } catch { /* ignore */ }
           }
@@ -618,15 +726,19 @@ export class RelayService {
       const contentType = String(upstreamRes.headers['content-type'] || '');
       if (!contentType.includes('text/event-stream')) {
         const chunks = [];
-        upstreamRes.on('data', (chunk) => chunks.push(chunk));
+        upstreamRes.on('data', (chunk) => { if (!finalized) chunks.push(chunk); });
         upstreamRes.on('end', () => {
+          if (finalized) return;
           let json = null;
           try { json = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { /* ignore */ }
-          if (json) {
+          if (json?.error) {
+            release('upstream-error-payload');
+            sendOpenAIError(res, 502, 'upstream_error', '上游返回错误');
+          } else if (validCompletionPayload(json)) {
             usage = extractUsage(json);
             const u = usage || fallbackUsage(body.messages, completionText(json));
             if (!usage) completion = completionText(json);
-            finalize(upstreamRes.statusCode);
+            if (!finalize(upstreamRes.statusCode)) return;
             if (!usage) json.usage = { prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, total_tokens: u.total_tokens };
             sendJson(res, upstreamRes.statusCode || 200, json);
           } else {
@@ -646,40 +758,58 @@ export class RelayService {
       });
       res.flushHeaders?.();
       res.socket?.setNoDelay?.(true);
-      upstreamRes.setEncoding('utf8');
+      const decoder = new StringDecoder('utf8');
       upstreamRes.on('data', (chunk) => {
-        if (clientClosed) return;
-        res.write(chunk);
-        buffer += chunk;
+        if (clientClosed || finalized) return;
+        buffer += decoder.write(chunk);
         let index;
         let match;
         while ((match = /\r?\n\r?\n/.exec(buffer))) {
           index = match.index;
           const event = buffer.slice(0, index);
           buffer = buffer.slice(index + match[0].length);
-          for (const line of event.split('\n')) {
-            if (!line.startsWith('data:')) continue;
-            const data = line.slice(5).trim();
-            if (!data || data === '[DONE]') continue;
-            try {
-              const parsed = JSON.parse(data);
+          let streamError = /^event:\s*error\r?$/m.test(event);
+          // SSE joins all data fields before JSON parsing. Parsing each line
+          // separately used to forward multi-line error payloads without redaction.
+          const data = event.split(/\r?\n/).filter(line => line.startsWith('data:'))
+            .map(line => line.slice(5).replace(/^ /, '')).join('\n').trim();
+          const terminal = data === '[DONE]';
+          let parsed;
+          if (data && !terminal) {
+            try { parsed = JSON.parse(data); } catch { streamError = true; }
+            if (!validCompletionPayload(parsed, true) || parsed.error) streamError = true;
+            if (!streamError) {
               if (parsed.usage) usage = extractUsage(parsed);
               completion += completionText(parsed);
-            } catch { /* ignore malformed keepalive */ }
+            }
           }
+          if (streamError) {
+            if (usage || completion) { if (!finalize(200)) return; }
+            else release('upstream-stream-error');
+            res.end('data: ' + JSON.stringify({ error: { code: 'upstream_error', type: 'upstream_error', message: '上游流式响应错误' } }) + '\n\n');
+            upstream.destroy();
+            return;
+          }
+          // Do not report stream completion until its atomic settlement succeeds.
+          if (terminal) doneEvent = 'data: [DONE]\n\n';
+          else res.write(data ? 'data: ' + JSON.stringify(parsed) + '\n\n' : ': keep-alive\n\n');
         }
       });
       upstreamRes.on('end', () => {
-        finalize(upstreamRes.statusCode || 200);
-        if (!res.writableEnded) res.end();
-      });
-      upstreamRes.on('error', () => {
-        if (usage || completion) finalize(200);
-        else release('upstream-stream-error');
-        try { res.end(); } catch { /* ignore */ }
+        if (finalized) return;
+        // A truncated stream with no complete output or usage has nothing to
+        // settle. A complete empty response still settles when [DONE] arrives.
+        if (!doneEvent && !usage && !completion) {
+          release('upstream-incomplete-stream');
+          if (!res.writableEnded) res.end();
+          return;
+        }
+        if (!finalize(upstreamRes.statusCode || 200)) return;
+        if (!res.writableEnded) res.end(doneEvent);
       });
     });
     upstream.on('timeout', () => {
+      if (finalized) return;
       upstream.destroy();
       if (!headersSent) {
         release('upstream-timeout');
@@ -693,9 +823,10 @@ export class RelayService {
       }
     });
     upstream.on('error', (error) => {
+      if (finalized) return;
       if (!headersSent) {
         release('upstream-error');
-        if (!res.headersSent) sendOpenAIError(res, 502, 'upstream_error', `上游请求失败: ${error.message}`);
+        if (!res.headersSent) sendOpenAIError(res, 502, 'upstream_error', '上游连接失败');
       } else if (usage || completion) {
         finalize(200);
         try { res.end(); } catch { /* ignore */ }

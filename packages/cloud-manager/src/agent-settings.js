@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { guardConfigPatch } from './config-guard.js';
+import { normalizeChatPath } from './contracts/chat-id.js';
 import { ensureDir } from './util.js';
 import { normalizeStoredAgentConfig, mergeAgentConfigPatch, sanitizeConfig } from '../../qq-agent-core/src/config-codec.js';
 import { PERSONAS, parsePersonaCard, personaCardToTemplate } from '../../qq-agent-core/src/personas.js';
@@ -41,9 +42,9 @@ function ensurePlainPatch(value) {
 }
 
 function chatPart(chatId) {
-  const match = /^(group|private)[:_](\d{1,20})$/.exec(String(chatId || ''));
-  if (!match) throw err(400, 'INVALID_CHAT_ID', '会话 ID 不合法');
-  return `${match[1]}_${match[2]}`;
+  const part = normalizeChatPath(chatId);
+  if (!part) throw err(400, 'INVALID_CHAT_ID', '会话 ID 不合法');
+  return part;
 }
 
 function sessionPart(id) {
@@ -288,7 +289,8 @@ export class AgentSettingsService {
     if (!['test-send', 'mark-read', 'mute', 'clear'].includes(action)) throw err(400, 'INVALID_ACTION', '不支持的会话操作');
     const chat = chatPart(id);
     if (action === 'test-send') {
-      const [kind, chatId] = chat.split('_');
+      const kind = chat.startsWith('group_') ? 'group' : 'private';
+      const chatId = chat.slice(kind.length + 1);
       const { config } = await this.getConfig(tenant);
       const allowed = config.allow?.[kind] ?? config.allow?.[`${kind}s`] ?? [];
       const denied = config.deny?.[kind] ?? config.deny?.[`${kind}s`] ?? [];
@@ -309,7 +311,7 @@ export class AgentSettingsService {
     return { ...result, members: (result.members || []).map((member) => ({ ...member, note: String(notes[String(member.userId)] || '') })) };
   }
   async memoryMember(tenant, id, userId, method, body) {
-    if (!/^\d{1,20}$/.test(String(userId))) throw err(400, 'INVALID_USER_ID', '用户 ID 不合法');
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(String(userId))) throw err(400, 'INVALID_USER_ID', '用户 ID 不合法');
     let input = body;
     if (method === 'PUT') {
       input = { ...(body || {}) };

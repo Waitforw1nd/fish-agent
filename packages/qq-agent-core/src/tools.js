@@ -6,7 +6,8 @@
 //
 // 重构说明：所有工具通过 registerTool() 注册到 tool-registry.js，
 // 支持在设置页按卡片勾选启用/禁用。
-import { getConfig } from './config.js';
+import { getConfig, DESKTOP_ID_START, DESKTOP_ID_END } from './config.js';
+import { validMemberId } from './memory.js';
 import { normalizeMessageList, unquoteJsonString } from './util.js';
 import { formatStickerList } from './stickers.js';
 import { skillManager } from './skills/manager.js';
@@ -99,6 +100,23 @@ function ok(payload) {
 
 function err(message) {
   return { content: `错误：${message}`, isError: true };
+}
+
+// The chat key is assigned by ingest, not supplied by the model. Keep the
+// reserved desktop range protected even in tests or deployments without a router.
+export function desktopOrUnverified(ctx) {
+  const match = /^(group|private):([^:]+)$/.exec(String(ctx?.chatKey || ''));
+  if (!match) return true;
+  const [, kind, id] = match;
+  if (/^\d+$/.test(id)) {
+    const n = Number(id);
+    if (!Number.isSafeInteger(n) || n < 1) return true;
+    if (n >= DESKTOP_ID_START && n <= DESKTOP_ID_END) return true;
+  } else if (!/^qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128}$/.test(id)) return true;
+  if (typeof ctx.onebot?.platformFor === 'function') {
+    try { return !['qq', 'bili'].includes(ctx.onebot.platformFor(kind, id)); } catch { return true; }
+  }
+  return false;
 }
 
 // 找不到消息 id 时，把当前会话真实可见的 id 告诉模型，避免它继续瞎猜。
@@ -229,6 +247,10 @@ function registerAllTools() {
           return err(`目标 ${wantTarget} 就是当前会话，直接用 send_message 即可。`);
         }
         const [tKind, tId] = wantTarget.split(':');
+        const [sourceKind, sourceId] = String(ctx.chatKey || '').split(':');
+        try {
+          if (ctx.onebot?.platformFor?.(sourceKind, sourceId) === 'desktop' || ctx.onebot?.platformFor?.(tKind, tId) === 'desktop') return err('Desktop sessions cannot use cross-session sending.');
+        } catch { return err('Unable to verify the target channel.'); }
         const allow = getConfig().allow || {};
         const allowList = (tKind === 'group' ? allow.groups : allow.private) || [];
         // 白名单空名单口径必须与消息入口 app.allowed() 一致（群/私聊统一：
@@ -269,6 +291,7 @@ function registerAllTools() {
       required: ['stickerId']
     },
     async execute(ctx, args) {
+      if (desktopOrUnverified(ctx)) return err('当前会话不能访问共享表情库。');
       try {
         let sticker = await ctx.stickers.find(unquoteJsonString(args.stickerId));
         if (!sticker) return err(`找不到表情 ${args.stickerId}，请先用 list_stickers 获取有效 id`);
@@ -324,6 +347,7 @@ function registerAllTools() {
       }
     },
     async execute(ctx, args) {
+      if (desktopOrUnverified(ctx)) return err('当前会话不能访问共享表情库。');
       try {
         const result = await ctx.stickers.list(String(args.query ?? ''), Math.min(100, Math.max(1, Number(args.limit) || 24)));
         return ok(result);
@@ -346,6 +370,7 @@ function registerAllTools() {
       required: ['stickerId']
     },
     async execute(ctx, args) {
+      if (desktopOrUnverified(ctx)) return err('当前会话不能访问共享表情库。');
       try {
         const sticker = await ctx.stickers.find(args.stickerId);
         if (!sticker) return err(`找不到表情 ${args.stickerId}`);
@@ -379,6 +404,7 @@ function registerAllTools() {
       required: ['stickerId']
     },
     async execute(ctx, args) {
+      if (desktopOrUnverified(ctx)) return err('当前会话不能访问共享表情库。');
       try {
         const entry = ctx.stickers.note(String(args.stickerId), { note: args.note, tags: args.tags, usage: args.usage });
         if (!entry) return err(`找不到表情 ${args.stickerId}`);
@@ -404,6 +430,7 @@ function registerAllTools() {
       required: ['messageId']
     },
     async execute(ctx, args) {
+      if (desktopOrUnverified(ctx)) return err('当前会话不能访问共享表情库。');
       try {
         const entry = ctx.store.findByMid(ctx.chatKey, args.messageId);
         if (!entry) return err(`在当前会话找不到消息 ${args.messageId}。${midHint(ctx)}`);
@@ -565,7 +592,14 @@ function registerAllTools() {
     },
     async execute(ctx, args) {
       const limit = Math.min(50, Math.max(1, Number(args?.limit) || 20));
+      const [sourceKind, sourceId] = String(ctx.chatKey || '').split(':');
+      const desktop = ctx.onebot?.platformFor?.(sourceKind, sourceId) === 'desktop';
       const chats = ctx.store.listChats()
+        .filter(key => {
+          if (desktop) return key === ctx.chatKey;
+          const [kind, id] = String(key).split(':');
+          try { return ctx.onebot?.platformFor?.(kind, id) !== 'desktop'; } catch { return false; }
+        })
         .map((key) => ({ key, ...(ctx.store.getChatMeta(key) || {}) }))
         .sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0))
         .slice(0, limit);
@@ -648,14 +682,14 @@ function registerAllTools() {
   registerTool({
     id: 'memory_append',
     name: '记录印象',
-    description: '记一条对群友的长期印象（下次运行会自动看到）。只记"以后和这个人打交道时用得上"的稳定印象：他的身份/关系、说话风格、爱玩的梗、雷点、常聊话题、别踩的坑。太临时的事情不要记。userId 必须填对方的 QQ 号（不知道就先调 get_active_members / get_recent_messages 查）；target 填备注名/群名片/昵称，用于展示。',
+    description: '记一条对群友的长期印象（下次运行会自动看到）。只记“以后和这个人打交道时用得上”的稳定印象：他的身份/关系、说话风格、爱玩的梗、雷点、常聊话题、别踩的坑。太临时的事情不要记。userId 必须填对方的成员 ID（QQ 号或官方 QQ 的成员 OpenID；不知道就先调 get_active_members / get_recent_messages 查）；target 填备注名/群名片/昵称，用于展示。',
     category: 'memory',
     icon: '🧠',
     parameters: {
       type: 'object',
       properties: {
         category: { type: 'string', enum: ['memberImpression'], description: '记忆分类（目前只支持 memberImpression = 群友印象）' },
-        userId: { type: ['integer', 'string'], description: '对方 QQ 号（数字）' },
+        userId: { type: ['integer', 'string'], description: '对方的成员 ID：QQ 号或官方 QQ 会话中的成员 OpenID' },
         target: { type: 'string', description: '对方名字（备注名/群名片/昵称）' },
         content: { type: 'string', description: '印象内容（≤120字，稳定、可跨多次聊天使用）' }
       },
@@ -663,8 +697,8 @@ function registerAllTools() {
     },
     async execute(ctx, args) {
       const userId = String(args.userId ?? '').trim();
-      if (!/^\d{1,15}$/.test(userId)) {
-        return err(`userId 必须是数字 QQ 号（收到：${JSON.stringify(args.userId)}）。先用 get_active_members 查准确 QQ 号再记。`);
+      if (!validMemberId(ctx.chatKey, userId)) {
+        return err(`userId 格式不符合当前会话（收到：${JSON.stringify(args.userId)}）。先用 get_active_members 查准确成员 ID 再记。`);
       }
       const entry = ctx.memory.append(ctx.chatKey, 'memberImpression', String(args.content ?? ''), {
         userId,
@@ -840,6 +874,9 @@ function registerAllTools() {
       required: ['text']
     },
     async execute(ctx, args) {
+      if (/^(?:group|private):qqbot_/.test(String(ctx.chatKey || ''))) {
+        return err('官方 QQ 机器人仅支持被动回复，无法到时主动发送提醒。');
+      }
       const text = String(args.text ?? '').trim();
       if (!text) return err('提醒内容为空');
       let dueAt = null;
@@ -895,6 +932,7 @@ function registerAllTools() {
       if (!ctx.reminders) return err('提醒服务未启用');
       const id = String(args.id ?? '').trim();
       if (!id) return err('请提供提醒 id');
+      if (!ctx.chatKey || !ctx.reminders.pending(ctx.chatKey).some(r => r.id === id)) return err(`没找到提醒 ${id}（可能已触发或 id 不对，用 list_reminders 查一下）`);
       const ok_ = ctx.reminders.cancel(id);
       return ok_ ? ok({ cancelled: true, id }) : err(`没找到提醒 ${id}（可能已触发或 id 不对，用 list_reminders 查一下）`);
     }

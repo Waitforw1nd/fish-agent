@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { readJsonFile } from './util.js';
 
 export class HostingService {
-  constructor({ config, tenants, agent, qq, bili, gateway, supervisor, logger, db }) {
+  constructor({ config, tenants, agent, qq, bili, gateway, supervisor, logger, db, entries }) {
     this.config = config;
     this.tenants = tenants;
     this.agent = agent;
@@ -12,13 +12,17 @@ export class HostingService {
     this.supervisor = supervisor;
     this.logger = logger;
     this.db = db;
+    this.entries = entries;
     this.starting = new Set();
   }
 
   async describeChannels(tenant) {
+    const qq = await this.qq.describeChannels(tenant);
+    const bili = await this.bili.describeChannels(tenant);
+    if (qq && this.entries && !this.entries.enabled(tenant.id, qq.driver === 'qqbot' ? 'qq_official' : 'qq_protocol')) qq.enabled = false;
+    if (bili && this.entries && !this.entries.enabled(tenant.id, 'bili')) bili.enabled = false;
     return {
-      qq: await this.qq.describeChannels(tenant),
-      bili: await this.bili.describeChannels(tenant)
+      qq, bili
     };
   }
 
@@ -29,7 +33,8 @@ export class HostingService {
     await this.agent.writeConfig(tenant);
     const after = readJsonFile(cfgPath, {});
     const channelsChanged = JSON.stringify(before.channels || {}) !== JSON.stringify(after.channels || {})
-      || JSON.stringify(before.snowluma || {}) !== JSON.stringify(after.snowluma || {});
+      || JSON.stringify(before.snowluma || {}) !== JSON.stringify(after.snowluma || {})
+      || JSON.stringify(before.connection || {}) !== JSON.stringify(after.connection || {});
     const process = this.supervisor.status(tenant.id, 'agent');
     if (channelsChanged && process.state === 'running' && !this.starting.has(tenant.id)) {
       this.logger?.info?.('restarting agent for channel change', { tenantId: tenant.id, reason });
@@ -51,7 +56,7 @@ export class HostingService {
     const warnings = [];
     try {
       const account = this.qq.account(tenant.id);
-      if (account) {
+      if (account && (!this.entries || this.entries.enabled(tenant.id, account.driver === 'qqbot' ? 'qq_official' : 'qq_protocol'))) {
         try {
           await this.qq.start(tenant);
         } catch (error) {
@@ -63,7 +68,7 @@ export class HostingService {
       }
       let biliRow = null;
       try { biliRow = this.bili.row(tenant.id); } catch { /* ignore */ }
-      if (biliRow && this.bili.getConfig(tenant).enabled) {
+      if (biliRow && this.bili.getConfig(tenant).enabled && (!this.entries || this.entries.enabled(tenant.id, 'bili'))) {
         try {
           await this.bili.start(tenant);
         } catch (error) {

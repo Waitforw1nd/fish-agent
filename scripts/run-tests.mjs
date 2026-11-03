@@ -20,8 +20,12 @@ if (major < 24) {
 
 const suites = [
   ['Bilibili bridge', 'packages/protocol-bili-bridge', 'test'],
-  ['cloud-manager (including panel)', 'packages/cloud-manager', 'test'],
+  ['cloud-manager', 'packages/cloud-manager', 'test'],
+  ['cloud-manager panel', 'packages/cloud-manager/panel', 'test'],
   ['QQ-agent', 'packages/qq-agent-core', all ? 'test:all' : 'test'],
+  ...(!all ? [['Headless runtime', 'packages/qq-agent-core', 'test:headless'], ['Multi-entry core', 'packages/qq-agent-core', 'test:multi-entry']] : []),
+  ['Desktop pet', 'packages/desktop-pet', 'test'],
+  ...(all ? [['LLBot type check', 'packages/protocol-qq-llbot', 'check'], ['LLBot unit and WebUI', 'packages/protocol-qq-llbot', 'test']] : []),
 ];
 const npmCli = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
 if (!existsSync(npmCli) || !/\.(?:c?js|mjs)$/i.test(npmCli)) {

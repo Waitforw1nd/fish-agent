@@ -10,7 +10,9 @@ export const CONNECTION_DEFAULTS = {
     httpUrl: 'http://127.0.0.1:3000', reversePath: '/onebot/v11/ws',
     accessToken: '', httpAccessToken: ''
   },
-  qqbot: { appId: '', appSecret: '', sandbox: false, intents: (1 << 25) | (1 << 30) }
+  // 默认只订阅群 @ 消息 + C2C 私聊（1 << 25）。带上频道公域位（1 << 30）会让
+  // 纯群/私聊机器人被网关以 4013/4014 断开；确需频道事件时在连接页显式调大。
+  qqbot: { appId: '', appSecret: '', sandbox: false, intents: 1 << 25 }
 };
 
 export function connectionConfig(config) {
@@ -73,6 +75,7 @@ export class BotConnection {
     this.client = config.type === 'qqbot'
       ? new QQBotClient({ ...options, onEvent: this.onEvent })
       : new OneBotTransport({ ...options, server: this.server, onEvent: this.onEvent });
+    if (this.apiCallObserver) this.client.onApiCall = this.apiCallObserver;
     this.unsubscribe = this.client.onStatus(status => {
       for (const fn of this.listeners) { try { fn({ ...status, type: this.type }); } catch { /* observer isolation */ } }
     });
@@ -81,6 +84,7 @@ export class BotConnection {
   async connect() { if (this.config.enabled) await this.client.connect(); }
   async reconnect() { this.configure(this.config); await this.connect(); }
   close() { this.client.close(); }
+  set onApiCall(fn) { this.apiCallObserver = fn; if (this.client) this.client.onApiCall = fn; }
   get connected() { return this.client.connected; }
   get everConnected() { return this.client.everConnected; }
   get lastConnectError() { return this.client.lastConnectError; }

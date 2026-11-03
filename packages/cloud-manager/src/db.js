@@ -357,32 +357,67 @@ const MIGRATIONS = [
       CREATE INDEX idx_recharges_tenant_created ON recharges(tenant_id, created_at);
       CREATE INDEX idx_recharges_pending ON recharges(status, created_at);
     `
+  },
+  {
+    version: 10,
+    addLedgerEntry: true,
+    sql: `
+      CREATE TABLE meter_events (id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, entry TEXT NOT NULL, meter TEXT NOT NULL, quantity REAL NOT NULL, unit TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'delta', source TEXT NOT NULL, attrs_json TEXT, occurred_at INTEGER NOT NULL, created_at INTEGER NOT NULL, UNIQUE(tenant_id, idempotency_key));
+      CREATE INDEX idx_meter_events_tenant_meter_time ON meter_events(tenant_id, meter, occurred_at);
+      CREATE TABLE meter_rollups_daily (tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, entry TEXT NOT NULL, meter TEXT NOT NULL, day TEXT NOT NULL, quantity REAL NOT NULL, PRIMARY KEY(tenant_id, entry, meter, day));
+      CREATE TABLE tenant_entitlements (tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, meter TEXT NOT NULL, window TEXT NOT NULL, limit_value REAL, mode TEXT NOT NULL DEFAULT 'off', updated_at INTEGER NOT NULL, PRIMARY KEY(tenant_id, meter, window));
+      CREATE TABLE tenant_entries (tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, entry TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 0, config_json TEXT, updated_at INTEGER NOT NULL, PRIMARY KEY(tenant_id, entry));
+      CREATE TABLE desktop_devices (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), name TEXT, os TEXT, token_hash TEXT NOT NULL UNIQUE, token_prefix TEXT NOT NULL, desktop_user_id INTEGER NOT NULL, created_at INTEGER NOT NULL, last_seen_at INTEGER, revoked_at INTEGER);
+      CREATE INDEX idx_desktop_devices_tenant ON desktop_devices(tenant_id, revoked_at);
+      CREATE TABLE desktop_pairing_codes (code_hash TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, user_id TEXT NOT NULL REFERENCES users(id), expires_at INTEGER NOT NULL, used_at INTEGER);
+      CREATE TABLE bili_comment_registry (aid TEXT NOT NULL, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, rpid TEXT, created_at INTEGER NOT NULL, PRIMARY KEY(aid, tenant_id, created_at));
+    `
+  },
+  {
+    version: 11,
+    sql: `
+      CREATE TABLE hosting_meter_checkpoints (run_id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE, entry TEXT, cursor_at INTEGER NOT NULL, observed_at INTEGER NOT NULL, completed_at INTEGER);
+      CREATE INDEX idx_hosting_meter_pending ON hosting_meter_checkpoints(completed_at);
+    `
   }
 ];
 
 export function openDatabase(dbPath) {
   ensureDir(path.dirname(dbPath), 0o700);
   const db = new DatabaseSync(dbPath);
-  db.exec('PRAGMA journal_mode = WAL;');
-  db.exec('PRAGMA synchronous = NORMAL;');
-  db.exec('PRAGMA foreign_keys = ON;');
-  db.exec('PRAGMA busy_timeout = 5000;');
-  migrate(db);
-  return db;
+  try {
+    db.exec('PRAGMA busy_timeout = 5000;');
+    db.exec('PRAGMA journal_mode = WAL;');
+    db.exec('PRAGMA synchronous = NORMAL;');
+    db.exec('PRAGMA foreign_keys = ON;');
+    migrate(db);
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
+  }
 }
 
 export function migrate(db) {
   const row = db.prepare('PRAGMA user_version').get();
   const current = Number(row?.user_version ?? 0);
+  const latest = MIGRATIONS.at(-1).version;
+  if (current > latest) throw new Error(`Database schema ${current} is newer than supported version ${latest}`);
   for (const migration of MIGRATIONS) {
     if (migration.version <= current) continue;
     db.exec('BEGIN IMMEDIATE');
     try {
+      // Another process may have migrated while this connection waited for the
+      // write lock. Inspect the version again inside the transaction.
+      const lockedVersion = Number(db.prepare('PRAGMA user_version').get().user_version);
+      if (lockedVersion > latest) throw new Error(`Database schema ${lockedVersion} is newer than supported version ${latest}`);
+      if (lockedVersion >= migration.version) { db.exec('COMMIT'); continue; }
       // Some tests migrate deliberately partial historical schemas.
       const tablePresent = !migration.optionalTable || db.prepare(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?"
       ).get(migration.optionalTable);
       if (tablePresent) db.exec(migration.sql);
+      if (migration.addLedgerEntry && db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ledger'").get()) db.exec('ALTER TABLE ledger ADD COLUMN entry TEXT');
       db.exec(`PRAGMA user_version = ${migration.version}`);
       db.exec('COMMIT');
     } catch (error) {

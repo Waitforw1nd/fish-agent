@@ -123,7 +123,11 @@ export function redactSecrets(input) {
   let text = String(input ?? '');
   text = text.replace(/(data:image\/[a-z+]+;base64,)[A-Za-z0-9+/=]{80,}/gi, '$1[redacted-qr]');
   text = text.replace(/\b(sk-[A-Za-z0-9_-]{8,})\b/g, '[redacted-key]');
-  text = text.replace(/\b(Bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi, '$1[redacted]');
+  text = text.replace(/\bfdt_[A-Za-z0-9_-]{43}\b/g, '[redacted-device-token]');
+  text = text.replace(/\b((?:Bearer|QQBot|Basic)\s+)[A-Za-z0-9._~+/=-]+/gi, '$1[redacted]');
+  text = text.replace(/((?:SESSDATA|bili_jct|refresh_token|access_key|DedeUserID__ckMd5|qrcode_key)["']?\s*[:=]\s*["']?)[^"'\s,;&}]+/gi, '$1[redacted]');
+  text = text.replace(/("[^"\\]*(?:token|secret|password|api_?key|cookie|authorization)[^"\\]*"\s*:\s*")(?:\\.|[^"\\])*"/gi, '$1[redacted]"');
+  text = text.replace(/((?:^|\n)(?:cookie|set-cookie)\s*:\s*)[^\r\n]+/gi, '$1[redacted]');
   text = text.replace(/((?:token|secret|password|apikey|api_key|cookie|authorization)["']?\s*[:=]\s*["']?)[^"'\s,;}]{4,}/gi, '$1[redacted]');
   text = text.replace(/([?&](?:token|key|password|secret|cookie)=)[^&\s]+/gi, '$1[redacted]');
   text = text.replace(/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[redacted-jwt]');

@@ -76,20 +76,31 @@ export function releaseInstanceLock() {
 /** 注册退出时自动释放锁（SIGINT/SIGTERM/正常 exit）。 */
 export function registerLockCleanup() {
   const cleanup = () => releaseInstanceLock();
+  const fuses = new Set();
+  const handlers = new Map();
   // 锁的**唯一**释放时机是 'exit' 钩子：SIGINT 时立即释放会让优雅退出
   //（server.js 的 await app.stop()，可能数秒）期间新实例抢先拿锁、
   // 与旧实例短暂并存（双核心 = 群里重复回复）。交给 exit 钩子则天然
   // 排在进程真正结束之后，无竞态窗口。
   process.on('exit', cleanup);
   for (const sig of ['SIGINT', 'SIGTERM']) {
-    process.on(sig, () => {
+    const handler = () => {
       // ⚠️ 不做任何事：不退出、不提前释放锁 —— 优雅退出 handler
       //   （server.js / electron）紧随其后执行，最终 process.exit 触发
       //   上面的 'exit' 钩子释放锁。
       // 保险丝：若 30 秒内没有别的 handler 退出进程（异常场景，优雅退出
       // 挂死），强制退出 —— 用非零码，让外层（守护脚本）能识别异常退出。
-      const fuse = setTimeout(() => process.exit(1), 30000);
+      const fuse = setTimeout(() => { fuses.delete(fuse); process.exit(1); }, 30000);
       fuse.unref?.();
-    });
+      fuses.add(fuse);
+    };
+    handlers.set(sig, handler);
+    process.on(sig, handler);
   }
+  return () => {
+    process.off('exit', cleanup);
+    for (const [sig, handler] of handlers) process.off(sig, handler);
+    for (const fuse of fuses) clearTimeout(fuse);
+    fuses.clear();
+  };
 }

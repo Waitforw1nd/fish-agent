@@ -46,7 +46,7 @@ export class OneBotTransport extends OneBotClient {
       const reject = code => socket.end(`HTTP/1.1 ${code}\r\nConnection: close\r\n\r\n`);
       let url;
       try { url = new URL(req.url, 'http://localhost'); } catch { return reject('400 Bad Request'); }
-      if (url.pathname !== this.reversePath) return reject('404 Not Found');
+      if (url.pathname !== this.reversePath) return;
       const bearer = String(req.headers.authorization || '').replace(/^Bearer /i, '');
       const actual = Buffer.from(bearer || url.searchParams.get('access_token') || '');
       const expected = Buffer.from(this.accessToken);

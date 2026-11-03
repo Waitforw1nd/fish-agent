@@ -10,6 +10,7 @@ export class BillingService {
   constructor({ db, logger }) {
     this.db = db;
     this.logger = logger;
+    this.activeHolds = new Set();
   }
 
   ensureWallet(tenantId, initialMicros = 0) {
@@ -32,22 +33,22 @@ export class BillingService {
     const rows = tenantId
       ? this.db.prepare("SELECT id FROM reservations WHERE status = 'held' AND expires_at <= ? AND tenant_id = ?").all(ts, tenantId)
       : this.db.prepare("SELECT id FROM reservations WHERE status = 'held' AND expires_at <= ?").all(ts);
-    if (!rows.length) return 0;
+    const expired = rows.filter(row => !this.activeHolds.has(row.id));
+    if (!expired.length) return 0;
     immediateTransaction(this.db, () => {
-      for (const row of rows) {
+      for (const row of expired) {
         this.db.prepare("UPDATE reservations SET status = 'expired', settled_at = ? WHERE id = ? AND status = 'held'")
           .run(ts, row.id);
       }
     });
-    return rows.length;
+    return expired.length;
   }
 
   heldMicros(tenantId) {
-    const row = this.db.prepare(`
-      SELECT COALESCE(SUM(estimated_micros), 0) AS held
-      FROM reservations WHERE tenant_id = ? AND status = 'held' AND expires_at > ?
-    `).get(tenantId, now());
-    return Number(row?.held ?? 0);
+    const ts = now();
+    return this.db.prepare(`SELECT id, estimated_micros, expires_at FROM reservations
+      WHERE tenant_id = ? AND status = 'held'`).all(tenantId)
+      .reduce((sum, row) => sum + (row.expires_at > ts || this.activeHolds.has(row.id) ? Number(row.estimated_micros) : 0), 0);
   }
 
   wallet(tenantId) {
@@ -84,8 +85,8 @@ export class BillingService {
       const balance = Number(walletRow?.balance_micros ?? 0);
       const held = Number(this.db.prepare(`
         SELECT COALESCE(SUM(estimated_micros), 0) AS held FROM reservations
-        WHERE tenant_id = ? AND status = 'held' AND expires_at > ?
-      `).get(tenantId, now()).held);
+        WHERE tenant_id = ? AND status = 'held'
+      `).get(tenantId).held);
       const available = balance - held;
       if (available < estimatedMicros) {
         throw error(402, 'INSUFFICIENT_BALANCE', '余额不足，请充值或更换套餐', {
@@ -130,11 +131,14 @@ export class BillingService {
         .run(cost, ts, row.tenant_id);
       this.db.prepare(`
         INSERT INTO ledger (id, tenant_id, key_id, reservation_id, model, prompt_tokens, completion_tokens,
-          cached_tokens, cost_micros, upstream_status, request_id, created_at, platform, chat_key, run_id, vision, usage_source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          cached_tokens, cost_micros, upstream_status, request_id, created_at, platform, chat_key, run_id, vision, usage_source, entry)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(id('led'), row.tenant_id, row.key_id, row.id, row.model, promptTokens, completionTokens,
         cachedTokens, cost, upstreamStatus, requestId, ts, attribution.platform || null, attribution.chatKey || null,
-        attribution.runId || null, attribution.vision ? 1 : 0, ['reported', 'estimated'].includes(usageSource) ? usageSource : 'unknown');
+        attribution.runId || null, attribution.vision ? 1 : 0, ['reported', 'estimated'].includes(usageSource) ? usageSource : 'unknown', attribution.entry || null);
+      if (attribution.entry) {
+        this.db.prepare(`INSERT INTO meter_events (id,idempotency_key,tenant_id,entry,meter,quantity,unit,kind,source,occurred_at,created_at) VALUES (?,?,?,?,?,?,'tokens','delta','relay',?,?) ON CONFLICT(tenant_id,idempotency_key) DO NOTHING`).run(id('mev'), `settlement:${row.id}`, row.tenant_id, attribution.entry, `${attribution.entry}.llm.tokens`, promptTokens + completionTokens, ts, ts);
+      }
       return {
         settled: true,
         costMicros: cost,

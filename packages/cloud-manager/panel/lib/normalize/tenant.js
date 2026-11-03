@@ -101,6 +101,7 @@ export function normalizeTenant(value, { now = Date.now() } = {}) {
     owner: asString(tenantSource.owner ?? tenantSource.ownerName ?? ''),
     notes: asString(tenantSource.notes ?? ''),
     role: asString(tenantSource.role ?? root.role),
+    entries: toObject(tenantSource.entries),
     readiness: normalizeReadiness(tenantSource.readiness ?? root.readiness)
   };
 }

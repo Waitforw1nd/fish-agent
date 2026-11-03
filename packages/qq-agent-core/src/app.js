@@ -6,6 +6,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { getConfig, updateConfig, ROOT, DATA_DIR, resolveChannels } from './config.js';
 import { OneBotClient, segmentsToText, extractMediaFromSegments, expandForwardNodes } from './onebot.js';
@@ -13,6 +14,7 @@ import { ChannelRouter } from './channel-router.js';
 import { isAtMe } from './prompt.js';
 import { ChatStore } from './store.js';
 import { MemoryStore } from './memory.js';
+import { memberNotesForChat } from './member-notes.js';
 import { StickerManager } from './sticker-manager.js';
 import { SendQueue } from './sender.js';
 import { SessionRegistry } from './sessions.js';
@@ -20,6 +22,7 @@ import { Orchestrator } from './orchestrator.js';
 import { ReminderStore } from './reminders.js';
 import { VideoReader } from './video-reader.js';
 import { cacheHitRate } from './llm.js';
+import { MeterClient, entryForChat, messageMeterKey } from './metering.js';
 import { isPeakHour, priceAt, resolveModelPrice, modelLabel, splitModelLabel, UNKNOWN_VENDOR } from './model-prices.js';
 import { initPriceFeed } from './price-feed.js';
 import { startTelemetryLoop } from './telemetry.js';
@@ -106,8 +109,9 @@ export function createApp({ log = console.log, runtime = null } = {}) {
   //   这里用 WeakSet 识别"这个 log 是不是 appLog"，是则跳过挂载。
   let removeAppLogListener = null;
   if (!appLogFns.has(log)) {
+    const callerLog = log;
     removeAppLogListener = logger.onLog((entry) => {
-      try { log(`[${entry.module}] ${entry.text}`); } catch { /* ignore */ }
+      try { callerLog(`[${entry.module}] ${entry.text}`); } catch { /* ignore */ }
     });
   }
   appLogFns.add(appLog);
@@ -130,7 +134,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
   /* 抢到锁后立刻注册退出清理：正常 exit / SIGINT / SIGTERM 都会释放锁文件。
      曾经只在 stop() 里释放 —— 进程被直接杀掉（任务管理器结束、控制台叉掉）
      时锁文件残留，下次启动要靠"PID 已死"探测才能清掉，多一层失败面。 */
-  instanceLockModule.registerLockCleanup();
+  const removeLockCleanup = instanceLockModule.registerLockCleanup();
   const sseClients = new Set();
 
   // ── SnowLuma 程序目录与进程管理 ──
@@ -581,7 +585,16 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     }
   }
 
+  let meter = null;
   const emit = (type, payload) => {
+    if ((type === 'session-start' || type === 'session-end') && payload?.chatKey?.startsWith('private:')) {
+      const id = payload.chatKey.slice(8);
+      onebot?.channel?.('desktop')?.client?.setState?.(id, type === 'session-start' ? 'thinking' : 'idle');
+    }
+    if (type === 'session-end' && payload?.usage && payload?.chatKey) {
+      const entry = entryForChat(payload.chatKey, onebot);
+      meter?.record(entry, entry + '.llm.session', { chatKey: payload.chatKey, sessionId: payload.sessionId, ...payload.usage }, 'session:' + payload.sessionId);
+    }
     // 说明：这里曾经先走一个进程内事件总线（createEventBus），但全项目**没有任何订阅者**，
     // 属于纯空转；更糟的是它给人"存在进程内订阅者"的错觉。真正的消费者只有 SSE。
     let line = null;
@@ -647,7 +660,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
   // 旧代码把 onebot 当成单个客户端用；router 保留了 connected/selfId/call/
   // sendText 等全部兼容面，所以 stickers/orchestrator/routes 无需改动。
   const protocolEvent = (event, meta) => handleOneBotEvent(event, meta)
-    .catch((error) => log('[ingest] 处理事件出错:', error?.message ?? error));
+    .catch((error) => { log('[ingest] event error:', error?.message ?? error); return false; });
   const onebot = runtime?.createConnection
     ? runtime.createConnection({ config: cfg, server, onEvent: protocolEvent, log })
     : new ChannelRouter({
@@ -666,12 +679,19 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     onEvent: (event, meta) => handleOneBotEvent(event, meta)
       .catch((error) => log('[ingest] 处理事件出错:', error?.message ?? error))
   });
+  meter = new MeterClient({ api: cfg.api, dataDir: DATA_DIR, log });
+  const qqClient = onebot.channel?.('qq')?.client;
+  if (qqClient) qqClient.onApiCall = ({ success }) => meter.record('qq_official', 'qq_official.api.call', { success });
   const stickers = new StickerManager(onebot);
   const sender =   new SendQueue({
     onebot, store,
     // 发送层最后一道白名单：与 ingest 同口径，堵住提醒/主动发言/工具绕过。
-    isAllowed: (kind, id) => allowed(kind, id, getConfig()),
-    onSent: ({ chatKey, text }) => log(`[发送 -> ${chatKey}] ${String(text).slice(0, 60)}`),
+    isAllowed: (kind, id) => { try { if (onebot.platformFor(kind, id) === 'desktop') return true; } catch {} return allowed(kind, id, getConfig()); },
+    onSent: ({ chatKey, text, messageId }) => {
+      log(`[send -> ${chatKey}] ${String(text).slice(0, 60)}`);
+      const entry = entryForChat(chatKey, onebot);
+      meter.record(entry, entry + '.message.out', { chatKey, messageId: String(messageId ?? '') }, messageMeterKey(entry, 'out', chatKey, messageId));
+    },
     log
   });
   const reminders = new ReminderStore();
@@ -874,7 +894,27 @@ export function createApp({ log = console.log, runtime = null } = {}) {
 
   async function ingestMessage(kind, id, event, meta = null) {
     const cfgNow = getConfig();
-    if (!allowed(kind, id, cfgNow)) return; // 白名单外的聊天完全不记录
+    if (meta?.platform !== 'desktop' && !allowed(kind, id, cfgNow)) return; // 白名单外的聊天完全不记录
+
+    // A crash may persist chat history before the desktop ACK index. Desktop IDs
+    // are stable across retries, so do not trigger another model run on replay.
+    const existingKey = `${kind}:${id}`;
+    // A marker survives crashes and failures between storing a desktop message
+    // and completing its command/dispatch step. Never repeat possibly executed
+    // side effects, and never acknowledge an ambiguous operation as complete.
+    const processingFile = meta?.platform === 'desktop' && event.message_id
+      ? path.join(DATA_DIR, 'desktop-processing', createHash('sha256').update(JSON.stringify([existingKey, String(event.message_id)])).digest('hex'))
+      : null;
+    if (processingFile) {
+      let pending = true;
+      try { fs.statSync(processingFile); }
+      catch (error) { if (error.code !== 'ENOENT') throw error; pending = false; }
+      if (pending) throw new Error('Desktop message processing outcome is uncertain');
+    }
+    if (meta?.platform === 'desktop' && event.message_id && store.findByMid(existingKey, event.message_id)) {
+      meter.record('desktop', 'desktop.message.in', { chatKey: existingKey, messageId: String(event.message_id) }, messageMeterKey('desktop', 'in', existingKey, event.message_id));
+      return;
+    }
 
     const segments = Array.isArray(event.message) ? event.message : null;
     const senderId = String(event.sender?.user_id ?? event.user_id ?? '');
@@ -954,6 +994,10 @@ export function createApp({ log = console.log, runtime = null } = {}) {
       maybeTriggerCommandMute(id, text, event, atMe, meta);
     }
 
+    if (processingFile) {
+      fs.mkdirSync(path.dirname(processingFile), { recursive: true });
+      fs.writeFileSync(processingFile, '', { flag: 'wx', mode: 0o600, flush: true });
+    }
     const entry = store.appendIncoming(`${kind}:${id}`, {
       mid: event.message_id,
       ts: event.time ? Math.round(Number(event.time) * 1000) : Date.now(),
@@ -967,6 +1011,8 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     emit('chat-update', `${kind}:${id}`);
 
     const chatKey = `${kind}:${id}`;
+    const meterEntry = entryForChat(chatKey, onebot);
+    meter.record(meterEntry, meterEntry + '.message.in', { chatKey, messageId: String(event.message_id ?? '') }, messageMeterKey(meterEntry, 'in', chatKey, event.message_id));
     const command = await skillManager.runMessageCommands({
       chatKey, kind, chatId: id, text, event, entry,
       senderId, senderName, atMe,
@@ -974,11 +1020,13 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     });
     if (command.handled) {
       await sender.sendTextBatch(chatKey, command.replies);
+      if (processingFile) fs.unlinkSync(processingFile);
       return;
     }
 
     // 逐条触发判定：把刚入库的条目交给编排器（entry 让它能精确标这一条已读）
     orchestrator.onIncoming(chatKey, entry);
+    if (processingFile) fs.unlinkSync(processingFile);
 
     // 链接媒体转发（确定性）：刻意不 await —— 百兆级下载/上传不能卡住 ingest 热路径。
     // 内部已把错误全部收口（含 provider 抛错），这里再挂一次 catch 只为防漏网。
@@ -1044,7 +1092,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     const isGroup = event.group_id != null;
     const id = isGroup ? String(event.group_id) : String(event.user_id);
     const cfgNow = getConfig();
-    if (!allowed(isGroup ? 'group' : 'private', id, cfgNow)) return;
+    if (meta?.platform !== 'desktop' && !allowed(isGroup ? 'group' : 'private', id, cfgNow)) return;
 
     const selfId = meta?.selfId || onebot.selfId;
     const operatorId = String(event.user_id ?? '');
@@ -1072,7 +1120,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
       ? ((await resolveAtName(id, targetId, meta?.platform)) || targetId)
       : targetId;
     // 展示名：管理员备注 > 群名片（与消息历史同口径）
-    const notes = cfgNow.memberNotes || {};
+    const notes = memberNotesForChat(chatKeyNow, cfgNow.memberNotes || {});
     const opLabel = notes[operatorId] || operatorName || operatorId;
     const tgtLabel = String(targetId) === String(selfId)
       ? '我'
@@ -1624,11 +1672,13 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     if (getConfig().proactive?.enabled) orchestrator.startProactiveLoop();
     orchestrator.startReminderLoop();   // 提醒（闹钟）调度：到点往群里发提醒
     log(`控制台已就绪：http://127.0.0.1:${port}`);
-    log(`QQ 通道: ws=${startupChannels.qq.wsUrl} http=${startupChannels.qq.httpUrl}`);
+    // Endpoints can carry credentials in userinfo, path, query or fragment.
+    // Do not echo any part of a configured endpoint into persistent logs.
+    log(`QQ 通道: ws=${startupChannels.qq.wsUrl ? '已配置' : '未配置'} http=${startupChannels.qq.httpUrl ? '已配置' : '未配置'}`);
     if (startupChannels.bili.enabled) {
-      log(`B站通道: ws=${startupChannels.bili.wsUrl} http=${startupChannels.bili.httpUrl}`);
+      log(`B站通道: ws=${startupChannels.bili.wsUrl ? '已配置' : '未配置'} http=${startupChannels.bili.httpUrl ? '已配置' : '未配置'}`);
     }
-    log(`模型: ${getConfig().api.model || '（未设置，请在设置里选择）'} @ ${getConfig().api.baseUrl}`);
+    log(`模型: ${getConfig().api.model || '（未设置，请在设置里选择）'} @ ${getConfig().api.baseUrl ? '端点已配置' : '端点未配置'}`);
     return port;
   }
 
@@ -1652,7 +1702,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
           fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
           const file = path.join(dir, 'lifecycle.json');
           const tmp = `${file}.${process.pid}.tmp`;
-          fs.writeFileSync(tmp, JSON.stringify({ active: false, pid: process.pid, updatedAt: Date.now() }), { mode: 0o600 });
+          fs.writeFileSync(tmp, JSON.stringify({ active: false, pid: process.pid, updatedAt: Date.now(), revision: randomUUID() }), { mode: 0o600 });
           fs.renameSync(tmp, file);
         } catch (error) { log(`[bili-watcher] 状态写入失败：${error?.message ?? error}`); }
       }
@@ -1677,6 +1727,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
 
   async function stop() {
     runtime?.stop?.();
+    meter?.close();
     // 先停掉热重载 watcher：否则 stop() 之后文件变动仍会触发重载 + 广播
     try { pluginWatcher?.close?.(); } catch { /* ignore */ }
     pluginWatcher = null;
@@ -1704,6 +1755,7 @@ export function createApp({ log = console.log, runtime = null } = {}) {
     // 解绑本次 createApp 的日志转发器，避免 Electron/测试重复创建 app 时监听器累积。
     try { removeAppLogListener?.(); } catch { /* ignore */ }
     releaseInstanceLock();
+    removeLockCleanup();
   }
 
   return { server, onebot, channelRouter: onebot, store, memory, stickers, sender, sessions, orchestrator, start, stop, emit, getConfig, updateConfig, launchSnowluma, stopSnowluma, snowlumaStatus, launchPortableQQ, stopPortableQQ, qqPortableStatus, reloadSkills };

@@ -11,6 +11,7 @@
 // 沉睡/唤醒/等待机制（由编排器的"已读/未读驱动"取代）。
 
 import { getConfig, personaForChat } from './config.js';
+import { memberNotesForChat } from './member-notes.js';
 // 滑条换算放在独立模块（零依赖），避免 config.js ↔ prompt.js 循环依赖。
 // 这里 re-export 是为了让已经从 prompt.js 引用的代码不受影响。
 import { sliderToTier as _sliderToTier, tierToSlider as _tierToSlider, TIER_SLIDER_BANDS as _TIER_SLIDER_BANDS } from './tier-slider.js';
@@ -310,8 +311,9 @@ function resolveCapabilityFn(name) {
   }
 }
 
-function formatEntry(m, { withId = true } = {}) {
+function formatEntry(m, { withId = true, chatKey = '' } = {}) {
   const senderId = String(m.senderId || '');
+  const notes = memberNotesForChat(chatKey, getConfig().memberNotes || {});
   const replyPrefix = m.reply?.text || m.reply?.sender ? `[引用 ${[m.reply?.sender, m.reply?.text].filter(Boolean).join('：')}]` : '';
   const hasMid = m.mid !== null && m.mid !== undefined && String(m.mid) !== '';
   const idPrefix = withId && hasMid ? `#${m.mid} ` : '';
@@ -320,7 +322,7 @@ function formatEntry(m, { withId = true } = {}) {
   let who;
   if (fmt) {
     try {
-      who = fmt({ message: m, notes: getConfig().memberNotes || {}, selfLabel: '我' });
+      who = fmt({ message: m, notes, selfLabel: '我' });
     } catch { who = ''; }
   }
   if (!who) {
@@ -328,7 +330,7 @@ function formatEntry(m, { withId = true } = {}) {
     // 印象记忆、@、拍一拍等一整批能力都靠它对齐到具体的人；不带的话模型只能靠名字猜，
     // 而名字既会改也会撞。文案格式与 speaker-identity Skill 保持一致：备注(QQ:123)。
     const idSuffix = senderId && String(senderId) !== 'self' ? `(QQ:${senderId})` : '';
-    who = m.self ? '我' : `${getConfig().memberNotes?.[senderId] || m.senderName || senderId || '未知'}${idSuffix}`;
+    who = m.self ? '我' : `${notes[senderId] || m.senderName || senderId || '未知'}${idSuffix}`;
   }
   return `[${formatShortTime(m.ts)}] ${idPrefix}${who}：${replyPrefix}${m.text}`;
 }
@@ -537,7 +539,7 @@ export function buildPastState(store, chatKey, { excludeIds = [], limit = null }
     if (blocked.size) messages = messages.filter((m) => m.self || !blocked.has(String(m.senderId)));
   }
   messages = messages.slice(-maxLimit);
-  const lines = messages.map((m) => formatEntry(m, { withId: (m.media || []).length > 0 }));
+  const lines = messages.map((m) => formatEntry(m, { chatKey, withId: (m.media || []).length > 0 }));
   // 一并把选中的消息返回：调用方要用它判定"记忆该带哪些群友"，
   // 避免模型看到历史里根本没出现的群友印象（那样显得莫名其妙）。
   return { text: lines.join('\n'), count: lines.length, messages };
@@ -549,7 +551,7 @@ function triggerLabels(entry, ctx) {
   const lower = text.toLowerCase();
   const nick = String(ctx.selfNickname || '').toLowerCase();
   const botName = String(getConfig().persona.botName || '').toLowerCase();
-  const notes = getConfig().memberNotes || {};
+  const notes = memberNotesForChat(ctx.chatKey, getConfig().memberNotes || {});
   const noteName = notes[String(entry?.senderId || '')];
   const noteLower = String(noteName || '').toLowerCase();
   // 「@我」标签：只做精确的昵称/名片匹配。
@@ -573,7 +575,7 @@ export function buildTriggerBlock(triggerEntries, ctx) {
   for (const m of triggerEntries) {
     const labels = triggerLabels(m, ctx);
     const labelStr = labels.length ? `（${labels.join('/')}）` : '';
-    lines.push(`${formatEntry(m)}${labelStr}`);
+    lines.push(`${formatEntry(m, { chatKey: ctx.chatKey })}${labelStr}`);
   }
   return lines.join('\n');
 }
@@ -826,8 +828,8 @@ export function buildUserPrompt(ctx) {
 
   // 已读信息（锚定模式 = 锚点条目；标准模式 = 全部条目）
   const readHeaderText = anchored
-    ? readAnchorMessages.map((m) => formatEntry(m, { withId: (m.media || []).length > 0 })).join('\n')
-    : (readExtraMessages || []).map((m) => formatEntry(m, { withId: (m.media || []).length > 0 })).join('\n');
+    ? readAnchorMessages.map((m) => formatEntry(m, { chatKey: ctx.chatKey, withId: (m.media || []).length > 0 })).join('\n')
+    : (readExtraMessages || []).map((m) => formatEntry(m, { chatKey: ctx.chatKey, withId: (m.media || []).length > 0 })).join('\n');
   if (anchored) {
     if (readHeaderText) {
       parts.push(`【已读信息】以下是这个会话最近的聊天记录（按时间排序，你的发言标为"我"；这些都已经看过；带图的消息前有 #消息id，看图/收藏表情工具要用它）：\n${readHeaderText}`);
@@ -836,7 +838,7 @@ export function buildUserPrompt(ctx) {
     }
     // 新已读信息：锚定窗口之后新沉淀的已读条目（时间在锚点之后、未读之前）
     if (readExtraMessages.length) {
-      const extraText = readExtraMessages.map((m) => formatEntry(m, { withId: (m.media || []).length > 0 })).join('\n');
+      const extraText = readExtraMessages.map((m) => formatEntry(m, { chatKey: ctx.chatKey, withId: (m.media || []).length > 0 })).join('\n');
       parts.push(`【新已读信息】以下是锚定窗口之后、这轮新沉淀的已读消息（你上一轮还没看过它们；带图的消息前有 #消息id）：\n${extraText}`);
     }
   } else if (readHeaderText) {

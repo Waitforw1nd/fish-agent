@@ -59,6 +59,7 @@ export function loadConfig(env = process.env, overrides = {}) {
     relayPort: clampInt(env.CLOUD_RELAY_PORT ?? 8790, 0, 65535, 8790),
     baseDomain,
     publicScheme,
+    publicPort: env.CLOUD_PUBLIC_PORT ? clampInt(env.CLOUD_PUBLIC_PORT, 1, 65535, publicScheme === 'https' ? 443 : 80) : null,
     publicOrigin: `${publicScheme}://${baseDomain}`,
     cookieName: String(env.CLOUD_COOKIE_NAME || 'fm_session'),
     cookieDomain: cookieDomainRaw || '',
@@ -100,6 +101,7 @@ export function loadConfig(env = process.env, overrides = {}) {
     upstreamBaseUrl: String(env.CLOUD_UPSTREAM_BASE_URL || '').replace(/\/+$/, ''),
     upstreamApiKey: String(env.CLOUD_UPSTREAM_API_KEY || ''),
     upstreamTimeoutMs: clampInt(env.CLOUD_UPSTREAM_TIMEOUT_MS ?? 120_000, 1000, 600_000, 120_000),
+    upstreamMaxResponseBytes: clampInt(env.CLOUD_UPSTREAM_MAX_RESPONSE_BYTES ?? 8 * 1024 * 1024, 16 * 1024, 64 * 1024 * 1024, 8 * 1024 * 1024),
     relayMaxBodyBytes: clampInt(env.CLOUD_RELAY_MAX_BODY_BYTES ?? 8 * 1024 * 1024, 16 * 1024, 64 * 1024 * 1024, 8 * 1024 * 1024),
     apiMaxBodyBytes: clampInt(env.CLOUD_API_MAX_BODY_BYTES ?? 1024 * 1024, 4096, 16 * 1024 * 1024, 1024 * 1024),
     gatewayTimeoutMs: clampInt(env.CLOUD_GATEWAY_TIMEOUT_MS ?? 30_000, 1000, 300_000, 30_000),
@@ -114,7 +116,8 @@ export function loadConfig(env = process.env, overrides = {}) {
     relayKeyPrefix: 'sk-fish-',
     upstreamModelsTtlMs: 5 * 60 * 1000,
     relayCustomAllowPrivate: parseBool(env.CLOUD_RELAY_CUSTOM_ALLOW_PRIVATE, false),
-    qqDrivers: ['llbot', 'napcat', 'snowluma'],
+    qqDrivers: ['llbot', 'napcat', 'snowluma', 'qqbot'],
+    qqbotTokenUrl: String(env.CLOUD_QQBOT_TOKEN_URL || ''),
     secureHeaders: true,
     devAllowAnyOrigin: parseBool(env.CLOUD_DEV_ALLOW_ANY_ORIGIN, false)
   };

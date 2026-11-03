@@ -4,6 +4,8 @@ import { safeLink } from '../../lib/format.js';
 import { badge, errorBlock, pageHead } from '../../lib/ui.js';
 import { createTabs } from '../../components/tabs.js';
 import { mountQQPanel } from '../../components/qq-panel.js';
+import { mountEntries } from '../../components/entries.js';
+import { mountBiliExplore } from '../../components/bili-explore.js';
 import { mountBiliPanel } from '../../components/bili-panel.js';
 import { mountAgentStudio } from '../../components/agent-studio/index.js';
 import { readinessChecklist } from './shared.js';
@@ -66,10 +68,15 @@ export function mountUserInstance({ root, api, toast, tenantId, modalRoot, onSel
     const context = { api, tenantId, tenant: rawTenant, toast, modalRoot, timers, visibility, user, readOnly: !writable(),
       onQQStatus: (qq) => onQQStatus(qq, sectionVersion) };
     if (current === 'overview') {
-      const qqRoot = h('div', {}); body.appendChild(qqRoot);
+      const entriesRoot = h('div', {}); body.appendChild(entriesRoot);
+      const qqRoot = h('div', {});
+      const biliRoot = h('div', {});
+      if (typeof api.getEntries === 'function') children.push(mountEntries(entriesRoot, { ...context, onConfigure: (key) => (key === 'bili' ? biliRoot : qqRoot).scrollIntoView?.({ behavior: 'smooth' }) }));
+      body.appendChild(qqRoot);
       children.push(mountQQPanel(qqRoot, context));
       if (typeof api.getBiliConfig === 'function' || typeof api.getBiliStatus === 'function') {
-        const biliRoot = h('div', {}); body.appendChild(biliRoot); children.push(mountBiliPanel(biliRoot, context));
+        body.appendChild(biliRoot); children.push(mountBiliPanel(biliRoot, context));
+        if (typeof api.getBiliExplore === 'function') { const exploreRoot = h('div', {}); body.appendChild(exploreRoot); children.push(mountBiliExplore(exploreRoot, context)); }
       }
       if (typeof api.getAgentStatus === 'function') {
         const status = h('p', { class: 'note' }, '正在读取机器人状态…');

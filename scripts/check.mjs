@@ -28,6 +28,7 @@ const requiredScripts = new Map([
   ['packages/cloud-manager', ['start', 'test']],
   ['packages/qq-agent-core', ['test', 'test:all']],
   ['packages/protocol-qq-llbot', ['check', 'test', 'build']],
+  ['packages/desktop-pet', ['start', 'test', 'dist']],
 ]);
 
 for (const [directory, scripts] of requiredScripts) {

@@ -19,12 +19,21 @@
 
 import {
   BILI_VIRTUAL_ID_START,
-  BILI_VIRTUAL_ID_END,
+  BILI_VIRTUAL_ID_END, DESKTOP_ID_START, DESKTOP_ID_END,
   normalizeChannelIdRange
 } from './config.js';
 
 export const PLATFORM_QQ = 'qq';
 export const PLATFORM_BILI = 'bili';
+export const PLATFORM_DESKTOP = 'desktop';
+
+// 官方 QQBot（QQ 开放平台）会话 ID 形态：适配器把 OpenID 包装成
+// qqbot_group_<openid> / qqbot_user_<openid> 等字符串。它们与数字号段天然
+// 不相交，只允许路由到启用了官方适配器（client.type === 'qqbot'）的 QQ 通道。
+export const QQBOT_ID_PATTERN = /^qqbot_(group|user|channel|dm)_[A-Za-z0-9_-]{1,128}$/;
+
+// 官方 QQBot 群成员 OpenID（member_openid）是裸 ID，不带 qqbot_ 前缀。
+export const QQBOT_OPENID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
 export const CHANNEL_LABELS = Object.freeze({
   [PLATFORM_QQ]: 'QQ',
@@ -33,7 +42,8 @@ export const CHANNEL_LABELS = Object.freeze({
 
 export const DEFAULT_ID_RANGES = Object.freeze({
   [PLATFORM_QQ]: Object.freeze({ start: 1, end: BILI_VIRTUAL_ID_START - 1 }),
-  [PLATFORM_BILI]: Object.freeze({ start: BILI_VIRTUAL_ID_START, end: BILI_VIRTUAL_ID_END })
+  [PLATFORM_BILI]: Object.freeze({ start: BILI_VIRTUAL_ID_START, end: BILI_VIRTUAL_ID_END }),
+  [PLATFORM_DESKTOP]: Object.freeze({ start: DESKTOP_ID_START, end: DESKTOP_ID_END })
 });
 
 // B站桥接明确支持的动作（protocol-bili-bridge 的 OneBot 契约）。
@@ -124,6 +134,7 @@ const DEFAULT_MESSAGE_CACHE_LIMIT = 5000;
 export function normalizePlatform(value) {
   const raw = String(value ?? '').trim().toLowerCase();
   if (raw === 'qq') return PLATFORM_QQ;
+  if (raw === 'desktop') return PLATFORM_DESKTOP;
   if (raw === 'bili' || raw === 'bilibili' || raw === 'b站') return PLATFORM_BILI;
   throw new Error(`未知通道：${value}（只支持 qq / bili）`);
 }
@@ -187,7 +198,7 @@ export class ChannelRouter {
     this.#seenEvents = new Map();
     this.#started = false;
 
-    for (const platform of [PLATFORM_QQ, PLATFORM_BILI]) {
+    for (const platform of [PLATFORM_QQ, PLATFORM_BILI, PLATFORM_DESKTOP]) {
       const raw = channels?.[platform];
       // 未出现的通道也保留记录：号段必须始终被占用，否则 B站 ID 会被 QQ 收下。
       const cfg = raw && typeof raw === 'object' ? { ...raw } : null;
@@ -524,16 +535,43 @@ export class ChannelRouter {
    * 后续 ingest / @ 判定 / 自消息过滤都按 meta 走。
    * @returns {boolean} 事件是否被交给上层
    */
-  dispatch(platform, event) {
+  dispatch(platform, event, { wait = false } = {}) {
     const record = this.channels.get(normalizePlatform(platform));
     if (!record || !record.enabled || !record.client) return false;
     if (!event || typeof event !== 'object') return false;
+
+    // Inbound IDs determine the archive and outbound destination. Do not trust a
+    // transport to supply an ID belonging to another transport.
+    let kind = null;
+    if (event.post_type === 'message' || event.post_type === 'message_sent') {
+      kind = event.message_type === 'group' || event.message_type === 'private' ? event.message_type : null;
+    } else if (event.post_type === 'notice') {
+      if (event.notice_type === 'group_recall' || event.notice_type === 'group_ban') kind = 'group';
+      else if (event.notice_type === 'friend_recall') kind = 'private';
+      else if (event.notice_type === 'notify' && event.sub_type === 'poke') kind = event.group_id != null ? 'group' : 'private';
+    }
+    if (kind) {
+      const id = kind === 'group' ? event.group_id : event.user_id;
+      const official = record.platform === PLATFORM_QQ && record.client.type === 'qqbot';
+      const officialPattern = kind === 'group' ? /^qqbot_(?:group|channel)_[A-Za-z0-9_-]{1,128}$/ : /^qqbot_(?:user|dm)_[A-Za-z0-9_-]{1,128}$/;
+      try {
+        if ((official && !officialPattern.test(String(id ?? '')))
+          || (record.platform === PLATFORM_DESKTOP && kind !== 'private')
+          || this.platformFor(kind, id) !== record.platform) return false;
+      } catch { return false; }
+    }
 
     // 先记消息归属，再过滤：自消息的 message_id 之后也可能被 get_msg 查询。
     if (event.message_id != null) this.#rememberMessage(record.platform, event.message_id);
 
     if (this.#isSelfEvent(record, event)) return false;
     if (this.#isDuplicateEvent(record.platform, event)) return false;
+    const dedupeKey = this.#eventKey(record.platform, event);
+    const rejected = error => {
+      if (dedupeKey) this.#seenEvents.delete(dedupeKey);
+      if (error) this.log?.(`[channel-router] 事件处理失败（${labelForPlatform(record.platform)}）：${error?.message ?? error}`);
+      return false;
+    };
 
     const meta = Object.freeze({
       platform: record.platform,
@@ -543,9 +581,13 @@ export class ChannelRouter {
       selfNickname: String(record.client.selfNickname || record.config.selfNickname || '')
     });
     try {
-      this.onEvent?.(event, meta);
+      const result = this.onEvent?.(event, meta);
+      const accepted = value => value === false ? rejected() : true;
+      if (wait) return Promise.resolve(result).then(accepted, rejected);
+      if (result?.then) void Promise.resolve(result).then(accepted, rejected);
+      else return accepted(result);
     } catch (error) {
-      this.log?.(`[channel-router] 事件处理失败（${labelForPlatform(record.platform)}）：${error?.message ?? error}`);
+      return rejected(error);
     }
     return true;
   }
@@ -574,9 +616,9 @@ export class ChannelRouter {
     return false;
   }
 
-  #isDuplicateEvent(platform, event) {
+  #eventKey(platform, event) {
     const postType = String(event.post_type || '');
-    if (!postType || postType === 'meta_event') return false;
+    if (!postType || postType === 'meta_event') return null;
     let unique = '';
     if (event.message_id != null) {
       unique = `${postType}:${event.message_type || ''}:${event.group_id ?? event.user_id ?? ''}:${event.message_id}`;
@@ -584,9 +626,12 @@ export class ChannelRouter {
       unique = `${postType}:${event.notice_type}:${event.sub_type || ''}:`
         + `${event.group_id ?? ''}:${event.user_id ?? ''}:${event.target_id ?? ''}:${event.time ?? ''}`;
     }
-    if (!unique) return false;
+    return unique ? `${platform}:${unique}` : null;
+  }
 
-    const key = `${platform}:${unique}`;
+  #isDuplicateEvent(platform, event) {
+    const key = this.#eventKey(platform, event);
+    if (!key) return false;
     const now = Date.now();
     const previous = this.#seenEvents.get(key);
     if (previous && now - previous < EVENT_DEDUPE_TTL_MS) return true;
@@ -611,6 +656,13 @@ export class ChannelRouter {
     return this.#platformById(id);
   }
 
+  /** Attribute stored history without requiring its transport to be enabled.
+   * This is metadata only; outbound actions still use platformFor(). */
+  platformForArchive(kind, id) {
+    if (kind !== 'group' && kind !== 'private') throw new Error(`非法会话类型：${kind}`);
+    return this.#platformById(id, false);
+  }
+
   /** chatKey → 平台（bili-agent-pack 等 Skill 用它判断当前会话是否 B站）。 */
   channelFor(chatKey) {
     const [kind, id] = String(chatKey || '').split(':');
@@ -626,7 +678,28 @@ export class ChannelRouter {
     return this.channelFor(chatKey) === PLATFORM_BILI;
   }
 
-  #platformById(id) {
+  #isQqbotChannel() {
+    return this.channels.get(PLATFORM_QQ)?.client?.type === 'qqbot';
+  }
+
+  /** 官方 QQBot 会话 ID（qqbot_* 字符串）只可能属于启用了官方适配器的 QQ 通道。 */
+  #qqbotPlatform(id) {
+    const record = this.channels.get(PLATFORM_QQ);
+    if (!record) throw new Error(`目标 ID ${id} 是官方 QQBot 会话，但 QQ 通道未配置，已拒绝路由`);
+    if (!record.enabled) {
+      throw new Error(`目标 ID ${id} 属于未启用的 QQ 通道（官方 QQBot），已拒绝路由（不会改发到其他平台）`);
+    }
+    if (record.client?.type !== 'qqbot') {
+      throw new Error(
+        `目标 ID ${id} 是官方 QQBot 会话 ID，但 QQ 通道当前不是官方 Bot 接入`
+        + '（需要 connection.type=qqbot），已拒绝路由'
+      );
+    }
+    return PLATFORM_QQ;
+  }
+
+  #platformById(id, requireEnabled = true) {
+    if (QQBOT_ID_PATTERN.test(String(id ?? ''))) return requireEnabled ? this.#qqbotPlatform(id) : PLATFORM_QQ;
     const n = Number(id);
     if (!isSafePositiveInt(n)) {
       throw new Error(`非法目标 ID：${id}（必须是小于 2^53 的正整数）`);
@@ -646,7 +719,7 @@ export class ChannelRouter {
       throw new Error(`目标 ID ${id} 同时落在多个通道号段内，配置有误，已拒绝路由`);
     }
     const record = matches[0];
-    if (!record.enabled) {
+    if (requireEnabled && !record.enabled) {
       throw new Error(
         `目标 ID ${id} 属于未启用的 ${labelForPlatform(record.platform)} 通道，`
         + '已拒绝路由（不会改发到其他平台）'
@@ -736,6 +809,7 @@ export class ChannelRouter {
     }
     const p = normalizePlatform(platform);
     if (p === PLATFORM_QQ) return true;
+    if (p === PLATFORM_DESKTOP) return new Set(['send_private_msg', 'send_msg', 'get_msg', 'get_login_info', 'get_status', 'get_version_info', 'get_stranger_info']).has(String(action));
     const record = this.channels.get(p);
     if (!record) return false;
     return this.#biliSupports(action);
@@ -779,6 +853,12 @@ export class ChannelRouter {
 
   #assertUserIdOnPlatform(userId, platform, label) {
     if (userId === undefined || userId === null || String(userId).trim() === '') return;
+    const raw = String(userId).trim();
+    // 官方 QQBot 的用户标识是 OpenID（群成员为裸 member_openid，私聊会话为
+    // qqbot_user_ 前缀），都不走数字号段；目标平台已确认是 qqbot 形态的 QQ
+    // 通道时直接放行，数字 ID 的跨平台校验不受影响。
+    if (platform === PLATFORM_QQ && this.#isQqbotChannel()
+      && (QQBOT_ID_PATTERN.test(raw) || QQBOT_OPENID_PATTERN.test(raw))) return;
     const actual = this.#platformById(userId);
     if (actual !== platform) {
       throw new Error(

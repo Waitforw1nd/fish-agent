@@ -1,3 +1,5 @@
+import { chatApiRoute } from './contracts/chat-id.js';
+
 const LOCKED_TOP_LEVEL = [
   'server', 'extensions', 'relay', 'channels', 'connection', 'snowluma',
   'providers', 'dshProviderKeys', 'providersSourceYaml', 'providersImported'
@@ -20,10 +22,10 @@ const GET_ROUTES = [
   /^\/api\/sessions$/,
   /^\/api\/sessions\/[\w-]+$/,
   /^\/api\/chats$/,
-  /^\/api\/chats\/(?:group|private)_\d+$/,
-  /^\/api\/chats\/(?:group|private)_\d+\/messages$/,
+  chatApiRoute('chats'),
+  chatApiRoute('chats', '/messages'),
   /^\/api\/memory-files$/,
-  /^\/api\/memory-files\/(?:group|private)_\d+$/,
+  chatApiRoute('memory-files'),
   /^\/api\/usage\/(?:stats|breakdown|prices)$/,
   /^\/api\/model-prices$/,
   /^\/api\/persona-templates$/,
@@ -48,7 +50,7 @@ const POST_ROUTES = [
   /^\/api\/sessions\/[\w-]+\/(?:retry|abort)$/,
   /^\/api\/memory-files\/consolidate$/,
   /^\/api\/media-data$/,
-  /^\/api\/chats\/(?:group|private)_\d+\/(?:wake|test-send|mark-read|clear|mute|delete-messages)$/,
+  chatApiRoute('chats', '/(?:wake|test-send|mark-read|clear|mute|delete-messages)'),
   /^\/api\/pause$/,
   /^\/api\/logs\/level$/
 ];
@@ -56,13 +58,13 @@ const POST_ROUTES = [
 const DELETE_ROUTES = [
   /^\/api\/sessions\/[\w-]+$/,
   /^\/api\/persona-templates\/custom_\d+$/,
-  /^\/api\/memory-files\/(?:group|private)_\d+$/,
-  /^\/api\/memory-files\/(?:group|private)_\d+\/members\/\d+$/,
+  chatApiRoute('memory-files'),
+  chatApiRoute('memory-files', '/members/[A-Za-z0-9_-]{1,128}'),
   /^\/api\/pause$/
 ];
 
 const PUT_ROUTES = [
-  /^\/api\/memory-files\/(?:group|private)_\d+\/members\/\d+$/
+  chatApiRoute('memory-files', '/members/[A-Za-z0-9_-]{1,128}')
 ];
 
 export function isApiAllowed(method, pathname) {

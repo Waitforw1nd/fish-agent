@@ -16,29 +16,40 @@
 // }
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { DATA_DIR } from './config.js';
+import { encodeStorageId } from './storage-identifiers.js';
 
 const MESSAGES_DIR = path.join(DATA_DIR, 'messages');
 
 function chatFile(chatKey) {
   // chatKey 形如 group:123 / private:456
-  const safe = String(chatKey).replace(/[^a-z0-9_]/gi, '_');
+  const match = /^(group|private):(qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})$/.exec(String(chatKey));
+  const safe = match ? match[1] + '_qqbot32_' + encodeStorageId(match[2]) : String(chatKey).replace(/[^a-z0-9_]/gi, '_');
   return path.join(MESSAGES_DIR, `${safe}.json`);
 }
 
 function loadChat(chatKey) {
-  try {
-    let text = fs.readFileSync(chatFile(chatKey), 'utf8');
-    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-    const parsed = JSON.parse(text);
-    if (parsed && Array.isArray(parsed.messages)) return parsed;
-  } catch { /* 新会话 */ }
+  const current = chatFile(chatKey);
+  const legacy = path.join(MESSAGES_DIR, String(chatKey).replace(/[^a-z0-9_]/gi, '_') + '.json');
+  const [kind, identity] = String(chatKey).split(':');
+  const legacy64 = path.join(MESSAGES_DIR, kind + '_qqbot64_' + Buffer.from(identity || '', 'utf8').toString('base64url') + '.json');
+  for (const file of new Set([current, legacy64, legacy])) {
+    try {
+      let text = fs.readFileSync(file, 'utf8');
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.chatKey === chatKey && Array.isArray(parsed.messages)) return parsed;
+    } catch {}
+  }
   return { chatKey, nextLocalId: 1, messages: [] };
 }
 
 function saveChat(state) {
   fs.mkdirSync(MESSAGES_DIR, { recursive: true });
-  const tmp = `${chatFile(state.chatKey)}.${process.pid}.tmp`;
+  // Keep the temporary basename bounded even for a maximum-length OpenID.
+  const key = createHash('sha256').update(String(state.chatKey)).digest('hex');
+  const tmp = path.join(MESSAGES_DIR, `.chat-${key}.${process.pid}.tmp`);
   fs.writeFileSync(tmp, JSON.stringify(state, null, 1), 'utf8');
   fs.renameSync(tmp, chatFile(state.chatKey));
 }
@@ -61,10 +72,13 @@ export class ChatStore {
   listChats() {
     // 从磁盘文件名还原（group_123.json -> group:123），已加载的直接带上
     try {
-      const files = fs.readdirSync(MESSAGES_DIR).filter((f) => /^(group|private)_\d+\.json$/.test(f));
+      const files = fs.readdirSync(MESSAGES_DIR).filter(f => /^(?:group|private)_[A-Za-z0-9_-]+\.json$/.test(f));
       for (const f of files) {
-        const m = /^(group|private)_(\d+)\.json$/.exec(f);
-        if (m) this.#state(`${m[1]}:${m[2]}`);
+        try {
+          const parsed = JSON.parse(fs.readFileSync(path.join(MESSAGES_DIR, f), 'utf8').replace(/^\uFEFF/, ''));
+          const key = String(parsed?.chatKey || '');
+          if (/^(?:group:(?:\d{1,20}|qqbot_(?:group|channel)_[A-Za-z0-9_-]{1,128})|private:(?:\d{1,20}|qqbot_(?:user|dm)_[A-Za-z0-9_-]{1,128}))$/.test(key)) this.#state(key);
+        } catch {}
       }
     } catch { /* 目录不存在 */ }
     return [...this.chats.keys()];

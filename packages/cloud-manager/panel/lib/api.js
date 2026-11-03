@@ -8,6 +8,7 @@ import { createRelayApi } from './api/relay.js';
 import { createBillingApi } from './api/billing.js';
 import { createAdminApi } from './api/admin.js';
 import { createAgentApi } from './api/agent.js';
+import { createEntriesApi } from './api/entries.js';
 import { createExtensionsApi } from './api/extensions.js';
 
 export function createApi(options = {}) {
@@ -24,6 +25,7 @@ export function createApi(options = {}) {
     bili: createBiliApi(context),
     relay: createRelayApi(context),
     billing: createBillingApi(context),
+    entries: createEntriesApi(context),
     admin: createAdminApi(context),
     agent: createAgentApi(context),
     extensions: createExtensionsApi(context)

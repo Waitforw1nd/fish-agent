@@ -2,7 +2,9 @@ import { PERSONAS } from './personas.js';
 import { portOffset } from './profile.js';
 
 export const BILI_VIRTUAL_ID_START = 2 ** 52;
-export const BILI_VIRTUAL_ID_END = Number.MAX_SAFE_INTEGER;
+export const BILI_VIRTUAL_ID_END = 7318349394477055;
+export const DESKTOP_ID_START = 7318349394477056;
+export const DESKTOP_ID_END = 7881299347898367;
 
 export const DEFAULT_CONFIG = {
   // OpenAI 兼容 API（必填才能跑）
@@ -158,6 +160,7 @@ export const DEFAULT_CONFIG = {
       selfNickname: '',
       idRange: { start: 1, end: BILI_VIRTUAL_ID_START - 1 }
     },
+    desktop: { enabled: false, idRange: { start: DESKTOP_ID_START, end: DESKTOP_ID_END } },
     bili: {
       enabled: false,
       wsUrl: `ws://127.0.0.1:${3101 + portOffset()}`,

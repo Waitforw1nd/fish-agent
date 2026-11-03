@@ -56,7 +56,7 @@ test('custom relay, tenant isolation and manually confirmed recharge', async (t)
   const relayBase = `http://127.0.0.1:${config.relayPort}`;
   const headers = { authorization: `Bearer ${relayKey}` };
   manager.db.prepare('UPDATE wallets SET balance_micros = 0 WHERE tenant_id = ?').run(tenantId);
-  const body = { model: 'deepseek-chat', messages: [{ role: 'user', content: 'private prompt' }], max_tokens: 20 };
+  const body = { model: 'deepseek-chat', messages: [{ role: 'user', content: 'private prompt' }], max_tokens: 20, _fish_attribution: { platform: 'desktop', chatKey: 'private:7459086882832384' } };
   const chat = await request(relayBase, { method: 'POST', path: '/v1/chat/completions', headers, body });
   assert.equal(chat.status, 200, chat.text);
   assert.equal(chat.headers['x-fish-cost-micros'], '0');
@@ -65,6 +65,9 @@ test('custom relay, tenant isolation and manually confirmed recharge', async (t)
   assert.match(stream.text, /\[DONE\]/);
   assert.equal(manager.billing.wallet(tenantId).balanceMicros, 0);
   assert.equal(manager.db.prepare('SELECT COUNT(*) AS n FROM ledger WHERE tenant_id = ?').get(tenantId).n, 0);
+  const meters = manager.db.prepare("SELECT * FROM meter_events WHERE tenant_id=? AND meter='desktop.llm.tokens'").all(tenantId);
+  assert.equal(meters.length, 2, 'buffered and streamed custom usage are both metered');
+  assert.ok(meters.every(x => x.quantity > 0 && x.source === 'relay'));
   const logs = await alice.call(base + '/relay/logs?days=1&limit=2&model=deepseek-chat&status=success');
   assert.equal(logs.status, 200, logs.text);
   assert.equal(logs.json.logs.length, 2);

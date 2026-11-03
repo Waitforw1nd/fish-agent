@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { getConfig, updateConfig, deepMerge as deepMergeConfig, DATA_DIR } from './config.js';
+import { validMemberId } from './memory.js';
 import { PERSONA_CARD_LIMITS, parsePersonaCard, personaCardToTemplate } from './personas.js';
 import { customSearch } from './web-search.js';
 import { listModels, chatCompletion, resolveApiKey, estimateCost, cacheHitRate } from './llm.js';
@@ -1411,14 +1412,14 @@ export function createRoutes(deps) {
       }
     },
     {
-      method: 'GET', pattern: /^\/api\/memory-files\/(group|private)_(\d+)$/,
+      method: 'GET', pattern: /^\/api\/memory-files\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})$/,
       handler: async ({ res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         return json(res, 200, { ...memory.query(chatKey), members: memory.members(chatKey) });
       }
     },
     {
-      method: 'PUT', pattern: /^\/api\/memory-files\/(group|private)_(\d+)\/members\/(\d+)$/,
+      method: 'PUT', pattern: /^\/api\/memory-files\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/members\/([A-Za-z0-9_-]{1,128})$/,
       handler: async ({ req, res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         const body = await bodyOf(req);
@@ -1437,7 +1438,7 @@ export function createRoutes(deps) {
       }
     },
     {
-      method: 'DELETE', pattern: /^\/api\/memory-files\/(group|private)_(\d+)\/members\/(\d+)$/,
+      method: 'DELETE', pattern: /^\/api\/memory-files\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/members\/([A-Za-z0-9_-]{1,128})$/,
       handler: async ({ res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         memory.removeMember(chatKey, match[3]);
@@ -1447,7 +1448,7 @@ export function createRoutes(deps) {
     },
     {
       // 删除整个会话的记忆（记忆页「删除本会话记忆」按钮）
-      method: 'DELETE', pattern: /^\/api\/memory-files\/(group|private)_(\d+)$/,
+      method: 'DELETE', pattern: /^\/api\/memory-files\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})$/,
       handler: async ({ res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         memory.removeChat(chatKey);
@@ -1461,11 +1462,11 @@ export function createRoutes(deps) {
         try {
           const body = await bodyOf(req);
           const chatKey = String(body.chatKey || '');
-          if (!/^(group|private):\d+$/.test(chatKey)) return json(res, 400, { ok: false, error: 'chatKey 格式错误' });
+          if (!/^(?:group:(?:\d{1,20}|qqbot_(?:group|channel)_[A-Za-z0-9_-]{1,128})|private:(?:\d{1,20}|qqbot_(?:user|dm)_[A-Za-z0-9_-]{1,128}))$/.test(chatKey)) return json(res, 400, { ok: false, error: 'chatKey 格式错误' });
           let userIds = null;
           if (body.userIds != null) {
             const arr = Array.isArray(body.userIds) ? body.userIds : [body.userIds];
-            userIds = arr.map((u) => String(u ?? '').trim()).filter((u) => /^\d{1,15}$/.test(u));
+            userIds = arr.map((u) => String(u ?? '').trim()).filter((u) => validMemberId(chatKey, u));
             if (!userIds.length) return json(res, 400, { ok: false, error: 'userIds 需为 QQ 号数组' });
           }
           const force = body.force !== false;
@@ -1485,7 +1486,7 @@ export function createRoutes(deps) {
 
     // ── 存档消息 ─────────────────────────────────────────────────────
     {
-      method: 'GET', pattern: /^\/api\/chats\/(group|private)_(\d+)\/messages$/,
+      method: 'GET', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/messages$/,
       handler: async ({ res, json, url, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         const limit = Math.min(1048576, Math.max(1, Number(url.searchParams.get('limit')) || 1048576));
@@ -1553,11 +1554,11 @@ export function createRoutes(deps) {
       }
     },
     {
-      method: 'POST', pattern: /^\/api\/chats\/(group|private)_(\d+)\/wake$/,
+      method: 'POST', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/wake$/,
       handler: async ({ res, json }) => json(res, 410, { error: '已移除：不触发的消息现在会立即标为已读，无需手动唤醒' })
     },
     {
-      method: 'POST', pattern: /^\/api\/chats\/(group|private)_(\d+)\/test-send$/,
+      method: 'POST', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/test-send$/,
       handler: async ({ req, res, json, match }) => {
         const body = await readBody(req);
         const text = String(body.text ?? '').trim();
@@ -1593,12 +1594,12 @@ export function createRoutes(deps) {
       }
     },
     {
-      method: 'POST', pattern: /^\/api\/chats\/(group|private)_(\d+)\/mark-read$/,
+      method: 'POST', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/mark-read$/,
       handler: async ({ res, json, match }) => json(res, 200, { ok: true, marked: store.drainUnread(`${match[1]}:${match[2]}`).length })
     },
     {
       // 清空某会话的全部消息（整体清除存档）
-      method: 'POST', pattern: /^\/api\/chats\/(group|private)_(\d+)\/clear$/,
+      method: 'POST', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/clear$/,
       handler: async ({ res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         const removed = store.clearChat(chatKey);
@@ -1608,7 +1609,7 @@ export function createRoutes(deps) {
     },
     {
       // 仅屏蔽（不删除）：把某会话全部未读标记为已读，不再触发回复
-      method: 'POST', pattern: /^\/api\/chats\/(group|private)_(\d+)\/mute$/,
+      method: 'POST', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/mute$/,
       handler: async ({ res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         const marked = store.muteUnread(chatKey);
@@ -1618,7 +1619,7 @@ export function createRoutes(deps) {
     },
     {
       // 部分清除：删除指定本地 id 的消息
-      method: 'POST', pattern: /^\/api\/chats\/(group|private)_(\d+)\/delete-messages$/,
+      method: 'POST', pattern: /^\/api\/chats\/(?!(?:group_qqbot_(?:user|dm)_|private_qqbot_(?:group|channel)_))(group|private)_(\d{1,20}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})\/delete-messages$/,
       handler: async ({ req, res, json, match }) => {
         const chatKey = `${match[1]}:${match[2]}`;
         const body = await bodyOf(req);

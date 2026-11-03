@@ -65,7 +65,7 @@ export function userLoading(root, head, message) {
 export function readinessChecklist(tenant, { onStart, onSection, onSelectTenant } = {}) {
   const readiness = tenant?.readiness;
   if (!readiness?.steps?.length) return null;
-  const links = { agentRunning: 'overview', qqOnline: 'overview', whitelistReady: 'whitelist' };
+  const links = { agentRunning: 'overview', qqOnline: 'overview', entryReady: 'overview', whitelistReady: 'whitelist' };
   return h('section', { class: 'workspace-readiness', 'aria-label': '开通就绪度' },
     h('strong', {}, `开通进度 ${readiness.completed}/${readiness.total}`),
     h('div', { class: 'workspace-readiness-steps' }, ...readiness.steps.map((step) => {

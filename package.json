@@ -14,6 +14,9 @@
     "check": "node scripts/check.mjs",
     "llbot:check": "npm --prefix packages/protocol-qq-llbot run check",
     "llbot:test": "npm --prefix packages/protocol-qq-llbot run test",
-    "llbot:build": "npm --prefix packages/protocol-qq-llbot run build"
+    "llbot:build": "npm --prefix packages/protocol-qq-llbot run build",
+    "desktop:start": "npm --prefix packages/desktop-pet run start",
+    "desktop:dev": "npm --prefix packages/desktop-pet run dev",
+    "desktop:test": "npm --prefix packages/desktop-pet test"
   }
 }

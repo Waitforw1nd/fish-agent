@@ -9,7 +9,7 @@ import { getConfig, DEFAULT_CONFIG } from './config.js';
 import { sleep, randInt, createSendChain, formatClockTime } from './util.js';
 import { mdToPlain, splitForQQ } from './md-to-plain.js';
 import { skillManager } from './skills/manager.js';
-import { assertSegmentsForPlatform, normalizePlatform } from './channel-router.js';
+import { assertSegmentsForPlatform, normalizePlatform, QQBOT_ID_PATTERN } from './channel-router.js';
 
 // 限频回退值统一取自 DEFAULT_CONFIG，杜绝"代码默认 80 / 回退值 8 / UI 回退 8"三处打架。
 const DEFAULT_MAX_PER_MINUTE = DEFAULT_CONFIG.send.maxPerMinute;
@@ -102,12 +102,16 @@ export class SendGuard {
   /**
    * 号段 + 白名单校验。返回平台。
    * ⚠️ 白名单拒绝是发送层最后一道闸：任何发送路径（含提醒/主动发言）都不能跳过。
+   * 官方 QQBot 会话是 qqbot_* 字符串 ID（非数字号段），交给路由层判定归属。
    */
   assertTarget(kind, id) {
     if (kind !== 'group' && kind !== 'private') throw new Error(`非法会话类型：${kind}`);
+    const raw = String(id ?? '');
     const numeric = Number(id);
     if (!Number.isSafeInteger(numeric) || numeric <= 0) {
-      throw new Error(`非法目标 ID：${id}（必须是小于 2^53 的正整数）`);
+      if (!QQBOT_ID_PATTERN.test(raw)) {
+        throw new Error(`非法目标 ID：${id}（必须是小于 2^53 的正整数，或官方 QQBot 的 qqbot_* 会话 ID）`);
+      }
     }
     const platform = this.platformFor(kind, id);
     if (this.isAllowed && !this.isAllowed(kind, String(id))) {
@@ -204,6 +208,7 @@ export class SendGuard {
     surface = null,
     options = {}
   } = {}) {
+    if (/^qqbot_/.test(String(id)) && (options?.proactive === true || options?.reminder === true || action === 'poke')) throw new Error('QQBot only supports passive replies');
     const idPlatform = this.assertTarget(kind, id);
     const requested = platform ? normalizePlatform(platform) : idPlatform;
     if (requested !== idPlatform) {

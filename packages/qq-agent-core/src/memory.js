@@ -7,11 +7,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR, getConfig, updateConfig } from './config.js';
+import { encodeStorageId, decodeStorageId } from './storage-identifiers.js';
+import { memberNoteKey, memberNotesForChat } from './member-notes.js';
 
 const MEMORY_DIR = path.join(DATA_DIR, 'memory');
 
 function chatDirName(chatKey) {
-  return String(chatKey).replace(/[^a-z0-9_]/gi, '_');
+  const raw = String(chatKey);
+  const match = /^(group|private):(qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})$/.exec(raw);
+  if (match) return match[1] + '_qqbot32_' + encodeStorageId(match[2]);
+  return raw.replace(/[^a-z0-9_]/gi, '_');
+}
+function chatKeyFromDir(name) {
+  const numeric = /^(group|private)_(\d{1,20})$/.exec(name);
+  if (numeric) return numeric[1] + ':' + numeric[2];
+  const encoded = /^(group|private)_qqbot32_([0-9a-v]+)$/.exec(name);
+  if (!encoded) return null;
+  const id = decodeStorageId(encoded[2]);
+  if (!id) return null;
+  const key = encoded[1] + ':' + id;
+  return /^(?:group:qqbot_(?:group|channel)_[A-Za-z0-9_-]{1,128}|private:qqbot_(?:user|dm)_[A-Za-z0-9_-]{1,128})$/.test(key) ? key : null;
 }
 
 function legacyFile(chatKey) {
@@ -19,6 +34,9 @@ function legacyFile(chatKey) {
 }
 
 function chatDir(chatKey) {
+  // Legacy QQBot directory names collide on case-insensitive filesystems and
+  // member files carry no chat identity. Even _meta.json cannot establish the
+  // ownership of every member. Leave those directories untouched.
   return path.join(MEMORY_DIR, chatDirName(chatKey));
 }
 
@@ -29,7 +47,7 @@ function metaFile(chatKey) {
 function memberFileName(userId, name = '') {
   if (String(userId ?? '').trim()) {
     const id = String(userId).trim();
-    return /^\d+$/.test(id) ? `${id}.json` : `u_${id.replace(/[^a-z0-9_]/gi, '_')}.json`;
+    return /^\d+$/.test(id) ? `${id}.json` : `u32_${encodeStorageId(id)}.json`;
   }
   const safe = String(name || 'unknown').trim().replace(/[^a-z0-9_\u4e00-\u9fa5]/gi, '_').slice(0, 40);
   return `_n_${safe || 'unknown'}.json`;
@@ -57,11 +75,40 @@ function writeJson(file, value) {
   fs.renameSync(tmp, file);
 }
 
+export function validMemberId(chatKey, uid) {
+  return (/^\d{1,16}$/.test(uid) && Number.isSafeInteger(Number(uid))) || (/^(?:group:qqbot_(?:group|channel)_|private:qqbot_(?:user|dm)_)/.test(String(chatKey)) && /^[A-Za-z0-9_-]{1,128}$/.test(uid));
+}
+function removeMemberFiles(chatKey, userId, name) {
+  const uid = String(userId || '');
+  const file = memberFile(chatKey, uid, name);
+  try {
+    const raw = readJson(file, null);
+    if (!uid || String(raw?.userId || '') === uid || (/^\d+$/.test(uid) && raw && !raw.userId)) fs.rmSync(file, { force: true });
+  } catch { /* ignore */ }
+  if (uid) {
+    const legacy = path.join(chatDir(chatKey), 'u_' + uid.replace(/[^a-z0-9_]/gi, '_') + '.json');
+    try { if (String(readJson(legacy, null)?.userId || '') === uid) fs.rmSync(legacy, { force: true }); } catch { /* ignore */ }
+  }
+}
 function loadMember(chatKey, userId, name = '') {
   const file = memberFile(chatKey, userId, name);
-  const raw = readJson(file, null);
+  let raw = readJson(file, null);
+  if (raw && userId && String(raw.userId || '') !== String(userId)
+      && !(/^\d+$/.test(String(userId)) && !raw.userId)) raw = null;
+  if (userId) {
+    const legacy = path.join(chatDir(chatKey), 'u_' + String(userId).replace(/[^a-z0-9_]/gi, '_') + '.json');
+    const candidate = readJson(legacy, null);
+    if (String(candidate?.userId || '') === String(userId)) {
+      // Only migrate a file whose embedded identity matches. Remove the old
+      // copy after the new one is written so later deletion cannot revive it.
+      try {
+        if (!raw) { writeJson(file, candidate); raw = candidate; }
+        fs.rmSync(legacy, { force: true });
+      } catch { if (!raw) raw = candidate; /* preserve legacy on failure */ }
+    }
+  }
   return {
-    userId: String(raw?.userId ?? userId ?? ''),
+    userId: String(raw?.userId || userId || ''),
     name: String(raw?.name ?? name ?? ''),
     impressions: Array.isArray(raw?.impressions) ? raw.impressions : [],
     updatedAt: Number(raw?.updatedAt) || 0,
@@ -77,6 +124,7 @@ function loadMeta(chatKey) {
 export class MemoryStore {
   constructor() {
     this.cache = new Map(); // chatKey -> Map(userId|_n_xx, member)
+    this.migrating = new Set();
   }
 
   /** 扫描所有有记忆的会话（文件夹或旧版单文件）。 */
@@ -84,13 +132,10 @@ export class MemoryStore {
     const out = new Set();
     try {
       for (const f of fs.readdirSync(MEMORY_DIR)) {
-        if (fs.statSync(path.join(MEMORY_DIR, f)).isDirectory()) {
-          const m = /^(group|private)_(\d+)$/.exec(f);
-          if (m) out.add(`${m[1]}:${m[2]}`);
-        } else {
-          const m = /^(group|private)_(\d+)\.json$/.exec(f);
-          if (m) out.add(`${m[1]}:${m[2]}`);
-        }
+        const isDir = fs.statSync(path.join(MEMORY_DIR, f)).isDirectory();
+        const name = isDir ? f : f.replace(/\.json$/, '');
+        const key = chatKeyFromDir(name);
+        if (key && (isDir || f.endsWith('.json'))) out.add(key);
       }
     } catch { /* 目录不存在 */ }
     return [...out];
@@ -98,13 +143,15 @@ export class MemoryStore {
 
   /** 旧版单文件 → 新版每成员文件。迁移后旧文件移到 backups/。 */
   #migrateLegacy(chatKey) {
+    if (this.migrating.has(chatKey)) return;
     const legacy = legacyFile(chatKey);
     if (!fs.existsSync(legacy)) return;
+    this.migrating.add(chatKey);
     try {
       if (fs.statSync(legacy).isDirectory()) return;
       const old = readJson(legacy, null);
       if (!old) return;
-      const notes = getConfig().memberNotes || {};
+      const notes = memberNotesForChat(chatKey, getConfig().memberNotes || {});
       const nameToQq = {};
       for (const [qq, name] of Object.entries(notes)) {
         if (name) nameToQq[String(name)] = String(qq);
@@ -130,6 +177,8 @@ export class MemoryStore {
       fs.renameSync(legacy, backup);
     } catch (error) {
       console.error('[memory] 旧记忆迁移失败:', error?.message ?? error);
+    } finally {
+      this.migrating.delete(chatKey);
     }
   }
 
@@ -142,8 +191,10 @@ export class MemoryStore {
           if (!f.endsWith('.json') || f === '_meta.json') continue;
           const raw = readJson(path.join(chatDir(chatKey), f), null);
           if (!raw) continue;
-          const key = raw.userId ? String(raw.userId) : `_n_${f}`;
-          map.set(key, loadMember(chatKey, raw.userId, raw.name));
+          const numericId = /^(\d+)\.json$/.exec(f)?.[1];
+          const userId = raw.userId || numericId || '';
+          const key = userId ? String(userId) : `_n_${f}`;
+          map.set(key, loadMember(chatKey, userId, raw.name));
         }
       } catch { /* 尚无文件夹 */ }
       this.#mergeNameDuplicates(chatKey, map);
@@ -280,7 +331,7 @@ export class MemoryStore {
   /** 编辑群友印象（管理端）：QQ 号由调用方提供，自动回填名字，保存备注到配置。 */
   editMemberImpression(chatKey, { userId, name = '', note = '', impressions = [] }) {
     const uid = String(userId ?? '').trim();
-    if (!/^\d{1,15}$/.test(uid)) throw new Error('userId 必须是数字 QQ 号');
+    if (!validMemberId(chatKey, uid)) throw new Error('userId 必须是数字 QQ 号');
     const map = this.#ensureChat(chatKey);
     const old = map.get(uid) || loadMember(chatKey, uid, name);
     const finalName = String(name ?? '').trim().slice(0, 60) || String(old.name || '').trim() || uid;
@@ -304,8 +355,9 @@ export class MemoryStore {
     if (note !== undefined && note !== null) {
       const notes = { ...(getConfig().memberNotes || {}) };
       const n = String(note ?? '').trim();
-      if (n) notes[uid] = n;
-      else delete notes[uid];
+      const noteKey = memberNoteKey(chatKey, uid);
+      if (n) notes[noteKey] = n;
+      else delete notes[noteKey];
       updateConfig({ memberNotes: notes });
     }
     return {
@@ -320,7 +372,7 @@ export class MemoryStore {
   /** 手动替换某成员的全部印象（管理端编辑用）。返回更新后的成员。 */
   replaceMember(chatKey, userId, name, contents) {
     const uid = String(userId ?? '').trim();
-    if (!/^\d{1,15}$/.test(uid)) throw new Error('userId 必须是数字 QQ 号');
+    if (!validMemberId(chatKey, uid)) throw new Error('userId 必须是数字 QQ 号');
     const map = this.#ensureChat(chatKey);
     const old = map.get(uid) || loadMember(chatKey, uid, name);
     const finalName = String(name ?? '').trim().slice(0, 60) || String(old.name || '').trim() || uid;
@@ -362,11 +414,11 @@ export class MemoryStore {
   /** 删除某成员的印象文件。 */
   removeMember(chatKey, userId) {
     const uid = String(userId ?? '').trim();
-    if (!/^\d{1,15}$/.test(uid)) return false;
+    if (!validMemberId(chatKey, uid)) return false;
     const map = this.#ensureChat(chatKey);
     const m = map.get(uid) || loadMember(chatKey, uid);
     map.delete(uid);
-    try { fs.rmSync(memberFile(chatKey, uid, m.name), { force: true }); } catch { /* ignore */ }
+    removeMemberFiles(chatKey, uid, m.name);
     return true;
   }
 
@@ -409,7 +461,7 @@ export class MemoryStore {
           }
           if (!m.impressions.length) {
             map.delete(key);
-            try { fs.rmSync(memberFile(chatKey, m.userId, m.name), { force: true }); } catch { /* ignore */ }
+            removeMemberFiles(chatKey, m.userId, m.name);
           } else {
             m.updatedAt = Date.now();
             writeJson(memberFile(chatKey, m.userId, m.name), m);
@@ -428,7 +480,7 @@ export class MemoryStore {
           }
           if (!m.impressions.length) {
             map.delete(key);
-            try { fs.rmSync(memberFile(chatKey, m.userId, m.name), { force: true }); } catch { /* ignore */ }
+            removeMemberFiles(chatKey, m.userId, m.name);
           } else {
             m.updatedAt = Date.now();
             writeJson(memberFile(chatKey, m.userId, m.name), m);
@@ -442,7 +494,7 @@ export class MemoryStore {
   clear(chatKey) {
     const map = this.#ensureChat(chatKey);
     for (const m of map.values()) {
-      try { fs.rmSync(memberFile(chatKey, m.userId, m.name), { force: true }); } catch { /* ignore */ }
+      removeMemberFiles(chatKey, m.userId, m.name);
     }
     map.clear();
     writeJson(metaFile(chatKey), { lastConsolidatedAt: Date.now() });
@@ -453,7 +505,7 @@ export class MemoryStore {
    * opts.userIds 提供时只包含这些成员（相关成员注入，控制 token）。
    */
   formatForPrompt(chatKey, { userIds = null } = {}) {
-    const notes = getConfig().memberNotes || {};
+    const notes = memberNotesForChat(chatKey, getConfig().memberNotes || {});
     const all = this.members(chatKey);
     if (!all.length) return '';
     const filter = userIds ? new Set([...userIds].map(String)) : null;
@@ -528,7 +580,7 @@ export class MemoryStore {
     for (const item of Array.isArray(next?.memberImpression) ? next.memberImpression.slice(0, 15) : []) {
       const content = cut(item?.content, 300);
       if (!content) continue;
-      const userId = cut(item?.userId, 40) || '';
+      const userId = cut(item?.userId, 128) || '';
       const name = cut(item?.target, 60) || userId;
       const key = userId || `_n_${memberFileName('', name)}`;
       if (!groups.has(key)) groups.set(key, { userId, name, contents: [] });
@@ -549,7 +601,7 @@ export class MemoryStore {
     } catch { /* 备份失败不阻塞整理 */ }
     // 删除所有现有成员文件（整理结果会重建）
     for (const m of map.values()) {
-      try { fs.rmSync(memberFile(chatKey, m.userId, m.name), { force: true }); } catch { /* ignore */ }
+      removeMemberFiles(chatKey, m.userId, m.name);
     }
     map.clear();
     for (const g of groups.values()) {

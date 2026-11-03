@@ -89,21 +89,32 @@ export function createTenantPresenter(deps) {
     let allow = {};
     try { allow = JSON.parse(fs.readFileSync(agent.configPath(tenant), 'utf8')).allow || {}; } catch { /* no saved config */ }
     const whitelistReady = [allow.groups, allow.private].some((list) =>
-      Array.isArray(list) && list.some((entry) => /^\d+$/.test(String(entry ?? '').trim())));
+      Array.isArray(list) && list.some((entry) => /^(?:[1-9]\d{0,15}|qqbot_(?:group|user|channel|dm)_[A-Za-z0-9_-]{1,128})$/.test(String(entry ?? '').trim())));
     const custom = customUpstreams.public(tenant);
     const agentRunning = agentStatus.state === 'running';
     const qqOnline = qqView.loggedIn && qqView.running;
+    const entryStates = deps.entries?.list(tenant.id) || {};
+    const desktopDevices = deps.desktopDevices?.list(tenant.id).filter(device => !device.revokedAt) || [];
+    const entries = {
+      qq_protocol: { ...entryStates.qq_protocol, healthy: Boolean(entryStates.qq_protocol?.enabled && qqOnline) },
+      qq_official: { ...entryStates.qq_official, healthy: Boolean(entryStates.qq_official?.enabled && qqOnline) },
+      desktop: { ...entryStates.desktop, healthy: Boolean(entryStates.desktop?.enabled && agentRunning), pairedDevices: desktopDevices.length },
+      bili: { ...entryStates.bili, healthy: Boolean(entryStates.bili?.enabled && biliView.state === 'running') }
+    };
+    const hasAlternateEntry = Boolean(entries.desktop.enabled || entries.bili.enabled);
+    const entryReady = Boolean(qqOnline || (entries.desktop.enabled && desktopDevices.length) || entries.bili.healthy);
     const channelReady = custom.configured
       ? Boolean(custom.hasKey && custom.model)
       : Boolean(relayKeys.active(tenant.id) && relay.upstreamPublic().configured && billing.wallet(tenant.id).availableMicros > 0 && relayView.model);
     const steps = [
       { id: 'agent', label: '启动实例', ready: agentRunning },
-      { id: 'qq', label: '扫码登录 QQ', ready: qqOnline },
+      hasAlternateEntry ? { id: 'entryReady', label: '连接桌宠、QQ 或 B 站入口', ready: entryReady }
+        : { id: 'qq', label: qqView.driver === 'qqbot' ? '连接官方 QQ Bot' : '扫码登录 QQ', ready: qqOnline },
       { id: 'channel', label: '配置模型渠道', ready: channelReady },
-      { id: 'whitelist', label: '选择互动白名单', ready: whitelistReady }
+      ...(!hasAlternateEntry ? [{ id: 'whitelist', label: '选择互动白名单', ready: whitelistReady }] : [])
     ];
     const completed = steps.filter((step) => step.ready).length;
-    const readiness = { agentRunning, qqOnline, channelReady, whitelistReady, steps, completed, total: steps.length, ready: completed === steps.length };
+    const readiness = { agentRunning, qqOnline, entryReady, channelReady, whitelistReady, steps, completed, total: steps.length, ready: completed === steps.length };
     return {
       ...serialized,
       status,
@@ -113,6 +124,7 @@ export function createTenantPresenter(deps) {
       qq: qqView,
       bili: biliView,
       relay: relayView,
+      entries,
       readiness,
       summary: {
         agent: { state: agentStatus.state, pid: agentStatus.pid },

@@ -1,8 +1,10 @@
 import { createApp } from '../../src/app.js';
-import { getConfig, deepMerge, resolveChannels } from '../../src/config.js';
+import { getConfig, deepMerge, resolveChannels, DATA_DIR } from '../../src/config.js';
 import { ChannelRouter } from '../../src/channel-router.js';
 import { OneBotClient } from '../../src/onebot.js';
 import { BotConnection, connectionConfig } from './connection.js';
+import { handleBiliExplore } from '../../src/bili-explore.js';
+import { DesktopChannelClient } from './desktop-channel.js';
 import { createConsoleAuth, serverOptions } from './console.js';
 
 // Trusted, explicit bootstrap composition; never loaded as a chat Skill/plugin.
@@ -16,7 +18,6 @@ export function createHeadlessApp({ env = process.env, log = console.log } = {})
   const channelsFor = config => {
     const channels = resolveChannels(config);
     const qq = connectionConfig(config);
-    if (qq.enabled && qq.type === 'qqbot') throw new Error('当前双通道路由仅支持数字 OneBot ID，暂不支持 QQBot OpenID');
     return { ...channels, qq: { ...channels.qq, enabled: qq.enabled } };
   };
   channelsFor(getConfig());
@@ -29,7 +30,8 @@ export function createHeadlessApp({ env = process.env, log = console.log } = {})
       connection = new ChannelRouter({
         channels: channelsFor(config), log, onEvent,
         createClient(platform, cfg) {
-          const dispatch = event => connection.dispatch(platform, event);
+          const dispatch = event => connection.dispatch(platform, event, { wait: platform === 'desktop' || (platform === 'qq' && connectionConfig(getConfig()).type === 'qqbot') });
+          if (platform === 'desktop') return new DesktopChannelClient({ server, token: () => options().token, onEvent: dispatch, dataDir: DATA_DIR });
           if (platform === 'qq') return new BotConnection({ config: connectionConfig(getConfig()), server, onEvent: dispatch });
           return new OneBotClient({ platform, wsUrl: cfg.wsUrl, httpUrl: cfg.httpUrl,
             accessToken: cfg.accessToken, httpToken: cfg.httpAccessToken,
@@ -86,6 +88,10 @@ export function createHeadlessApp({ env = process.env, log = console.log } = {})
     async handleRequest(context) {
       if (await auth.handleRequest(context)) return true;
       const { req, res, url, json } = context;
+      if (url.pathname === '/api/internal/bili-explore') {
+        if (req.headers['x-console-token'] !== options().token) { json(res, 403, { error: 'Forbidden' }); return true; }
+        return handleBiliExplore(context);
+      }
       if (url.pathname === '/api/runtime/connection' && req.method === 'GET') {
         const config = connectionConfig(getConfig());
         const ob = { ...config.onebot }, qq = { ...config.qqbot };

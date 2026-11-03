@@ -122,6 +122,10 @@ function renderMemoryList() {
   });
 }
 
+function memoryNoteKey(chatKey, userId) {
+  return /^(?:group|private):qqbot_/.test(String(chatKey || '')) ? `qqbot:${userId}` : String(userId);
+}
+
 async function loadMemoryDetail(chatKey) {
   const detail = $('#memory-detail');
   detail.innerHTML = '<div class="empty-hint">加载中…</div>';
@@ -138,7 +142,7 @@ async function loadMemoryDetail(chatKey) {
       ? `<div class="field" style="margin:8px 0"><button class="btn btn-small" id="mem-load-members-btn">拉取群成员列表（编辑备注）</button><span id="mem-members-status" class="muted"></span></div><div id="mem-members"></div>`
       : '';
     const rows = members.map((m) => {
-      const who = notes[String(m.userId)] || m.name || m.userId || '某人';
+      const who = notes[memoryNoteKey(chatKey, m.userId)] || m.name || m.userId || '某人';
       const qq = m.userId ? ` <span class="muted">(QQ ${esc(m.userId)})</span>` : '';
       const imps = m.impressions.map((e) => `- ${e.content}`).join('\n');
       // 必须是 <details> 才能开合：div+summary 点了不会收起
@@ -286,7 +290,7 @@ function openMemberImpressModal(chatKey, member) {
   const imps = (member?.impressions || []).map((e) => e.content).join('\n');
   const cfg = state.config || {};
   const notes = cfg.memberNotes || {};
-  const note = notes[String(userId)] || '';
+  const note = notes[memoryNoteKey(chatKey, userId)] || '';
   const overlay = modelModalShell({
     head: isEdit ? `编辑群友印象：${note || name || userId}` : '添加群友印象',
     body: `
@@ -310,9 +314,10 @@ function openMemberImpressModal(chatKey, member) {
     const nm = ($('#mi-name')?.value || $('#mi-nickname')?.value || '').trim();
     const newNote = ($('#mi-note')?.value || '').trim();
     const lines = ($('#mi-imps')?.value || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-    if (!/^\d{1,15}$/.test(qq)) { alert('QQ 号必须是数字'); return; }
+    const official = /^(?:group|private):qqbot_/.test(chatKey);
+    if (!(official ? /^[A-Za-z0-9_-]{1,128}$/.test(qq) : /^\d{1,16}$/.test(qq) && Number.isSafeInteger(Number(qq)))) { alert('成员 ID 格式不正确'); return; }
     try {
-      await api(`/api/memory-files/${chatKey.replace(':', '_')}/members/${qq}`, {
+      await api(`/api/memory-files/${chatKey.replace(':', '_')}/members/${encodeURIComponent(qq)}`, {
         method: 'PUT',
         body: JSON.stringify({ name: nm, note: newNote, impressions: lines })
       });
@@ -326,7 +331,7 @@ function openMemberImpressModal(chatKey, member) {
   if (delBtn) delBtn.addEventListener('click', async () => {
     if (!(await uiConfirm(`确定删除 ${note || name || userId} 的全部印象？`))) return;
     try {
-      await api(`/api/memory-files/${chatKey.replace(':', '_')}/members/${userId}`, { method: 'DELETE', body: '{}' });
+      await api(`/api/memory-files/${chatKey.replace(':', '_')}/members/${encodeURIComponent(userId)}`, { method: 'DELETE', body: '{}' });
       closeModelModal(overlay);
       loadMemoryDetail(chatKey);
     } catch (e) {
@@ -349,7 +354,7 @@ async function loadGroupMembers(chatId, chatKey) {
       box.innerHTML = `<details class="collapsible mem-fold" open><summary><span class="mem-who">群成员（${state.groupMembers.length} 人）</span></summary><div class="coll-body"><table class="member-table">
         <tr><th style="text-align:left">群名片</th><th style="text-align:left">QQ昵称</th><th style="text-align:left">QQ号</th><th style="width:90px;text-align:right">备注</th></tr>
         ${state.groupMembers.map((m) => {
-          const note = notes[String(m.userId)];
+          const note = notes[memoryNoteKey(chatKey, m.userId)];
           return `<tr>
             <td>${esc(note || m.card || '—')}${note && (m.card || m.nickname) ? ` <span class="muted">(${esc(m.card || m.nickname)})</span>` : ''}</td>
             <td>${esc(m.nickname || '—')}</td>
@@ -371,7 +376,7 @@ async function loadGroupMembers(chatId, chatKey) {
 async function openMemberNoteModal(qq, chatKey) {
   const cfg = state.config || await api('/api/config');
   const notes = cfg.memberNotes || {};
-  const oldNote = notes[String(qq)] || '';
+  const oldNote = notes[memoryNoteKey(chatKey, qq)] || '';
   const member = (state.groupMembers || []).find((m) => String(m.userId) === String(qq));
   const displayName = member ? String(member.card || member.nickname || '') : '';
   const overlay = modelModalShell({
@@ -388,7 +393,8 @@ async function openMemberNoteModal(qq, chatKey) {
   overlay.querySelector('#mn-save').addEventListener('click', async () => {
     const name = $('#mn-note')?.value.trim() || '';
     const nextNotes = { ...(state.config?.memberNotes || {}) };
-    if (name) nextNotes[String(qq)] = name; else delete nextNotes[String(qq)];
+    const key = memoryNoteKey(chatKey, qq);
+    if (name) nextNotes[key] = name; else delete nextNotes[key];
     try {
       const data = await api('/api/config', { method: 'POST', body: JSON.stringify({ memberNotes: nextNotes }) });
       state.config = data.config;
@@ -401,7 +407,7 @@ async function openMemberNoteModal(qq, chatKey) {
   const delBtn = overlay.querySelector('#mn-delete');
   if (delBtn) delBtn.addEventListener('click', async () => {
     const nextNotes = { ...(state.config?.memberNotes || {}) };
-    delete nextNotes[String(qq)];
+    delete nextNotes[memoryNoteKey(chatKey, qq)];
     try {
       const data = await api('/api/config', { method: 'POST', body: JSON.stringify({ memberNotes: nextNotes }) });
       state.config = data.config;

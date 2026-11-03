@@ -5,6 +5,13 @@ export function httpError(status, code, message, extra = {}) {
   return Object.assign(new Error(message), { status, code, ...extra });
 }
 
+export function requireObjectBody(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw httpError(400, 'INVALID_BODY', '请求体必须是 JSON 对象');
+  }
+  return body;
+}
+
 export function parseQueryInt(params, name, fallback, min, max) {
   if (!params.has(name)) return fallback;
   const raw = String(params.get(name) || '');
