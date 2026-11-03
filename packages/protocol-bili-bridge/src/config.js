@@ -102,6 +102,7 @@ export function defaultConfig() {
       dedupeCapacity: 5000
     },
     security: {
+      readOnly: true,
       allowRemoteWithoutToken: false,
       secretPassphrase: '',
       secretKey: ''
@@ -154,6 +155,7 @@ function fromEnv(env) {
       }
     },
     security: {
+      readOnly: envOr(env.BILI_READ_ONLY, undefined),
       allowRemoteWithoutToken: envOr(env.BILI_ALLOW_REMOTE_WITHOUT_TOKEN, undefined),
       secretPassphrase: envOr(env.BILI_SECRET_PASSPHRASE, undefined),
       secretKey: envOr(env.BILI_SECRET_KEY, undefined)
@@ -182,6 +184,8 @@ function validateEndpoint(name, value) {
 export function loadConfig({ env = process.env, overrides = {} } = {}) {
   const merged = deepMerge(defaultConfig(), cleanObject(fromEnv(env)));
   const config = deepMerge(merged, cleanObject(overrides));
+  // Publishing is disabled for every deployment, including standalone bridges.
+  config.security.readOnly = true;
 
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(config.tenantId))) {
     throw new ConfigError('tenantId 只能包含字母、数字、下划线和连字符，最长 64');

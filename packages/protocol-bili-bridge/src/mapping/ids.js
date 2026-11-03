@@ -6,7 +6,7 @@ import { Mutex } from '../store/file-lock.js';
 //   QQ 号/群号远达不到该量级，且 MAX_SAFE_INTEGER 内 Number(id) 精确无损。
 // 五个子号段各占 2^49，互不重叠，且全部落在 ChannelRouter 的 B 站段内。
 export const BILI_VIRTUAL_ID_START = 2 ** 52; // 4_503_599_627_370_496
-export const BILI_VIRTUAL_ID_END = Number.MAX_SAFE_INTEGER; // 9_007_199_254_740_991
+export const BILI_VIRTUAL_ID_END = 7_318_349_394_477_055;
 export const RANGE_SIZE = 2 ** 49; // 562_949_953_421_312
 
 export const VIRTUAL_ID_RANGES = Object.freeze({

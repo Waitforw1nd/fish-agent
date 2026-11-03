@@ -6,10 +6,10 @@ import { BiliBridge } from '../src/bridge.js';
 import { commentRootParent, normalizeReply } from '../src/bili/comment.js';
 import { normalizeMsgfeedReply, replyIsAtSelf } from '../src/bili/msgfeed.js';
 
-async function setupPoller() {
+async function setupPoller({ readOnly = true } = {}) {
   const fake = await FakeBili.start();
   const dataDir = await tempDir();
-  const config = makeConfig({ fake, dataDir });
+  const config = makeConfig({ fake, dataDir, overrides: { security: { readOnly } } });
   const events = [];
   const bridge = new BiliBridge({
     config,
@@ -268,7 +268,7 @@ test('UpWatcher：首次基线、新视频映射群、去重', async (t) => {
 });
 
 test('DmWatcher：基线、增量、safe message_id、ack 与重启不重复', async (t) => {
-  const env = await setupPoller();
+  const env = await setupPoller({ readOnly: false }); // Legacy opt-out must be ignored.
   const { fake, bridge, events, dataDir, config } = env;
   t.after(async () => {
     await env.cleanup();
@@ -280,7 +280,7 @@ test('DmWatcher：基线、增量、safe message_id、ack 与重启不重复', a
   const baseline = await bridge.dmWatcher.poll();
   assert.equal(baseline.emitted, 0);
   assert.equal(events.length, 0);
-  assert.ok(fake.count('/session_svr/v1/session_svr/update_ack') >= 1);
+  assert.equal(fake.count('/session_svr/v1/session_svr/update_ack'), 0);
   assert.equal(fake.requestsTo('/session_svr/v1/session_svr/get_sessions').length >= 1, true);
 
   fake.addDmMessage('20002', { text: '新私信', seqno: '1780000000000000102', timestamp: 1_700_000_601 });
@@ -293,8 +293,7 @@ test('DmWatcher：基线、增量、safe message_id、ack 与重启不重复', a
   assert.equal(event.self_id, bridge.selfId);
   assert.equal(event.sender.nickname, '观众A');
   assert.ok(event.message.some((segment) => segment.type === 'text' && segment.data.text === '新私信'));
-  const ack = fake.last('/session_svr/v1/session_svr/update_ack');
-  assert.equal(ack.form.ack_seqno, '1780000000000000102');
+  assert.equal(fake.count('/session_svr/v1/session_svr/update_ack'), 0);
 
   await bridge.dmWatcher.poll();
   assert.equal(events.length, 1);

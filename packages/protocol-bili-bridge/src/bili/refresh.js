@@ -58,7 +58,8 @@ export class CookieRefresher {
     this.lastCheck = null;
   }
 
-  async check() {
+  async check({ generation = this.jar.generation } = {}) {
+    this.auth.assertGeneration(generation);
     this.auth.assertLoggedIn();
     try {
       const payload = await this.api.request({
@@ -70,6 +71,7 @@ export class CookieRefresher {
         allowedCodes: [0],
         retries: 1
       });
+      this.auth.assertGeneration(generation);
       const data = payload?.data || {};
       const result = {
         needed: Boolean(data.refresh),
@@ -90,14 +92,17 @@ export class CookieRefresher {
   /** 手动 force 仍需要 cookie/info 的 timestamp，不能凭空生成 correspondPath。 */
   async refresh({ force = false } = {}) {
     this.auth.assertLoggedIn();
+    const generation = this.jar.generation;
     return this.mutex.run(async () => {
-      const run = async () => this.#refreshLocked({ force });
+      const run = async () => this.#refreshLocked({ force, generation });
       return this.lock ? this.lock.withLock(run) : run();
     });
   }
 
-  async #refreshLocked({ force }) {
-    const info = await this.check();
+  async #refreshLocked({ force, generation }) {
+    this.auth.assertGeneration(generation);
+    const info = await this.check({ generation });
+    this.auth.assertGeneration(generation);
     if (!info.needed && !force) {
       return { refreshed: false, reason: 'not_needed', checkedAt: info.checkedAt };
     }
@@ -140,6 +145,7 @@ export class CookieRefresher {
         cause: error
       });
     }
+    this.auth.assertGeneration(generation);
     const refreshCsrf = extractRefreshCsrf(page.text);
     if (!refreshCsrf) {
       throw new BiliApiError('refresh_csrf 页面中没有找到校验值', {
@@ -163,6 +169,7 @@ export class CookieRefresher {
       allowedCodes: [0],
       retries: 0
     });
+    this.auth.assertGeneration(generation);
     const refreshStatus = refreshPayload?.data?.status;
     if (refreshStatus !== undefined && Number(refreshStatus) !== 0) {
       throw new BiliApiError(`B 站 cookie 刷新失败（status=${refreshStatus}）`, {
@@ -190,6 +197,7 @@ export class CookieRefresher {
         allowedCodes: [0],
         retries: 0
       });
+      this.auth.assertGeneration(generation);
       const confirmStatus = confirmPayload?.data?.status;
       if (confirmStatus !== undefined && Number(confirmStatus) !== 0) {
         throw new BiliApiError(`B 站 cookie confirm 失败（status=${confirmStatus}）`, {
@@ -197,8 +205,9 @@ export class CookieRefresher {
         });
       }
     } catch (error) {
+      this.auth.assertGeneration(generation);
       this.lastError = String(error?.message ?? error);
-      await this.auth.updateSessionAfterRefresh({ refreshToken: nextRefreshToken }).catch(() => {});
+      await this.auth.updateSessionAfterRefresh({ refreshToken: nextRefreshToken, generation }).catch(() => {});
       throw new BridgeError('cookie 已刷新但 confirm 失败，旧登录态可能已失效，请重新扫码', {
         kind: 'AUTH', code: 401, retcode: 1401,
         wording: 'B 站 cookie 保活确认失败，请重新扫码登录',
@@ -206,7 +215,7 @@ export class CookieRefresher {
       });
     }
 
-    await this.auth.updateSessionAfterRefresh({ refreshToken: nextRefreshToken });
+    await this.auth.updateSessionAfterRefresh({ refreshToken: nextRefreshToken, generation });
     this.lastRefreshAt = this.now();
     this.refreshCount += 1;
     this.lastError = '';

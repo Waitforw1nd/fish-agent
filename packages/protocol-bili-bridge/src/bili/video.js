@@ -71,6 +71,16 @@ export class VideoService {
     this.forceHttps = forceHttps;
   }
 
+  trustedAssetUrl(value) {
+    try {
+      const target = new URL(value, this.api.endpoints.api);
+      const origins = [this.api.endpoints.api, this.api.endpoints.subtitle].map(base => new URL(base).origin);
+      const host = target.hostname.toLowerCase();
+      return ['http:', 'https:'].includes(target.protocol) && !target.username && !target.password &&
+        (origins.includes(target.origin) || (target.protocol === 'https:' && (host === 'hdslb.com' || host.endsWith('.hdslb.com'))));
+    } catch { return false; }
+  }
+
   async resolveBvid(url) {
     let text = String(url || '').trim();
     if (text && !/^https?:\/\//i.test(text)) text = `https://${text}`;
@@ -83,7 +93,8 @@ export class VideoService {
     if (!SHORT_LINK_HOSTS.has(parsed.hostname.toLowerCase())) {
       throw new BridgeError('不支持的视频链接域名', { kind: 'INPUT', code: 400, retcode: 1400, wording: '仅支持 b23.tv / bilibili.com 视频链接' });
     }
-    const finalUrl = await this.api.resolveFinalUrl(parsed.toString());
+    const allowed = value => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password && SHORT_LINK_HOSTS.has(u.hostname.toLowerCase()); } catch { return false; } };
+    const finalUrl = await this.api.resolveFinalUrl(parsed.toString(), { allowUrl: allowed });
     let finalHost = '';
     try { finalHost = new URL(finalUrl).hostname.toLowerCase(); } catch { /* ignore */ }
     if (finalHost && !SHORT_LINK_HOSTS.has(finalHost)) {
@@ -96,7 +107,7 @@ export class VideoService {
     return bvid;
   }
 
-  async view({ bvid, aid } = {}) {
+  async view({ bvid, aid, shouldContinue } = {}) {
     if (!bvid && !aid) throw new BridgeError('需要 bvid 或 aid', { kind: 'INPUT', code: 400, retcode: 1400, wording: '缺少视频 ID' });
     const payload = await this.api.request({
       method: 'GET',
@@ -105,7 +116,7 @@ export class VideoService {
       params: bvid ? { bvid: String(bvid) } : { aid: String(aid) },
       signed: false,
       allowedCodes: [0],
-      retries: 1
+      retries: 1, shouldContinue
     });
     const data = payload?.data || {};
     if (!data.bvid || !data.aid) {
@@ -147,12 +158,12 @@ export class VideoService {
     };
   }
 
-  async player({ bvid, aid, cid } = {}) {
+  async player({ bvid, aid, cid, shouldContinue } = {}) {
     let resolvedCid = cid ? String(cid) : '';
     let resolvedAid = aid ? String(aid) : '';
     let resolvedBvid = bvid ? String(bvid) : '';
     if (!resolvedCid || !resolvedAid || !resolvedBvid) {
-      const detail = await this.view({ bvid: resolvedBvid || undefined, aid: resolvedAid || undefined });
+      const detail = await this.view({ bvid: resolvedBvid || undefined, aid: resolvedAid || undefined, shouldContinue });
       resolvedCid = resolvedCid || detail.pages[0]?.cid || '';
       resolvedAid = detail.aid;
       resolvedBvid = detail.bvid;
@@ -169,7 +180,7 @@ export class VideoService {
       params,
       signed: true,
       allowedCodes: [0],
-      retries: 1
+      retries: 1, shouldContinue
     });
     return { data: payload?.data || {}, aid: resolvedAid, bvid: resolvedBvid, cid: resolvedCid };
   }
@@ -203,10 +214,15 @@ export class VideoService {
     };
   }
 
-  async downloadSubtitle(url) {
+  async downloadSubtitle(url, { shouldContinue } = {}) {
     const absolute = normalizeSubtitleUrl(url, { forceHttps: this.forceHttps });
     if (!absolute) {
       return { ok: false, reason: 'INVALID_URL', wording: '字幕地址为空' };
+    }
+    // URLs in platform responses are untrusted. Permit Bilibili's CDN or the
+    // explicitly configured API/subtitle origins (the latter supports local fakes).
+    if (!this.trustedAssetUrl(absolute)) {
+      return { ok: false, reason: 'INVALID_URL', wording: '字幕地址不受支持' };
     }
     let result;
     try {
@@ -216,7 +232,7 @@ export class VideoService {
         service: 'api',
         referer: 'https://www.bilibili.com/',
         maxBytes: this.maxSubtitleBytes,
-        retries: 1
+        retries: 1, shouldContinue
       });
     } catch (error) {
       if (error instanceof BiliApiError && error.kind === 'EXPIRED') {
@@ -245,6 +261,7 @@ export class VideoService {
   async cover(url) {
     const absolute = normalizeImageUrl(url, { forceHttps: this.forceHttps });
     if (!absolute) throw new BridgeError('封面地址为空', { kind: 'INPUT', code: 400, retcode: 1400 });
+    if (!this.trustedAssetUrl(absolute)) throw new BridgeError('封面地址不受支持', { kind: 'INPUT', code: 400, retcode: 1400 });
     const result = await this.api.fetchBuffer({
       method: 'GET',
       path: absolute,
@@ -352,36 +369,40 @@ export class VideoService {
    * 给 Skill 的视频上下文：详情 + 分 P + 字幕列表，默认尝试下载一个 AI/中文字幕。
    * 返回结构化结果，字幕缺失/过期不抛错，保证模型能如实说明。
    */
-  async context({ bvid, aid, cid, includeSubtitles = true, download = true, maxSubtitleChars = 6000 } = {}) {
-    const detail = await this.view({ bvid, aid });
+  async context({ bvid, aid, cid, includeSubtitles = true, download = true, maxSubtitleChars = 6000, shouldContinue, onView } = {}) {
+    const canContinue = () => !shouldContinue || shouldContinue();
+    const detail = await this.view({ bvid, aid, shouldContinue });
+    onView?.();
     let resolvedCid = cid ? String(cid) : (detail.pages[0]?.cid || '');
     let list = [];
     let subtitleError = null;
-    if (includeSubtitles) {
+    if (includeSubtitles && canContinue()) {
       try {
-        const player = await this.player({ bvid: detail.bvid, aid: detail.aid, cid: resolvedCid });
+        const player = await this.player({ bvid: detail.bvid, aid: detail.aid, cid: resolvedCid, shouldContinue });
         resolvedCid = player.cid;
         list = normalizeSubtitleList(player.data, { forceHttps: this.forceHttps });
       } catch (error) {
         // 视频详情可匿名拿到；字幕播放器要求登录时仍应返回视频上下文，并明确原因。
-        if (error instanceof BiliApiError && error.kind === 'AUTH') {
+        if (error.kind === 'CANCELLED') {
+          subtitleError = { reason: 'CANCELLED', wording: '字幕读取已停止' };
+        } else if (error instanceof BiliApiError && error.kind === 'AUTH') {
           subtitleError = { reason: 'LOGIN_REQUIRED', wording: '该视频字幕需要登录后查看' };
         } else {
           throw error;
         }
       }
-    }
+    } else if (includeSubtitles) subtitleError = { reason: 'CANCELLED', wording: '字幕读取已停止' };
     const candidates = list.filter((item) => item.isAi);
     const chosen = candidates.find((item) => /^ai-zh/i.test(item.lan)) || candidates[0]
       || list.find((item) => /^zh/i.test(item.lan)) || list[0] || null;
     let subtitle = !includeSubtitles
       ? { available: null, reason: 'SKIPPED', list: [], downloaded: null }
       : subtitleError
-        ? { available: false, reason: subtitleError.reason, wording: subtitleError.wording, list: [], downloaded: null }
+        ? { available: subtitleError.reason === 'CANCELLED' ? null : false, reason: subtitleError.reason, wording: subtitleError.wording, list: [], downloaded: null }
         : { available: list.length > 0, reason: list.length ? null : 'NO_SUBTITLE', list, downloaded: null };
-    if (includeSubtitles && download && chosen) {
+    if (includeSubtitles && download && chosen && canContinue()) {
       try {
-        const downloaded = await this.downloadSubtitle(chosen.url);
+        const downloaded = await this.downloadSubtitle(chosen.url, { shouldContinue });
         subtitle.downloaded = downloaded.ok
           ? {
             lan: chosen.lan,
@@ -392,9 +413,9 @@ export class VideoService {
           }
           : { lan: chosen.lan, label: chosen.label, error: downloaded.reason, wording: downloaded.wording };
       } catch (error) {
-        subtitle.downloaded = { lan: chosen.lan, label: chosen.label, error: 'FETCH_FAILED', wording: String(error?.wording || error?.message || error) };
+        subtitle.downloaded = { lan: chosen.lan, label: chosen.label, error: error.kind === 'CANCELLED' ? 'CANCELLED' : 'FETCH_FAILED', wording: String(error?.wording || error?.message || error) };
       }
-    }
+    } else if (includeSubtitles && download && chosen) subtitle.downloaded = { lan: chosen.lan, label: chosen.label, error: 'CANCELLED', wording: '字幕读取已停止' };
     return {
       ok: true,
       ...detail,

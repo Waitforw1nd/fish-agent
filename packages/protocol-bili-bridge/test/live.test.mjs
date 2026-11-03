@@ -1,13 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import zlib from 'node:zlib';
+import http from 'node:http';
 import { FakeBili } from './support/fake-bili.mjs';
 import { FakeDanmaku } from './support/fake-danmaku.mjs';
 import { tempDir, makeConfig, waitFor, sleep } from './support/helpers.mjs';
 import { BiliBridge } from '../src/bridge.js';
-import { buildPacket, parsePacketBuffer } from '../src/bili/live.js';
+import { buildPacket, parsePacketBuffer, LiveService } from '../src/bili/live.js';
+import { BiliApi } from '../src/bili/api.js';
+import { CookieJar } from '../src/bili/cookie-jar.js';
 
 const SELF_NAME = '测试UP主';
+
+test('live server list received over HTTP cannot direct production connections to arbitrary hosts', async t => {
+  let hosts = [];
+  const server = http.createServer((req, res) => {
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ code: 0, data: { token: 'fixture', host_list: hosts } }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const jar = new CookieJar();
+  const api = new BiliApi({ jar, signer: { sign: async params => params },
+    fetchImpl: (url, init) => fetch(`http://127.0.0.1:${server.address().port}${new URL(url).pathname}`, init) });
+  const live = new LiveService({ api, jar });
+  const entry = host => ({ host, wss_port: 443, ws_port: 2244 });
+  hosts = ['127.0.0.1', '[::1]', '169.254.169.254', 'bilibili.com.evil.test', 'user@bilibili.com', 'bilibili.com/path'].map(entry);
+  await assert.rejects(live.danmuInfo('1'), error => error.kind === 'PROTOCOL');
+  hosts.push(entry('broadcastlv.chat.bilibili.com'), { ...entry('broadcast.chat.bilibili.com'), wss_port: 65536 });
+  const result = await live.danmuInfo('1');
+  assert.deepEqual(result.hosts.map(x => x.host), ['broadcastlv.chat.bilibili.com']);
+  api.endpoints.live = `http://127.0.0.1:${server.address().port}`;
+  assert.ok((await live.danmuInfo('1')).hosts.some(x => x.host === '127.0.0.1'));
+});
 
 function danmakuEvent({ uid = '20002', uname = '观众A', text, timestamp = 1_700_000_700, rnd = 12345 } = {}) {
   return {
@@ -50,6 +75,7 @@ async function setupLive({ autoEvents = [], filter = {} } = {}) {
     fake,
     dataDir,
     overrides: {
+      security: { readOnly: false }, // Legacy opt-out must be ignored.
       watch: { videos: [], ups: [], liveRooms: ['9001'] },
       live: {
         wsProtocol: 'ws',
@@ -164,20 +190,8 @@ test('直播 WS：认证、心跳、brotli 多事件、@ 过滤与礼物/SC/上�
 
   const group = await bridge.mapping.groupForLive({ roomId: '9001' });
   assert.ok(group.id);
-  const sent = await bridge.sendGroupMessage({
-    groupId: group.id,
-    message: [{ type: 'text', data: { text: '主播好' } }]
-  });
-  assert.equal(sent.room_id, '9001');
-  assert.ok(Number.isSafeInteger(sent.message_id));
-  assert.equal(fake.liveSent.at(-1).text, '主播好');
-
-  const long = await bridge.sendGroupMessage({
-    groupId: group.id,
-    message: [{ type: 'text', data: { text: '一'.repeat(30) } }]
-  });
-  assert.equal(long.truncated, true);
-  assert.equal(Array.from(fake.liveSent.at(-1).text).length, 20);
+  await assert.rejects(bridge.sendGroupMessage({ groupId: group.id, message: [{ type: 'text', data: { text: '主播好' } }] }), e => e.kind === 'READ_ONLY');
+  assert.equal(fake.liveSent.length, 0);
 });
 
 test('直播断线重连后继续收事件与心跳', async (t) => {

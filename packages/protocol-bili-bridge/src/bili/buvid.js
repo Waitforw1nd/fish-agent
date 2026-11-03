@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { BridgeError } from '../errors.js';
 
 export function generateBuvid() {
   return `${crypto.randomBytes(16).toString('hex').toUpperCase()}infoc`;
@@ -10,6 +11,7 @@ export function generateBuvid() {
  */
 export async function ensureBuvid({ api, jar, force = false, logger = null, now = Date.now } = {}) {
   if (!jar) throw new TypeError('ensureBuvid 需要 cookie jar');
+  const generation = jar.generation;
   const existing3 = jar.get('buvid3');
   const existing4 = jar.get('buvid4');
   if (!force && existing3 && existing4) {
@@ -38,6 +40,7 @@ export async function ensureBuvid({ api, jar, force = false, logger = null, now 
     buvid4 = generateBuvid();
     source = 'fallback';
   }
+  if (generation !== jar.generation) throw new BridgeError('Session changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
   const expires = now + 365 * 24 * 60 * 60 * 1000;
   for (const [name, value] of [['buvid3', buvid3], ['buvid4', buvid4]]) {
     jar.set(name, value, { domain: 'bilibili.com', hostOnly: false, path: '/', secure: true, expires });

@@ -12,7 +12,7 @@ import { BILI_VIRTUAL_ID_START, BILI_VIRTUAL_ID_END } from '../src/mapping/ids.j
 async function setup({ login = false, overrides = {} } = {}) {
   const fake = await FakeBili.start();
   const dataDir = await tempDir();
-  const config = makeConfig({ fake, dataDir, overrides });
+  const config = makeConfig({ fake, dataDir, overrides: { security: { readOnly: false }, ...overrides } }); // Verify legacy opt-out is ignored.
   const events = [];
   const bridge = new BiliBridge({ config, dispatcher: (event) => events.push(event), refreshPublicKey: fake.publicKey });
   try {
@@ -180,74 +180,17 @@ test('WS 鉴权、生命周期与 OneBot 群/私聊事件投递', async (t) => {
   const stranger = await postAction(bridge, 'get_stranger_info', { user_id: event.sender.user_id });
   assert.equal(stranger.json.data.user_id, event.sender.user_id);
 
-  // 引用回复：事件 message_id 应还原成 B 站 rpid 的 root/parent。
   fake.clearRequests();
-  const reply = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [
-      { type: 'reply', data: { id: String(event.message_id) } },
-      { type: 'text', data: { text: '收到' } }
-    ]
-  });
-  assert.equal(reply.json.status, 'ok');
-  assert.ok(Number.isSafeInteger(reply.json.data.message_id));
-  const add = fake.last('/x/v2/reply/add');
-  assert.ok(add);
-  assert.equal(add.form.root, '1890000000000000123');
-  assert.equal(add.form.parent, '1890000000000000123');
-  assert.equal(add.form.message, '收到');
-
-  const escaped = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [{ type: 'text', data: { text: 'A&amp;B&#91;1&#93;' } }]
-  });
-  assert.equal(escaped.json.status, 'ok');
-  assert.equal(fake.last('/x/v2/reply/add').form.message, 'A&B[1]');
-
-  fake.clearRequests();
-  const badMention = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [
-      { type: 'at', data: { qq: String(event.sender.user_id), name: '假名字' } },
-      { type: 'text', data: { text: ' 你好' } }
-    ]
-  });
-  assert.equal(badMention.json.status, 'failed');
-  assert.match(badMention.json.wording, /昵称.*不一致/);
+  for (const message of [
+    [{ type: 'reply', data: { id: String(event.message_id) } }, { type: 'text', data: { text: '收到' } }],
+    [{ type: 'text', data: { text: 'A&amp;B&#91;1&#93;' } }],
+    [{ type: 'at', data: { qq: String(event.sender.user_id), name: '假名字' } }],
+    [{ type: 'at', data: { qq: String(event.sender.user_id), name: '观众A' } }],
+    [{ type: 'at', data: { qq: String(2 ** 52 + 299), name: '陌生人' } }],
+    [{ type: 'image', data: { file: 'http://example.com/a.jpg' } }]
+  ]) assert.equal((await postAction(bridge, 'send_group_msg', { group_id: group.id, message })).json.retcode, 1403);
+  assert.equal((await postAction(bridge, 'send_group_msg', { group_id: 910_000_000_000_001, message: 'x' })).json.retcode, 1403);
   assert.equal(fake.count('/x/v2/reply/add'), 0);
-
-  const goodMention = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [
-      { type: 'at', data: { qq: String(event.sender.user_id), name: '观众A' } },
-      { type: 'text', data: { text: ' 你好' } }
-    ]
-  });
-  assert.equal(goodMention.json.status, 'ok');
-  const mentionForm = fake.last('/x/v2/reply/add');
-  assert.match(mentionForm.form.message, /^@观众A /);
-
-  const unmappedMention = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [
-      { type: 'at', data: { qq: String(2 ** 52 + 299), name: '陌生人' } },
-      { type: 'text', data: { text: ' hi' } }
-    ]
-  });
-  assert.equal(unmappedMention.json.status, 'failed');
-  assert.match(unmappedMention.json.wording, /没有对应的 B 站账号/);
-
-  const image = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [{ type: 'image', data: { file: 'http://example.com/a.jpg' } }]
-  });
-  assert.equal(image.json.status, 'failed');
-  assert.equal(image.json.retcode, 1404);
-  assert.match(image.json.wording, /不支持发送图片/);
-
-  const unknownGroup = await postAction(bridge, 'send_group_msg', { group_id: 910_000_000_000_001, message: [{ type: 'text', data: { text: 'x' } }] });
-  assert.equal(unknownGroup.json.status, 'failed');
-  assert.equal(unknownGroup.json.retcode, 1404);
 });
 
 test('私信发送、2000 字节校验、入站私信与 message_id 安全', async (t) => {
@@ -260,22 +203,10 @@ test('私信发送、2000 字节校验、入站私信与 message_id 安全', asy
     user_id: user.id,
     message: [{ type: 'text', data: { text: '你好，私信' } }]
   });
-  assert.equal(sent.json.status, 'ok');
-  assert.ok(Number.isSafeInteger(sent.json.data.message_id));
-  assert.equal(fake.dmSends.length, 1);
-  assert.equal(fake.dmSends[0].receiver, '20002');
-  assert.equal(fake.dmSends[0].text, '你好，私信');
-
-  const tooLong = 'a'.repeat(2001);
-  const rejected = await postAction(bridge, 'send_private_msg', {
-    user_id: user.id,
-    message: [{ type: 'text', data: { text: tooLong } }]
-  });
-  assert.equal(rejected.json.status, 'failed');
-  assert.equal(rejected.json.retcode, 1400);
-  assert.match(rejected.json.wording, /2000 字节/);
-  assert.equal(fake.dmSends.length, 1);
-
+  assert.equal(sent.json.retcode, 1403);
+  const rejected = await postAction(bridge, 'send_private_msg', { user_id: user.id, message: 'a'.repeat(2001) });
+  assert.equal(rejected.json.retcode, 1403);
+  assert.equal(fake.dmSends.length, 0);
   const dmMessage = {
     seqno: '1780000000000000001',
     mid: '20002',
@@ -428,79 +359,33 @@ test('视频上下文、UP 查询、点赞与自定义评论 action', async (t) 
   assert.equal(user.json.data.name, '观众A');
   assert.equal(user.json.data.videos[0].bvid, 'BV1inspect001');
 
-  const like = await postAction(bridge, 'bili_like', { oid: '170001', commentId: '1890000000000000999', action: 'unlike' });
-  assert.equal(like.json.status, 'ok');
-  assert.equal(like.json.data.action, 0);
-  assert.equal(fake.commentActions.at(-1).action, 0);
-
-  const videoLike = await postAction(bridge, 'bili_like', { bvid: 'BV1xx411c7mD', oid: '170001', action: 'like' });
-  assert.equal(videoLike.json.status, 'ok');
-  assert.equal(videoLike.json.data.like, 1);
-  assert.equal(fake.videoLikes.at(-1).aid, '170001');
-
-  const reply = await postAction(bridge, 'bili_reply_comment', {
-    text: '自定义 action 评论',
-    bvid: 'BV1xx411c7mD',
-    oid: '170001',
-    rootId: '0',
-    parentId: '0'
-  });
-  assert.equal(reply.json.status, 'ok');
-  assert.ok(reply.json.data.rpid);
-  assert.equal(fake.videoComments.get('170001').slice(-1)[0].content.message, '自定义 action 评论');
-
+  for (const [action, params] of [
+    ['bili_like', { oid: '170001', commentId: '1890000000000000999' }],
+    ['bili_like', { bvid: 'BV1xx411c7mD', oid: '170001' }],
+    ['bili_reply_comment', { text: '评论', bvid: 'BV1xx411c7mD', oid: '170001' }]
+  ]) assert.equal((await postAction(bridge, action, params)).json.retcode, 1403);
+  assert.equal(fake.commentActions.length, 0);
+  assert.equal(fake.videoLikes.length, 0);
+  assert.equal(fake.count('/x/v2/reply/add'), 0);
   const noLogin = await setup();
   t.after(noLogin.cleanup);
   const unauthorized = await postAction(noLogin.bridge, 'bili_get_video_context', { bvid: 'BV1xx411c7mD' });
   assert.equal(unauthorized.json.retcode, 1401);
 });
 
-test('B 站风控：-352 明确失败、gaia 挑战不进管理响应、清除后可重试', async (t) => {
-  const env = await setup({ login: true });
-  t.after(env.cleanup);
+test('风控清除后写入仍被拒绝', async (t) => {
+  const env = await setup({ login: true }); t.after(env.cleanup);
   const { bridge, fake } = env;
-  const group = await bridge.mapping.groupForVideo({ bvid: 'BV1xx411c7mD', aid: '170001', title: '测试视频标题' });
-
-  fake.riskMode = true;
-  const blocked = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [{ type: 'text', data: { text: '会被风控' } }]
-  });
+  fake.failNext('/x/web-interface/view', { code: -352, message: 'risk', data: { v_voucher: 'voucher-test-1' } });
+  const blocked = await postAction(bridge, 'bili_get_video_context', { bvid: 'BV1xx411c7mD' });
   assert.equal(blocked.json.status, 'failed');
-  assert.equal(blocked.json.retcode, 403);
-  assert.match(blocked.json.wording, /人机验证/);
-  assert.ok(fake.count('/x/gaia-vgate/v1/register') >= 1);
-
   const status = await adminRequest(bridge, 'GET', '/admin/status');
   assert.equal(status.json.data.bili.risk.blocked, true);
-  const statusText = JSON.stringify(status.json);
-  assert.equal(statusText.includes('voucher-test-1'), false);
-  assert.equal(statusText.includes('gaia-token'), false);
-
-  const cleared = await adminRequest(bridge, 'POST', '/admin/risk/clear');
-  assert.equal(cleared.json.data.cleared, true);
-  fake.riskMode = false;
-  const retried = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [{ type: 'text', data: { text: '风控解除后重试' } }]
-  });
-  assert.equal(retried.json.status, 'ok');
-
-  const contentRejected = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [{ type: 'text', data: { text: 'badword' } }]
-  });
-  assert.equal(contentRejected.json.status, 'failed');
-  assert.match(contentRejected.json.wording, /敏感信息/);
-
-  const duplicate = await postAction(bridge, 'send_group_msg', {
-    group_id: group.id,
-    message: [{ type: 'text', data: { text: 'duplicate' } }]
-  });
-  assert.equal(duplicate.json.status, 'failed');
-  assert.match(duplicate.json.wording, /重复评论/);
+  assert.equal((await adminRequest(bridge, 'POST', '/admin/risk/clear')).status, 200);
+  assert.equal((await postAction(bridge, 'bili_reply_comment', { bvid: 'BV1xx411c7mD', text: 'no' })).json.retcode, 1403);
+  assert.equal(fake.count('/x/v2/reply/add'), 0);
+  assert.doesNotMatch(JSON.stringify(status.json), /voucher-test-1|gaia-token/);
 });
-
 test('同一桥接实例 stop 后可再次 start 并恢复 OneBot 服务', async (t) => {
   const env = await setup();
   t.after(env.cleanup);
@@ -517,21 +402,14 @@ test('同一桥接实例 stop 后可再次 start 并恢复 OneBot 服务', async
   assert.equal(version.json.status, 'ok');
 });
 
-test('dynamic replies use authoritative type and oid, and reject cross-group quotes', async (t) => {
-  const env = await setup({ login: true });
-  t.after(env.cleanup);
-  const { bridge } = env;
+test('dynamic group replies cannot publish', async (t) => {
+  const env = await setup({ login: true }); t.after(env.cleanup);
+  const { bridge, fake } = env;
   const group = await bridge.mapping.groupForDynamic({ dynamicId: '90071992547409999' });
-  bridge.dynamicService.detail = async () => ({ oid: '34567', type: 11 });
-  let sent;
-  bridge.commentService.add = async (args) => { sent = args; return { oid: args.oid, rpid: '333' }; };
   const incoming = await bridge.ingestComment({ group: { ...group, commentSubject: { oid: '34567', type: 11 } }, reply: { mid: '20002', rpid: '222', root: '111', oid: '34567', message: 'hi' } });
-  await bridge.sendGroupMessage({ groupId: group.id, message: [{ type: 'reply', data: { id: incoming.messageId } }, { type: 'text', data: { text: 'ok' } }] });
-  assert.deepEqual([sent.type, sent.oid, sent.root, sent.parent], [11, '34567', '111', '222']);
-  const other = await bridge.mapping.groupForDynamic({ dynamicId: '90071992547409998' });
-  await assert.rejects(bridge.sendGroupMessage({ groupId: other.id, message: [{ type: 'reply', data: { id: incoming.messageId } }, { type: 'text', data: { text: 'ok' } }] }), /跨评论区/);
+  await assert.rejects(bridge.sendGroupMessage({ groupId: group.id, message: [{ type: 'reply', data: { id: incoming.messageId } }, { type: 'text', data: { text: 'ok' } }] }), e => e.kind === 'READ_ONLY');
+  assert.equal(fake.count('/x/v2/reply/add'), 0);
 });
-
 test('dispatcher rejection reaches polling caller', async (t) => {
   const env = await setup({ login: true });
   t.after(env.cleanup);

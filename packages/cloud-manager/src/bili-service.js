@@ -123,13 +123,14 @@ async function renderQrDataUrl(url) {
 }
 
 export class BiliService {
-  constructor({ db, config, allocator, supervisor, secrets, logger }) {
+  constructor({ db, config, allocator, supervisor, secrets, logger, agentRuntime = null }) {
     this.db = db;
     this.config = config;
     this.allocator = allocator;
     this.supervisor = supervisor;
     this.secrets = secrets;
     this.logger = logger;
+    this.agentRuntime = agentRuntime;
     this.onLinksChanged = null;
   }
 
@@ -253,6 +254,7 @@ export class BiliService {
       BILI_WATCH_LIFECYCLE_FILE: path.join(tenant.data_dir, 'data', 'bili-watch', 'lifecycle.json'),
       BILI_BRIDGE_TENANT: tenant.id,
       BILI_BRIDGE_LOG_LEVEL: 'info',
+      BILI_READ_ONLY: 'true',
       BILI_HTTP_TIMEOUT_MS: '8000',
       BILI_ONEBOT_HOST: '127.0.0.1',
       BILI_ONEBOT_PORT: String(prepared.ob11Port),
@@ -277,7 +279,13 @@ export class BiliService {
     return config;
   }
 
+  assertEntryEnabled(tenant) {
+    const row = this.db.prepare("SELECT enabled FROM tenant_entries WHERE tenant_id = ? AND entry = 'bili'").get(tenant.id);
+    if (row && !row.enabled) throw fail(409, 'BILI_ENTRY_DISABLED', 'Bili entry is disabled');
+  }
+
   async start(tenant) {
+    this.assertEntryEnabled(tenant);
     const prepared = await this.ensurePrepared(tenant);
     const process = this.supervisor.status(tenant.id, 'bili');
     if (['running', 'starting', 'restarting'].includes(process.state)) return this.status(tenant);
@@ -285,17 +293,26 @@ export class BiliService {
       throw fail(503, 'BILI_BRIDGE_MISSING', 'B站桥接入口不存在，请先构建 protocol-bili-bridge 或配置 CLOUD_BILI_BRIDGE_ENTRY');
     }
     await this.writeBridgeConfig(tenant, prepared);
+    const agentValues = this.agentRuntime ? await this.agentRuntime.ensureValues(tenant) : null;
+    const bridgeEnv = this.bridgeEnv(tenant, prepared);
+    if (agentValues) Object.assign(bridgeEnv, { BILI_EXPLORE_AGENT_URL: `http://127.0.0.1:${agentValues.port}/api/internal/bili-explore`, BILI_EXPLORE_AGENT_TOKEN: agentValues.consoleToken, BILI_EXPLORE_METER_URL: `http://127.0.0.1:${this.config.relayPort}/v1/fish/meter-events`, BILI_EXPLORE_RELAY_KEY: agentValues.relayKey });
     await this.supervisor.start({
       tenantId: tenant.id,
       kind: 'bili',
       command: this.config.nodePath,
       args: [this.config.biliEntry],
       cwd: path.join(tenant.data_dir, 'bili', 'data'),
-      env: this.bridgeEnv(tenant, prepared),
+      env: bridgeEnv,
       logFile: path.join(this.config.logDir, 'tenants', `${tenant.id}.bili.log`),
       ready: { host: '127.0.0.1', port: prepared.ob11Port, timeoutMs: this.config.processStartTimeoutMs },
       restart: true
     });
+    try {
+      this.assertEntryEnabled(tenant);
+    } catch (error) {
+      await this.supervisor.stop(tenant.id, 'bili', { force: true });
+      throw error;
+    }
     try {
       await this.pushConfig(tenant);
     } catch (error) {
@@ -315,6 +332,7 @@ export class BiliService {
   }
 
   async ensureStarted(tenant) {
+    this.assertEntryEnabled(tenant);
     const process = this.supervisor.status(tenant.id, 'bili');
     if (!['running', 'starting', 'restarting'].includes(process.state)) await this.start(tenant);
   }
@@ -511,6 +529,20 @@ export class BiliService {
     const process = this.supervisor.status(tenant.id, 'bili');
     if (['running', 'restarting'].includes(process.state)) {
       await this.control(tenant, '/admin/logout', { method: 'POST', timeoutMs: 8000 });
+    } else {
+      // The lifecycle route holds the tenant lock. Offline logout must remove
+      // the persisted session too, without starting a bridge or guessing that
+      // an unconfirmed process can no longer write credentials.
+      if (!['stopped', 'failed', 'crashed', 'exited'].includes(process.state)) {
+        throw fail(503, 'PROCESS_STOP_UNCONFIRMED', '无法确认 B站桥接已停止，请稍后重试退出登录');
+      }
+      this.supervisor.assertStopped(tenant.id, 'bili');
+      let deletionFailed = false;
+      for (const name of ['session', 'qr']) {
+        try { fs.unlinkSync(path.join(tenant.data_dir, 'bili', 'data', 'secrets', `${name}.enc.json`)); }
+        catch (error) { if (error?.code !== 'ENOENT') deletionFailed = true; }
+      }
+      if (deletionFailed) throw fail(503, 'BILI_LOGOUT_PERSISTENCE_FAILED', 'B站登录凭据清理失败，请重试退出登录');
     }
     return this.status(tenant);
   }

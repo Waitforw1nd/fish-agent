@@ -57,6 +57,10 @@ export function createAdminHandler({ bridge, version = '0.1.0', logger = null } 
           })
         };
       }
+      if (verb === 'GET' && pathname === '/admin/explore') return { status: 200, payload: success(bridge.explore.snapshot()) };
+      if (verb === 'PUT' && pathname === '/admin/explore') return { status: 200, payload: success(await bridge.explore.configure(body || {})) };
+      const exploreReview = pathname.match(/^\/admin\/explore\/drafts\/([a-f0-9-]+)\/(edit|approve|reject)$/);
+      if (verb === 'POST' && exploreReview) return { status: 200, payload: success(await bridge.explore.review(exploreReview[1], exploreReview[2], body?.text)) };
       if (verb === 'GET' && pathname === '/admin/status') {
         return { status: 200, payload: success(bridge.adminStatus()) };
       }

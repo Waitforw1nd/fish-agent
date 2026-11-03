@@ -69,6 +69,7 @@ export class BiliApi {
     endpoints = {},
     jar,
     signer = null,
+    readOnly = true,
     risk = null,
     fetchImpl = globalThis.fetch,
     timeoutMs = 15_000,
@@ -82,6 +83,7 @@ export class BiliApi {
     this.endpoints = { ...DEFAULT_ENDPOINTS, ...endpoints };
     this.jar = jar;
     this.signer = signer;
+    Object.defineProperty(this, 'readOnly', { value: Boolean(readOnly), enumerable: true });
     this.risk = risk;
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
@@ -122,6 +124,17 @@ export class BiliApi {
     return `${base.replace(/\/+$/, '')}/${value.replace(/^\/+/, '')}`;
   }
 
+  assertMethodAllowed(args, method, { sessionRefresh = false } = {}) {
+    if (['GET', 'HEAD'].includes(method) || (this.readOnly && sessionRefresh)) return;
+    let local = false;
+    try {
+      const url = new URL(this.resolveUrl(args.service || 'api', args.path));
+      local = ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password &&
+        ['127.0.0.1', '[::1]'].includes(url.hostname);
+    } catch { /* Invalid URLs must never bypass the write guard. */ }
+    if (this.readOnly || !local) throw new BridgeError('B 站只读模式禁止发布和互动写入', { kind: 'READ_ONLY', code: 403, retcode: 1403 });
+  }
+
   async #prepare(args) {
     const method = String(args.method || 'GET').toUpperCase();
     const service = args.service || 'api';
@@ -129,7 +142,7 @@ export class BiliApi {
     const params = { ...(args.params || {}) };
     if (args.signed) {
       if (!this.signer) throw new BridgeError('请求需要 WBI 签名但未配置 signer', { kind: 'WBI', code: 500, retcode: 1500 });
-      const signed = await this.signer.sign(params, { wts: args.wts });
+      const signed = await this.signer.sign(params, { wts: args.wts, shouldContinue: args.shouldContinue });
       const query = encodeQuery(signed);
       if (query) url += `${url.includes('?') ? '&' : '?'}${query}`;
     } else {
@@ -172,7 +185,7 @@ export class BiliApi {
         method: prepared.method,
         headers: prepared.headers,
         body: prepared.body,
-        redirect: args.redirect || 'manual',
+        redirect: ['GET', 'HEAD'].includes(prepared.method) ? (args.redirect || 'manual') : 'manual',
         signal
       });
     } catch (error) {
@@ -188,19 +201,37 @@ export class BiliApi {
     }
     this.requests += 1;
     const setCookies = readSetCookies(response.headers);
-    if (setCookies.length) this.jar.applySetCookie(setCookies, prepared.url);
+    // A response can arrive after exploration was revoked (including logout).
+    // Its cookies must not resurrect the cleared session or overwrite a newer one.
+    if (setCookies.length && args._cookieGeneration === this.jar.generation && (!args.shouldContinue || args.shouldContinue())) this.jar.applySetCookie(setCookies, prepared.url);
     let buffer;
+    const maxBytes = Number(args.maxBytes) > 0 ? Number(args.maxBytes) : this.maxResponseBytes;
     try {
-      buffer = Buffer.from(await response.arrayBuffer());
+      if (response.body?.getReader) {
+        const reader = response.body.getReader();
+        const chunks = [];
+        let size = 0;
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.byteLength;
+            if (size > maxBytes) {
+              await reader.cancel().catch(() => {});
+              throw new BiliApiError(`B 站响应过大（超过 ${maxBytes} 字节）`, { kind: 'PROTOCOL', code: 502, retcode: 1502 });
+            }
+            chunks.push(Buffer.from(value));
+          }
+          buffer = Buffer.concat(chunks, size);
+        } finally { reader.releaseLock(); }
+      } else {
+        buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.length > maxBytes) throw new BiliApiError(`B 站响应过大（超过 ${maxBytes} 字节）`, { kind: 'PROTOCOL', code: 502, retcode: 1502 });
+      }
     } catch (error) {
+      if (error instanceof BiliApiError) throw error;
       throw new BiliApiError('读取 B 站响应失败', {
         kind: 'NETWORK', code: 502, retcode: 1502, retryable: true, cause: error
-      });
-    }
-    const maxBytes = Number(args.maxBytes) > 0 ? Number(args.maxBytes) : this.maxResponseBytes;
-    if (buffer.length > maxBytes) {
-      throw new BiliApiError(`B 站响应过大（${buffer.length} > ${maxBytes} 字节）`, {
-        kind: 'PROTOCOL', code: 502, retcode: 1502
       });
     }
     return { response, buffer, setCookies, url: prepared.url };
@@ -210,15 +241,26 @@ export class BiliApi {
     return 200 * 2 ** attempt + Math.floor(Math.random() * 150);
   }
 
+  #assertContinue(args) {
+    if (args._cookieGeneration !== this.jar.generation) throw new BridgeError('Session changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
+    if (args.shouldContinue && !args.shouldContinue()) throw new BridgeError('探索已停止', { kind: 'CANCELLED', code: 409, retcode: 1409 });
+  }
+
   async request(args = {}) {
+    args = { ...args, _cookieGeneration: args._cookieGeneration ?? this.jar.generation };
     const method = String(args.method || 'GET').toUpperCase();
+    const sessionRefresh = args.service === 'passport' && method === 'POST'
+      && ['/x/passport-login/web/cookie/refresh', '/x/passport-login/web/confirm/refresh'].includes(args.path);
+    this.assertMethodAllowed(args, method, { sessionRefresh });
     const allowedCodes = normalizeAllowedCodes(args.allowedCodes);
     const attempts = args.retries != null
       ? Math.max(0, Number(args.retries) || 0)
       : (method === 'GET' ? 1 : 0);
     let lastError = null;
     for (let attempt = 0; attempt <= attempts; attempt += 1) {
+      this.#assertContinue(args);
       const prepared = await this.#prepare(args);
+      this.#assertContinue(args);
       let raw;
       try {
         raw = await this.#fetchOnce(prepared, args);
@@ -284,6 +326,9 @@ export class BiliApi {
       });
       lastError = error;
 
+      // A revoked response cannot mutate risk or signer state; successful reads
+      // return above so completed visits can still be accounted for.
+      this.#assertContinue(args);
       if (this.risk && !args.skipRisk && this.risk.capture(payload, { code, url: raw.url })) {
         if (!args.skipRiskExchange && code !== -101) {
           await this.risk.exchange({ csrf: this.csrf() });
@@ -320,10 +365,14 @@ export class BiliApi {
   }
 
   async fetchText(args = {}) {
+    args = { ...args, _cookieGeneration: args._cookieGeneration ?? this.jar.generation };
     const method = String(args.method || 'GET').toUpperCase();
+    this.assertMethodAllowed(args, method);
     const attempts = args.retries != null ? Math.max(0, Number(args.retries) || 0) : 1;
     for (let attempt = 0; attempt <= attempts; attempt += 1) {
+      this.#assertContinue(args);
       const prepared = await this.#prepare({ ...args, method });
+      this.#assertContinue(args);
       let raw;
       try {
         raw = await this.#fetchOnce(prepared, args);
@@ -348,12 +397,13 @@ export class BiliApi {
   }
 
   /** 跟随短链重定向，只取最终 URL（不下载页面正文；限制最多 4 跳）。 */
-  async resolveFinalUrl(url, { timeoutMs = this.timeoutMs, maxRedirects = 4 } = {}) {
+  async resolveFinalUrl(url, { timeoutMs = this.timeoutMs, maxRedirects = 4, allowUrl = () => true } = {}) {
     let current = String(url || '');
     if (!/^https?:\/\//i.test(current)) {
       throw new BridgeError('短链必须是 http(s) URL', { kind: 'INPUT', code: 400, retcode: 1400 });
     }
     for (let hop = 0; hop < maxRedirects; hop += 1) {
+      if (!allowUrl(current)) throw new BridgeError('短链跳转域名不受支持', { kind: 'INPUT', code: 400, retcode: 1400 });
       const headers = {
         'user-agent': this.userAgent,
         accept: 'text/html,application/xhtml+xml,*/*;q=0.8',
@@ -388,11 +438,15 @@ export class BiliApi {
   }
 
   async fetchBuffer(args = {}) {
+    args = { ...args, _cookieGeneration: args._cookieGeneration ?? this.jar.generation };
     const method = String(args.method || 'GET').toUpperCase();
+    this.assertMethodAllowed(args, method);
     const attempts = args.retries != null ? Math.max(0, Number(args.retries) || 0) : 1;
     const maxBytes = Number(args.maxBytes) > 0 ? Number(args.maxBytes) : (args.sizeLimit || 5 * 1024 * 1024);
     for (let attempt = 0; attempt <= attempts; attempt += 1) {
+      this.#assertContinue(args);
       const prepared = await this.#prepare({ ...args, method });
+      this.#assertContinue(args);
       let raw;
       try {
         raw = await this.#fetchOnce(prepared, { ...args, maxBytes });

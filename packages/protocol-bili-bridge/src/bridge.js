@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { AuthRequiredError, BridgeError } from './errors.js';
@@ -23,6 +23,7 @@ import { DynamicService } from './bili/dynamic.js';
 import { DmService } from './bili/dm.js';
 import { LiveService } from './bili/live.js';
 import { VirtualIdMapper } from './mapping/ids.js';
+import { ExploreWatcher } from './pollers/explore.js';
 import { PollScheduler, LowFrequencyQueue } from './pollers/scheduler.js';
 import { ReplyWatcher, CommentWatcher, UpWatcher, DmWatcher, normalizeVideoWatch } from './pollers/watchers.js';
 import { OneBotServer } from './onebot/server.js';
@@ -91,11 +92,15 @@ export class BiliBridge {
     now = Date.now,
     dispatcher = null,
     refreshPublicKey = null,
-    version = APP_VERSION
+    version = APP_VERSION,
+    exploreGenerate = null,
+    exploreMeter = null
   } = {}) {
     if (!config) throw new TypeError('BiliBridge 需要 config');
-    this.config = config;
+    this.config = { ...config, security: Object.freeze({ ...config.security, readOnly: true }) };
     this.version = version;
+    this.exploreGenerate = exploreGenerate;
+    this.exploreMeter = exploreMeter;
     this.logger = logger || createLogger({ level: config.logLevel });
     this.fetchImpl = fetchImpl;
     this.WebSocketImpl = WebSocketImpl;
@@ -144,6 +149,7 @@ export class BiliBridge {
     this.jar = new CookieJar({ now: () => this.now() });
     this.risk = new RiskGuard({ now: this.now, logger: this.logger });
     this.api = new BiliApi({
+      readOnly: true,
       endpoints: config.endpoints,
       jar: this.jar,
       fetchImpl: this.fetchImpl,
@@ -240,6 +246,12 @@ export class BiliBridge {
     else if (process.env.BILI_WATCH_LIFECYCLE_FILE) this.settings = emptySettings(config);
     for (const key of ['at', 'up', 'dm', 'live']) this.settings.subscriptions[key] = Boolean(this.settings.subscriptions[key]);
     this.#buildServices();
+    this.explore = new ExploreWatcher({ dir: config.dataDir, api: this.api, video: this.videoService, risk: this.risk, generate: this.exploreGenerate, meter: this.exploreMeter, now: this.now,
+      runToken: () => this.watcherRevision(),
+      canRun: token => this.started && this.auth.loggedIn && this.watcherActive() && (token === undefined || token === this.watcherRevision()) });
+    await this.explore.load();
+    const captureRisk = this.risk.capture.bind(this.risk);
+    this.risk.capture = (...args) => { const hit = captureRisk(...args); if (hit) this.explore.pauseRisk().catch(error => this.logger.error('Failed to persist explore risk', error)); return hit; };
     this.#buildWatchers();
     this.#buildScheduler();
     this.initialized = true;
@@ -367,6 +379,10 @@ export class BiliBridge {
       }
       await fn();
     };
+    this.scheduler.register({ name: 'explore', intervalMs: 30 * 60_000, jitterMs: 60_000, initialDelayMs: 60_000, run: guard(() => this.explore.poll(this.getWatches().ups)) });
+    // Outstanding local meter events remain payable even after exploration,
+    // watchers, or the Bilibili login are disabled.
+    this.scheduler.register({ name: 'explore-meter', intervalMs: 30 * 60_000, jitterMs: 60_000, initialDelayMs: 60_000, run: async () => { if (this.started) await this.explore.flushMeters(); } });
     this.scheduler.register({
       name: 'msgfeed',
       intervalMs: config.poll.msgfeedIntervalMs,
@@ -452,6 +468,7 @@ export class BiliBridge {
       });
     } catch (error) {
       this.started = false;
+      this.explore?.cancelCurrent();
       await this.scheduler?.stop().catch(() => {});
       await this.stopAllLiveClients().catch(() => {});
       await this.server?.stop().catch(() => {});
@@ -470,6 +487,7 @@ export class BiliBridge {
   async stop() {
     if (!this.started) return;
     this.started = false;
+    this.explore?.cancelCurrent();
     await this.scheduler?.stop();
     await this.stopAllLiveClients();
     await this.server?.stop();
@@ -478,13 +496,18 @@ export class BiliBridge {
   }
 
   async #handleLogin(account) {
+    const generation = this.jar.generation;
+    const current = () => generation === this.jar.generation && this.auth.loggedIn;
     this.logger.info('B 站扫码登录成功', { mid: account?.mid, name: account?.name });
     try {
       await this.refreshIdentity();
+      if (!current()) return;
       this.server?.notifyReady();
       // 扫码可能切换了账号，已有直播连接必须用新的 self 身份重建。
       await this.stopAllLiveClients();
+      if (!current()) return;
       await this.syncLiveRooms();
+      if (!current()) return;
       this.kickPollers();
     } catch (error) {
       this.logger.warn('登录后初始化失败', error);
@@ -492,6 +515,7 @@ export class BiliBridge {
   }
 
   async refreshIdentity() {
+    const generation = this.jar.generation;
     const account = this.auth.account();
     if (!this.auth.loggedIn || !account.mid) {
       this.selfId = 0;
@@ -502,6 +526,7 @@ export class BiliBridge {
     this.selfMid = String(account.mid);
     this.selfName = String(account.name || '');
     const record = await this.mapping.userFor({ mid: this.selfMid, name: this.selfName });
+    if (generation !== this.jar.generation || !this.auth.loggedIn) return this.identity();
     this.selfId = record.id;
     if (!this.selfName) this.selfName = record.name || '';
     this.dmService.selfUid = this.selfMid;
@@ -515,6 +540,17 @@ export class BiliBridge {
         this.logger.warn(`手动触发轮询失败: ${name}`, error);
       });
     }
+  }
+
+  watcherRevision() {
+    const file = process.env.BILI_WATCH_LIFECYCLE_FILE;
+    if (!file) return '';
+    try {
+      const data = JSON.parse(readFileSync(file, 'utf8'));
+      if (typeof data.revision === 'string' && data.revision) return `revision:${data.revision}`;
+      const s = statSync(file, { bigint: true });
+      return `legacy:${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}`;
+    } catch (error) { return `unavailable:${error.code || 'invalid'}`; }
   }
 
   watcherStatus() {
@@ -600,7 +636,11 @@ export class BiliBridge {
 
   async setWatches(patch = {}) {
     if (patch.videos !== undefined) this.settings.watches.videos = normalizeWatchList(patch.videos);
-    if (patch.ups !== undefined) this.settings.watches.ups = normalizeIdList(patch.ups);
+    if (patch.ups !== undefined) {
+      const next = normalizeIdList(patch.ups);
+      if (this.settings.watches.ups.some(mid => !next.includes(mid))) this.explore?.cancelCurrent();
+      this.settings.watches.ups = next;
+    }
     if (patch.liveRooms !== undefined) this.settings.watches.liveRooms = normalizeIdList(patch.liveRooms);
     await this.#saveSettings();
     if (this.started && patch.liveRooms !== undefined) {
@@ -613,7 +653,10 @@ export class BiliBridge {
   }
 
   async syncLiveRooms() {
+    const generation = this.jar.generation;
+    const current = () => this.started && this.auth.loggedIn && generation === this.jar.generation;
     return this.liveSyncMutex.run(async () => {
+      if (generation !== this.jar.generation) return { started: 0, stopped: 0, skipped: true };
       if (!this.started) return { started: 0, stopped: 0, skipped: true };
       if (!this.auth.loggedIn || this.getSubscriptions().live === false) {
         const stopped = await this.stopAllLiveClients();
@@ -632,18 +675,18 @@ export class BiliBridge {
       }
       let started = 0;
       for (const room of desired) {
-        if (!this.started) break;
+        if (!current()) break;
         if (this.liveClients.has(room)) continue;
         try {
           const info = await this.liveService.info(room);
-          if (!this.started) break;
+          if (!current()) break;
           const group = await this.mapping.groupForLive({
             roomId: info.roomId,
             title: info.title,
             cover: info.cover,
             ownerMid: info.ownerMid
           });
-          if (!this.started) break;
+          if (!current()) break;
           const client = this.liveService.createClient({
             roomId: room,
             canonicalRoomId: info.roomId,
@@ -662,12 +705,14 @@ export class BiliBridge {
           this.liveInfos.set(room, info);
           this.liveStats.set(room, client.stats());
           client.on('event', (event) => {
+            if (!current() || this.liveClients.get(room) !== entry) return;
             this.ingestLiveEvent(event, entry).catch((error) => {
               this.logger.warn('处理直播事件失败', error);
             });
           });
-          client.on('status', (stats) => this.liveStats.set(room, stats));
+          client.on('status', (stats) => { if (current() && this.liveClients.get(room) === entry) this.liveStats.set(room, stats); });
           client.on('ready', (stats) => {
+            if (!current() || this.liveClients.get(room) !== entry) return;
             this.liveStats.set(room, stats);
             this.logger.info('直播间弹幕已连接', { roomId: info.roomId, host: stats.host });
           });
@@ -683,15 +728,17 @@ export class BiliBridge {
     });
   }
 
-  async stopAllLiveClients() {
+  async stopAllLiveClients(entries = [...this.liveClients]) {
     let stopped = 0;
-    for (const [, entry] of this.liveClients) {
+    for (const [room, entry] of entries) {
+      if (this.liveClients.get(room) === entry) {
+        this.liveClients.delete(room);
+        this.liveInfos.delete(room);
+        this.liveStats.delete(room);
+      }
       try { await entry.client.stop(); } catch { /* ignore */ }
       stopped += 1;
     }
-    this.liveClients.clear();
-    this.liveInfos.clear();
-    this.liveStats.clear();
     return stopped;
   }
 
@@ -735,6 +782,7 @@ export class BiliBridge {
   }
 
   async sendGroupMessage({ groupId, message } = {}) {
+    this.assertWritable();
     if (!this.auth.loggedIn) throw new AuthRequiredError();
     const group = this.#watchGroup(groupId);
     if (group.kind !== 'video' && group.kind !== 'dynamic' && group.kind !== 'live') {
@@ -860,6 +908,7 @@ export class BiliBridge {
   }
 
   async sendPrivateMessage({ userId, message } = {}) {
+    this.assertWritable();
     if (!this.auth.loggedIn) throw new AuthRequiredError();
     const user = this.#watchUser(userId);
     const targetMid = user.native?.mid;
@@ -1278,6 +1327,7 @@ export class BiliBridge {
 
   adminStatus() {
     return {
+      readOnly: true,
       ok: true,
       tenantId: this.config.tenantId,
       version: this.version,
@@ -1319,10 +1369,15 @@ export class BiliBridge {
   }
 
   async createQr() {
+    const revision = this.qrRequestRevision = (this.qrRequestRevision || 0) + 1;
+    const generation = this.jar.generation;
     try {
       await ensureBuvid({ api: this.api, jar: this.jar, logger: this.logger, now: this.now });
     } catch (error) {
       this.logger.warn('生成二维码前初始化 buvid 失败', error);
+    }
+    if (revision !== this.qrRequestRevision || generation !== this.jar.generation) {
+      throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     }
     return this.auth.generateQr();
   }
@@ -1336,11 +1391,18 @@ export class BiliBridge {
   }
 
   async logout() {
-    await this.stopAllLiveClients();
-    await this.auth.logout();
+    this.qrRequestRevision = (this.qrRequestRevision || 0) + 1;
+    this.explore?.cancelCurrent();
+    const clients = [...this.liveClients];
+    // Revoke the session synchronously before waiting on network-backed clients.
+    const revoked = this.auth.logout();
     this.selfId = 0;
     this.selfMid = '';
     this.selfName = '';
+    const stopped = this.stopAllLiveClients(clients);
+    const [revocation, cleanup] = await Promise.allSettled([revoked, stopped]);
+    if (revocation.status === 'rejected') throw revocation.reason;
+    if (cleanup.status === 'rejected') throw cleanup.reason;
     return this.auth.status();
   }
 
@@ -1352,6 +1414,7 @@ export class BiliBridge {
   }
 
   async clearRisk() {
+    await this.explore.clearRisk();
     const cleared = this.risk.clear();
     return { cleared, risk: this.risk.snapshot() };
   }
@@ -1439,7 +1502,12 @@ export class BiliBridge {
     return this.videoService.inspectUser({ mid, includeVideos: includeVideos === true, includeDynamics: includeDynamics === true });
   }
 
+  assertWritable() {
+    throw new BridgeError('B 站只读模式：仅允许浏览和生成待审核草稿', { kind: 'READ_ONLY', code: 403, retcode: 1403 });
+  }
+
   async replyComment({ oid, bvid, aid, message, text, root, parent, rootId, parentId } = {}) {
+    this.assertWritable();
     if (!this.auth.loggedIn) throw new AuthRequiredError();
     const content = String(message ?? text ?? '').trim();
     if (!content) throw new BridgeError('评论内容为空', { kind: 'INPUT', code: 400, retcode: 1400 });
@@ -1460,6 +1528,7 @@ export class BiliBridge {
   }
 
   async likeComment({ oid, bvid, aid, rpid, commentId, action = 1 } = {}) {
+    this.assertWritable();
     if (!this.auth.loggedIn) throw new AuthRequiredError();
     const target = rpid ?? commentId;
     const value = action === 0 || action === '0' || String(action).toLowerCase() === 'unlike' ? 0 : 1;
@@ -1470,6 +1539,7 @@ export class BiliBridge {
   }
 
   async sendLiveDanmaku({ roomId, text } = {}) {
+    this.assertWritable();
     if (!this.auth.loggedIn) throw new AuthRequiredError();
     const message = truncateChars(String(text || '').trim(), 20);
     if (!message) throw new BridgeError('弹幕内容为空', { kind: 'INPUT', code: 400, retcode: 1400 });

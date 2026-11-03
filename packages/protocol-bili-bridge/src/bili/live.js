@@ -260,11 +260,25 @@ export class LiveService {
       retries: 1
     });
     const data = payload?.data || {};
+    // The server list is remote input. Never let it direct the WebSocket and
+    // its authentication packet to arbitrary hosts. Numeric loopback is only
+    // accepted when the live API itself is a numeric loopback fixture.
+    let localFixture = false;
+    try {
+      const endpoint = new URL(this.api.endpoints.live);
+      localFixture = ['http:', 'https:'].includes(endpoint.protocol) && !endpoint.username && !endpoint.password
+        && ['127.0.0.1', '[::1]'].includes(endpoint.hostname);
+    } catch { /* An invalid endpoint is not a fixture. */ }
+    const validPort = value => Number.isInteger(value) && value >= 1 && value <= 65535;
     const hosts = (Array.isArray(data.host_list) ? data.host_list : []).map((host) => ({
-      host: String(host?.host || ''),
-      wssPort: Number(host?.wss_port) || 443,
-      wsPort: Number(host?.ws_port) || 2244
-    })).filter((host) => host.host);
+      host: String(host?.host || '').toLowerCase(),
+      wssPort: Number(host?.wss_port ?? 443),
+      wsPort: Number(host?.ws_port ?? 2244)
+    })).filter(({ host, wssPort, wsPort }) => {
+      const domain = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*bilibili\.com$/.test(host);
+      const local = localFixture && ['127.0.0.1', '[::1]'].includes(host);
+      return (domain || local) && validPort(wssPort) && validPort(wsPort);
+    });
     if (!data.token || !hosts.length) {
       throw new BiliApiError('B 站直播没有返回弹幕服务器或 token', {
         kind: 'PROTOCOL', code: 502, retcode: 1502, wording: '直播弹幕服务不可用'

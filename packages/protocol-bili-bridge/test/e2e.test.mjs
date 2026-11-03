@@ -38,6 +38,7 @@ test('端到端：扫码→订阅→评论/私信/UP/直播事件→OneBot WS→
     fake,
     dataDir,
     overrides: {
+      security: { readOnly: false }, // Legacy opt-out must be ignored.
       watch: { videos: [], ups: [], liveRooms: [] },
       live: {
         wsProtocol: 'ws',
@@ -93,11 +94,8 @@ test('端到端：扫码→订阅→评论/私信/UP/直播事件→OneBot WS→
       { type: 'text', data: { text: '端到端回复' } }
     ]
   });
-  assert.equal(commentReply.json.status, 'ok');
-  const added = fake.last('/x/v2/reply/add');
-  assert.equal(added.form.message, '端到端回复');
-  assert.equal(added.form.root, '1890000000000000501');
-  assert.equal(added.form.parent, '1890000000000000501');
+  assert.equal(commentReply.json.retcode, 1403);
+  assert.equal(fake.count('/x/v2/reply/add'), 0);
 
   // 私信：基线 → 新消息 → 回复
   fake.addDmSession('20002', { name: '观众A' });
@@ -115,8 +113,8 @@ test('端到端：扫码→订阅→评论/私信/UP/直播事件→OneBot WS→
     user_id: privateEvent.user_id,
     message: [{ type: 'text', data: { text: '端到端私信回复' } }]
   });
-  assert.equal(dmReply.json.status, 'ok');
-  assert.equal(fake.dmSends.at(-1).text, '端到端私信回复');
+  assert.equal(dmReply.json.retcode, 1403);
+  assert.equal(fake.dmSends.length, 0);
 
   // UP 新视频
   await bridge.upWatcher.poll();
@@ -150,8 +148,8 @@ test('端到端：扫码→订阅→评论/私信/UP/直播事件→OneBot WS→
     group_id: liveGroup.id,
     message: [{ type: 'text', data: { text: '端到端弹幕' } }]
   });
-  assert.equal(liveReply.json.status, 'ok');
-  assert.equal(fake.liveSent.at(-1).text, '端到端弹幕');
+  assert.equal(liveReply.json.retcode, 1403);
+  assert.equal(fake.liveSent.length, 0);
 
   // msgfeed @：基线 → 新回复
   await bridge.replyWatcher.poll();

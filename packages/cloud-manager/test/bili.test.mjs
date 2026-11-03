@@ -3,6 +3,71 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { loginAdmin, request, startManager, waitFor } from './helpers.mjs';
+import { SecretStore } from '../../protocol-bili-bridge/src/store/secret-store.js';
+
+test('logout while the bridge is stopped removes only that tenant persisted login', async t => {
+  const env = await startManager();
+  t.after(async () => { await env.stop(); assert.equal(env.manager.stopped, true); });
+  const { manager } = env, admin = await loginAdmin(manager);
+  const stores = [];
+  for (const slug of ['logout-offline-a', 'logout-offline-b']) {
+    const created = await admin.createTenant({ name: slug, slug, planId: 'starter' });
+    assert.equal(created.status, 201, created.text);
+    const tenant = manager.tenants.row(created.json.tenant.id);
+    await manager.bili.ensurePrepared(tenant);
+    const dir = path.join(tenant.data_dir, 'bili', 'data', 'secrets');
+    const secrets = await SecretStore.open({ dir });
+    await secrets.save('session', { cookies: { SESSDATA: 'offline-fixture' } });
+    await secrets.save('qr', { qrcodeKey: 'offline-qr-fixture' });
+    await secrets.save('unrelated', { keep: true });
+    stores.push({ tenant, dir, secrets });
+  }
+  const [a, b] = stores;
+  const response = await admin.call(`/api/tenants/${a.tenant.id}/bili/logout`, { method: 'POST' });
+  assert.equal(response.status, 200, response.text);
+  const reopened = await SecretStore.open({ dir: a.dir });
+  assert.equal(await reopened.load('session'), null);
+  assert.equal(await reopened.load('qr'), null);
+  assert.deepEqual(await reopened.load('unrelated'), { keep: true });
+  assert.ok(fs.existsSync(path.join(a.dir, 'secret.key')));
+  assert.notEqual(await b.secrets.load('session'), null);
+  assert.notEqual(await b.secrets.load('qr'), null);
+  assert.equal(manager.supervisor.status(a.tenant.id, 'bili').state, 'stopped');
+  assert.equal(manager.db.prepare("SELECT COUNT(*) n FROM process_runs WHERE kind='bili'").get().n, 0);
+  assert.equal((await admin.call(`/api/tenants/${a.tenant.id}/bili/logout`, { method: 'POST' })).status, 200);
+});
+
+test('offline logout refuses an unconfirmed process and reports credential deletion failures', async t => {
+  const env = await startManager();
+  const { manager } = env;
+  t.after(async () => {
+    manager.db.prepare("DELETE FROM process_runs WHERE id='logout-unconfirmed'").run();
+    await env.stop(); assert.equal(manager.stopped, true);
+  });
+  const admin = await loginAdmin(manager);
+  const created = await admin.createTenant({ name: 'logout-failure', slug: 'logout-failure', planId: 'starter' });
+  assert.equal(created.status, 201, created.text);
+  const tenant = manager.tenants.row(created.json.tenant.id);
+  await manager.bili.ensurePrepared(tenant);
+  const dir = path.join(tenant.data_dir, 'bili', 'data', 'secrets');
+  const secrets = await SecretStore.open({ dir });
+  await secrets.save('session', { cookie: 'retained-fixture' });
+  manager.db.prepare('INSERT INTO process_runs(id,tenant_id,kind,status,started_at) VALUES(?,?,?,?,?)')
+    .run('logout-unconfirmed', tenant.id, 'bili', 'running', Date.now());
+  let response = await admin.call(`/api/tenants/${tenant.id}/bili/logout`, { method: 'POST' });
+  assert.equal(response.status, 503, response.text);
+  assert.equal(response.json.code, 'PROCESS_STOP_UNCONFIRMED');
+  assert.notEqual(await secrets.load('session'), null);
+  manager.db.prepare("DELETE FROM process_runs WHERE id='logout-unconfirmed'").run();
+  fs.mkdirSync(path.join(dir, 'qr.enc.json'));
+  response = await admin.call(`/api/tenants/${tenant.id}/bili/logout`, { method: 'POST' });
+  assert.equal(response.status, 503, response.text);
+  assert.equal(response.json.code, 'BILI_LOGOUT_PERSISTENCE_FAILED');
+  assert.equal(await secrets.load('session'), null);
+  assert.ok(!response.text.includes(dir));
+  fs.rmdirSync(path.join(dir, 'qr.enc.json'));
+  assert.equal((await admin.call(`/api/tenants/${tenant.id}/bili/logout`, { method: 'POST' })).status, 200);
+});
 
 test('Bilibili bridge login, subscriptions and agent channel wiring', async (t) => {
   const env = await startManager();

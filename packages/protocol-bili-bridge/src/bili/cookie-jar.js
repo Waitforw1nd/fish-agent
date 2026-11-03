@@ -78,6 +78,9 @@ function parseSetCookie(header) {
  */
 export class CookieJar {
   #cookies = new Map();
+  #generation = 0;
+
+  get generation() { return this.#generation; }
 
   constructor({ now = Date.now } = {}) {
     this.now = now;
@@ -228,6 +231,7 @@ export class CookieJar {
   }
 
   clear() {
+    this.#generation++;
     this.#cookies.clear();
     return this;
   }

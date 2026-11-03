@@ -292,7 +292,7 @@ export function setup(api) {
 
 function reportLifecycle(active) {
   if (process.env.QQ_AGENT_CLOUD !== '1') return;
-  writeJsonAtomic(path.join(dataDir(), 'bili-watch', 'lifecycle.json'), { active, pid: process.pid, updatedAt: Date.now() });
+  writeJsonAtomic(path.join(dataDir(), 'bili-watch', 'lifecycle.json'), { active, pid: process.pid, updatedAt: Date.now(), revision: crypto.randomUUID() });
 }
 
 export function activate() {

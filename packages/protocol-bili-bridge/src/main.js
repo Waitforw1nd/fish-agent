@@ -6,6 +6,7 @@ import { BiliBridge } from './bridge.js';
 import { loadConfig } from './config.js';
 import { createLogger } from './obs/log.js';
 import { redactText } from './util.js';
+import { createExploreServices } from './explore-services.js';
 
 async function writeReadyFile(file, payload) {
   if (!file) return;
@@ -25,7 +26,8 @@ export async function main({ env = process.env } = {}) {
       error: (...args) => console.error(...args)
     }
   });
-  const bridge = new BiliBridge({ config, logger });
+  const { exploreGenerate, exploreMeter } = createExploreServices(env);
+  const bridge = new BiliBridge({ config, logger, exploreGenerate, exploreMeter });
   await bridge.start();
   const address = bridge.server?.address;
   const ready = {

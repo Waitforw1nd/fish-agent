@@ -59,6 +59,18 @@ export class BiliAuth {
     this.lastError = '';
     this.valid = null;
     this.loaded = false;
+    this.persistence = Promise.resolve();
+    this.qrRevision = 0;
+  }
+
+  assertGeneration(generation) {
+    if (generation !== this.jar.generation) throw new BridgeError('Session changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
+  }
+
+  persist(fn) {
+    const task = this.persistence.then(fn);
+    this.persistence = task.catch(() => {});
+    return task;
   }
 
   get loggedIn() {
@@ -68,14 +80,17 @@ export class BiliAuth {
 
   async load() {
     if (this.loaded) return this;
+    const generation = this.jar.generation;
     if (this.secrets) {
       const saved = await this.secrets.load('session');
+      this.assertGeneration(generation);
       if (saved?.cookies) {
         applyCookies(this.jar, saved.cookies, this.now());
         this.session = saved;
         this.profile = saved.mid ? { mid: String(saved.mid), uname: saved.uname || '', avatar: saved.avatar || '' } : null;
       }
       const qr = await this.secrets.load('qr');
+      this.assertGeneration(generation);
       if (qr?.qrcodeKey) {
         this.qr = { ...qr };
         if (this.qr.state !== QR_STATES.SUCCESS && this.qr.expiresAt && this.qr.expiresAt <= this.now()) {
@@ -88,6 +103,8 @@ export class BiliAuth {
   }
 
   async generateQr() {
+    const generation = this.jar.generation;
+    const revision = ++this.qrRevision;
     const payload = await this.api.request({
       method: 'GET',
       service: 'passport',
@@ -95,8 +112,11 @@ export class BiliAuth {
       params: { source: 'main-fe-header' },
       signed: false,
       allowedCodes: [0],
-      retries: 1
+      retries: 1,
+      shouldContinue: () => revision === this.qrRevision
     });
+    this.assertGeneration(generation);
+    if (revision !== this.qrRevision) throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     const url = String(payload?.data?.url || '');
     const qrcodeKey = String(payload?.data?.qrcode_key || '');
     if (!url || !qrcodeKey) {
@@ -118,7 +138,8 @@ export class BiliAuth {
 
   async #saveQr() {
     if (!this.secrets || !this.qr) return;
-    try { await this.secrets.save('qr', this.qr); } catch (error) {
+    const generation = this.jar.generation, revision = this.qrRevision, qr = { ...this.qr };
+    try { await this.persist(() => generation === this.jar.generation && revision === this.qrRevision ? this.secrets.save('qr', qr) : undefined); } catch (error) {
       this.logger?.warn?.('持久化二维码状态失败', error);
     }
   }
@@ -138,9 +159,11 @@ export class BiliAuth {
   }
 
   async pollQr(qrcodeKey) {
+    const generation = this.jar.generation;
     const key = String(qrcodeKey || this.qr?.qrcodeKey || '');
     if (!key) throw new BridgeError('缺少 qrcode_key', { kind: 'INPUT', code: 400, retcode: 1400, wording: '缺少二维码 key' });
     if (!this.qr || this.qr.qrcodeKey !== key) {
+      this.qrRevision++;
       this.qr = {
         qrcodeKey: key,
         url: '',
@@ -152,6 +175,8 @@ export class BiliAuth {
         message: QR_STATE_WORDING.pending
       };
     }
+    const qr = this.qr;
+    const revision = this.qrRevision;
     if (this.qr.state === QR_STATES.SUCCESS) return this.qrState();
     if (this.qr.expiresAt && this.qr.expiresAt <= this.now() && this.qr.state !== QR_STATES.EXPIRED) {
       this.qr.state = QR_STATES.EXPIRED;
@@ -167,8 +192,11 @@ export class BiliAuth {
       params: { qrcode_key: key, source: 'main-fe-header' },
       signed: false,
       allowedCodes: [0],
-      retries: 1
+      retries: 1,
+      shouldContinue: () => generation === this.jar.generation && this.qr === qr && this.qrRevision === revision
     });
+    this.assertGeneration(generation);
+    if (this.qr !== qr || this.qrRevision !== revision) throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     const code = Number(payload?.data?.code);
     const state = POLL_CODE_STATE.get(code);
     this.qr.polls = (this.qr.polls || 0) + 1;
@@ -206,10 +234,12 @@ export class BiliAuth {
     const refreshToken = String(payload?.data?.refresh_token || '');
     let profile = null;
     try {
-      profile = await this.getSelfInfo({ refresh: true });
+      profile = await this.getSelfInfo({ refresh: true, shouldContinue: () => this.qr === qr && this.qrRevision === revision });
     } catch (error) {
       this.logger?.warn?.('扫码成功但读取账号信息失败', error);
     }
+    this.assertGeneration(generation);
+    if (this.qr !== qr || this.qrRevision !== revision) throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     const mid = profile?.mid || this.jar.get('DedeUserID') || '';
     this.session = {
       version: 1,
@@ -225,7 +255,11 @@ export class BiliAuth {
     // nav 明确返回未登录时不能因为拿到了 SESSDATA 就假装成功；网络失败则保留乐观登录态。
     this.valid = profile?.loggedIn === false ? false : true;
     await this.#saveSession();
+    this.assertGeneration(generation);
+    if (this.qr !== qr || this.qrRevision !== revision) throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     await this.#saveQr();
+    this.assertGeneration(generation);
+    if (this.qr !== qr || this.qrRevision !== revision) throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     this.lastError = '';
     if (this.onLogin) {
       try { await this.onLogin(this.account()); } catch (error) { this.logger?.warn?.('onLogin 回调失败', error); }
@@ -234,20 +268,26 @@ export class BiliAuth {
   }
 
   async #saveSession() {
-    if (this.secrets && this.session) await this.secrets.save('session', this.session);
+    if (this.secrets && this.session) {
+      const generation = this.jar.generation, session = structuredClone(this.session);
+      await this.persist(() => generation === this.jar.generation ? this.secrets.save('session', session) : undefined);
+    }
   }
 
-  async getSelfInfo({ refresh = false } = {}) {
+  async getSelfInfo({ refresh = false, shouldContinue } = {}) {
     if (this.profile && !refresh) return { ...this.profile, loggedIn: this.loggedIn };
     if (!this.loggedIn) return { loggedIn: false, mid: null, uname: '', avatar: '' };
+    const generation = this.jar.generation;
     const payload = await this.api.request({
       method: 'GET',
       service: 'api',
       path: '/x/web-interface/nav',
       signed: false,
       allowedCodes: [0, -101],
-      retries: 1
+      retries: 1, shouldContinue
     });
+    this.assertGeneration(generation);
+    if (shouldContinue && !shouldContinue()) throw new BridgeError('QR login changed', { kind: 'CANCELLED', code: 409, retcode: 1409 });
     const data = payload?.data || {};
     if (Number(payload?.code) === -101 || !data.isLogin || !data.mid) {
       this.valid = false;
@@ -270,13 +310,19 @@ export class BiliAuth {
   async ensureSession() {
     await this.load();
     if (!this.loggedIn) return { loggedIn: false };
+    const generation = this.jar.generation;
     try {
       const info = await this.getSelfInfo({ refresh: true });
+      this.assertGeneration(generation);
       if (info.loggedIn) return info;
       this.logger?.warn?.('本地 SESSDATA 已失效');
       this.lastError = '登录状态已失效，请重新扫码';
       return { loggedIn: false, mid: null, uname: '', avatar: '' };
     } catch (error) {
+      // Cancellation is not a transient network failure. In particular, an
+      // old validation must not report or alter the state of a newer session.
+      this.assertGeneration(generation);
+      if (error?.kind === 'CANCELLED') throw error;
       // 网络暂时不可用不代表 cookie 失效：保留本地登录态，等接口恢复。
       this.logger?.warn?.('校验登录状态失败（保留本地 cookie）', error);
       this.lastError = String(error?.message ?? error);
@@ -294,7 +340,8 @@ export class BiliAuth {
     };
   }
 
-  async updateSessionAfterRefresh({ refreshToken } = {}) {
+  async updateSessionAfterRefresh({ refreshToken, generation = this.jar.generation } = {}) {
+    this.assertGeneration(generation);
     this.valid = true;
     if (!this.session) {
       this.session = {
@@ -317,19 +364,25 @@ export class BiliAuth {
   }
 
   async logout() {
+    this.qrRevision++;
     this.jar.clear();
     this.session = null;
     this.profile = null;
     this.qr = null;
     this.valid = null;
     this.lastError = '';
+    let deletionFailed = false;
     if (this.secrets) {
-      await this.secrets.delete('session').catch(() => {});
-      await this.secrets.delete('qr').catch(() => {});
+      await this.persist(async () => {
+        for (const name of ['session', 'qr']) {
+          try { await this.secrets.delete(name); } catch { deletionFailed = true; }
+        }
+      });
     }
     if (this.onLogout) {
       try { await this.onLogout(); } catch (error) { this.logger?.warn?.('onLogout 回调失败', error); }
     }
+    if (deletionFailed) throw new BridgeError('退出登录时无法删除持久化凭据，请重试', { kind: 'SECRETS', code: 500, retcode: 1500 });
     return true;
   }
 

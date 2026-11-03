@@ -61,6 +61,22 @@ test('视频上下文：详情、分 P、AI 字幕下载与封面', async (t) =>
   assert.equal(none.subtitleText, '');
 });
 
+test('untrusted subtitles and short-link redirects cannot reach internal services', async () => {
+  const requests = [];
+  const api = new BiliApi({ jar: new CookieJar(), fetchImpl: async url => {
+    requests.push(String(url));
+    return new Response(null, { status: 302, headers: { location: 'http://127.0.0.1:1/secret' } });
+  } });
+  const video = new VideoService({ api, forceHttps: false });
+  for (const url of ['http://127.0.0.1:1/secret', 'https://hdslb.com.evil.test/a', 'https://user@aisubtitle.hdslb.com/a']) {
+    assert.equal((await video.downloadSubtitle(url)).reason, 'INVALID_URL');
+    await assert.rejects(video.cover(url), /地址不受支持/);
+  }
+  assert.equal(requests.length, 0);
+  await assert.rejects(video.resolveBvid('https://b23.tv/short'), /域名/);
+  assert.deepEqual(requests, ['https://b23.tv/short']);
+});
+
 test('字幕缺失、地址过期、需要登录都明确返回原因', async (t) => {
   const env = await setup();
   t.after(env.cleanup);

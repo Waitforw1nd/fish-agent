@@ -1,5 +1,9 @@
 export function createBiliApi({ request, tenantPath, setCsrfToken }) {
   return {
+    clearBiliExploreRisk: (id, options = {}) => request(tenantPath(id, '/bili/explore/risk/clear'), { ...options, method: 'POST' }),
+    getBiliExplore: (id, options = {}) => request(tenantPath(id, '/bili/explore'), options),
+    updateBiliExplore: (id, body, options = {}) => request(tenantPath(id, '/bili/explore'), { ...options, method: 'PUT', body }),
+    reviewBiliDraft: (id, draftId, action, text, options = {}) => request(tenantPath(id, '/bili/explore/drafts/' + encodeURIComponent(draftId) + '/' + action), { ...options, method: 'POST', body: { text } }),
     biliLoginQr(tenantId) {
       return request(tenantPath(tenantId, '/bili/login/qr'), { method: 'POST' });
     },

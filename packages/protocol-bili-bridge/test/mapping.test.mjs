@@ -23,7 +23,7 @@ async function makeMapper({ dir = null, tenantId = 'tenant-a' } = {}) {
 
 test('所有虚拟号段位于 ChannelRouter 的 [2^52, 2^53-1]', () => {
   assert.equal(BILI_VIRTUAL_ID_START, 2 ** 52);
-  assert.equal(BILI_VIRTUAL_ID_END, Number.MAX_SAFE_INTEGER);
+  assert.equal(BILI_VIRTUAL_ID_END, 7318349394477055);
   const entries = Object.entries(VIRTUAL_ID_RANGES);
   for (const [kind, range] of entries) {
     assert.ok(range.base >= BILI_VIRTUAL_ID_START, `${kind} base`);

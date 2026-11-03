@@ -75,28 +75,30 @@ export class WbiSigner {
     return Boolean(this.keys?.imgKey && this.keys?.subKey) && this.now() - this.fetchedAt < this.ttlMs;
   }
 
-  async getKeys({ force = false } = {}) {
+  async getKeys({ force = false, shouldContinue } = {}) {
     if (!force && this.hasFreshKeys()) return this.keys;
     if (this.inflight) return this.inflight;
-    this.inflight = (async () => {
-      try {
+    const refresh = async () => {
         const payload = await this.request({
           method: 'GET',
           service: 'api',
           path: '/x/web-interface/nav',
           signed: false,
           allowedCodes: [-101, 0],
-          retries: 1
+          retries: shouldContinue ? 0 : 1,
+          shouldContinue
         });
+        if (shouldContinue && !shouldContinue()) throw new BridgeError('探索已停止', { kind: 'CANCELLED', code: 409, retcode: 1409 });
         this.keys = extractWbiKeys(payload);
         this.fetchedAt = this.now();
         this.refreshes += 1;
         this.logger?.debug?.('WBI 密钥已刷新', { imgKey: this.keys.imgKey.slice(0, 4) });
         return this.keys;
-      } finally {
-        this.inflight = null;
-      }
-    })();
+    };
+    // A cancellable exploration must not cancel a refresh shared with other
+    // consumers. Existing shared work can still be awaited safely.
+    if (shouldContinue) return refresh();
+    this.inflight = refresh().finally(() => { this.inflight = null; });
     return this.inflight;
   }
 
@@ -105,7 +107,7 @@ export class WbiSigner {
   }
 
   async sign(params, options = {}) {
-    const keys = await this.getKeys({ force: Boolean(options.force) });
+    const keys = await this.getKeys({ force: Boolean(options.force), shouldContinue: options.shouldContinue });
     return signWbi(params, {
       imgKey: keys.imgKey,
       subKey: keys.subKey,

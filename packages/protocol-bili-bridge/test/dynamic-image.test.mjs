@@ -48,7 +48,7 @@ test('recent dynamics distinguish empty, restricted and failure', async () => {
 test('real BiliApi emits multipart upload and form encoded type 2 send', async () => {
   const requests = [];
   const jar = { get: (key) => ({ SESSDATA: 'session', bili_jct: 'csrf', DedeUserID: '1' })[key] || '', headerFor: () => '', applySetCookie() {} };
-  const api = new BiliApi({ jar, signer: { sign: async (params) => params }, fetchImpl: async (url, init) => {
+  const api = new BiliApi({ jar, readOnly: false, endpoints: { api: 'http://127.0.0.1:7777', vc: 'http://127.0.0.1:7777' }, signer: { sign: async (params) => params }, fetchImpl: async (url, init) => {
     requests.push({ url, init });
     return new Response(JSON.stringify({ code: 0, data: url.includes('upload_bfs') ? { image_url: 'https://i0.hdslb.com/bfs/album/a.png', image_width: 1, image_height: 1 } : { msg_seqno: '3' } }), { status: 200, headers: { 'content-type': 'application/json' } });
   } });
