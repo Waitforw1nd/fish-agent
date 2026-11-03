@@ -8,3 +8,6 @@ var/
 .env.*
 .DS_Store
 Thumbs.db
+
+# review evidence (kept locally only)
+docs/evidence/
