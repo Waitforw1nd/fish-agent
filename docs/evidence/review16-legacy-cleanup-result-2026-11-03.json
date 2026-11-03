@@ -1,0 +1,48 @@
+﻿{
+    "review":  "review16",
+    "at":  "2026-11-03T04:07:45.9250113Z",
+    "attempts":  [
+                     {
+                         "scope":  "28 review6-review15 directories",
+                         "method":  "PowerShell Remove-Item -LiteralPath after absolute parent and reparse verification",
+                         "result":  "automatic approval rejected before execution",
+                         "reason":  "blocked by policy"
+                     },
+                     {
+                         "scope":  "E:\\bigPeach\\fish\\var\\review9-bili-negative",
+                         "method":  "single literal path after Resolve-Path equality and reparse verification",
+                         "result":  "automatic approval rejected before execution",
+                         "reason":  "blocked by policy"
+                     }
+                 ],
+    "remaining":  [
+                      "E:\\bigPeach\\fish\\var\\review10-processes",
+                      "E:\\bigPeach\\fish\\var\\review11-processes-bili",
+                      "E:\\bigPeach\\fish\\var\\review11-processes-desktop",
+                      "E:\\bigPeach\\fish\\var\\review11-processes-root",
+                      "E:\\bigPeach\\fish\\var\\review11-processes-security",
+                      "E:\\bigPeach\\fish\\var\\review12-processes-bili",
+                      "E:\\bigPeach\\fish\\var\\review12-processes-core",
+                      "E:\\bigPeach\\fish\\var\\review12-processes-desktop",
+                      "E:\\bigPeach\\fish\\var\\review12-processes-root",
+                      "E:\\bigPeach\\fish\\var\\review13-desktop-negative",
+                      "E:\\bigPeach\\fish\\var\\review13-processes-bili",
+                      "E:\\bigPeach\\fish\\var\\review13-processes-core",
+                      "E:\\bigPeach\\fish\\var\\review13-processes-desktop",
+                      "E:\\bigPeach\\fish\\var\\review13-processes-root",
+                      "E:\\bigPeach\\fish\\var\\review14-processes-bili",
+                      "E:\\bigPeach\\fish\\var\\review14-processes-cloud",
+                      "E:\\bigPeach\\fish\\var\\review14-processes-desktop",
+                      "E:\\bigPeach\\fish\\var\\review14-processes-root",
+                      "E:\\bigPeach\\fish\\var\\review15-processes-root",
+                      "E:\\bigPeach\\fish\\var\\review6-processes",
+                      "E:\\bigPeach\\fish\\var\\review7-processes",
+                      "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy",
+                      "E:\\bigPeach\\fish\\var\\review8-processes",
+                      "E:\\bigPeach\\fish\\var\\review9-bili-negative",
+                      "E:\\bigPeach\\fish\\var\\review9-processes-bili",
+                      "E:\\bigPeach\\fish\\var\\review9-processes-core",
+                      "E:\\bigPeach\\fish\\var\\review9-processes-desktop",
+                      "E:\\bigPeach\\fish\\var\\review9-processes-root"
+                  ]
+}

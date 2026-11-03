@@ -362,6 +362,40 @@ await test('QQ 表情发送仍可用', async () => {
   assert.equal(onebot.sends[0].action, 'sticker');
 });
 
+console.log('\n== 官方 QQBot（qqbot_* 字符串会话 ID）==');
+
+await test('qqbot_* 会话 ID 通过发送守卫并到达官方适配器（字符串不转数字）', async () => {
+  const { ChannelRouter } = await import('../src/channel-router.js');
+  const sent = [];
+  const qqbotClient = {
+    type: 'qqbot',
+    connected: true,
+    selfInfo: { user_id: 'BOT_OPENID', nickname: 'OfficialBot' },
+    onStatus() { return () => {}; },
+    async sendText(kind, id, text) { sent.push({ kind, id: String(id), text }); return { message_id: 'official-mid' }; },
+    async call() { return {}; },
+    get selfId() { return 'BOT_OPENID'; },
+    get selfNickname() { return 'OfficialBot'; }
+  };
+  const router = new ChannelRouter({
+    channels: {
+      qq: { enabled: true, idRange: { start: 1, end: BILI_VIRTUAL_ID_START - 1 }, client: qqbotClient }
+    },
+    log: () => {}
+  });
+  const { queue } = makeQueue({ onebot: router });
+  await queue.sendTextBatch('group:qqbot_group_GROUP_OPENID_ABC', ['官方通道你好']);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].id, 'qqbot_group_GROUP_OPENID_ABC');
+  // 非官方适配器的 QQ 通道仍拒绝 qqbot_* ID
+  const plain = makeOneBot();
+  const { queue: plainQueue } = makeQueue({ onebot: plain });
+  await assert.rejects(async () => plainQueue.sendTextBatch('group:qqbot_group_GROUP_OPENID_ABC', ['x']), /非法目标 ID/);
+  assert.equal(plain.sends.length, 0);
+  // 乱码 ID 依旧拒绝
+  await assert.rejects(async () => queue.sendTextBatch('group:not-a-real-id', ['x']), /非法目标 ID/);
+});
+
 console.log('\n' + '='.repeat(64));
 if (failed) {
   console.log(`SendGuard：${failed} 项失败`);

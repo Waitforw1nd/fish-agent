@@ -562,6 +562,140 @@ await test('号段重叠的 ChannelRouter 构造直接失败', () => {
   }), /号段重叠/);
 });
 
+console.log('\n== 官方 QQBot（qqbot_* 字符串会话 ID）==');
+
+function makeQqbotClient(calls) {
+  const client = {
+    type: 'qqbot',
+    connected: false,
+    everConnected: false,
+    lastConnectError: '',
+    selfInfo: { user_id: 'BOT_OPENID', nickname: 'OfficialBot' },
+    onStatus() { return () => {}; },
+    async connect() { client.connected = true; },
+    async reconnect() {},
+    close() { client.connected = false; },
+    async call(action, params = {}) {
+      calls.push({ action, params });
+      if (action === 'get_group_list') return [];
+      if (action === 'get_friend_list') return [];
+      return {};
+    },
+    async sendText(kind, id, text) {
+      calls.push({ action: kind === 'private' ? 'send_private_msg' : 'send_group_msg', id: String(id), text });
+      return { message_id: 'official-mid-1' };
+    },
+    async sendImage(kind, id, file) { calls.push({ action: 'send_image', id: String(id), file }); return { message_id: 'official-mid-2' }; },
+    async sendSticker(...args) { return client.sendImage(...args); },
+    async sendSegments() { throw new Error('QQBot 不支持此消息段组合'); },
+    async sendPoke() { throw new Error('官方 QQBot 不支持拍一拍'); },
+    async getMsg(id) { calls.push({ action: 'get_msg', id: String(id) }); return null; },
+    async getGroupInfo(id) { calls.push({ action: 'get_group_info', id: String(id) }); return { group_id: id, group_name: id }; },
+    async getGroupMemberInfo(groupId, id) { calls.push({ action: 'get_group_member_info', groupId: String(groupId), id: String(id) }); return { user_id: id, nickname: id }; },
+    get selfId() { return 'BOT_OPENID'; },
+    get selfNickname() { return 'OfficialBot'; }
+  };
+  return client;
+}
+
+function buildQqbotRouter({ qqType = 'qqbot', qqEnabled = true, biliEnabled = false } = {}) {
+  const calls = { qq: [], bili: [] };
+  const qq = makeQqbotClient(calls.qq);
+  if (qqType !== 'qqbot') qq.type = qqType;
+  const bili = makeFakeClient('bili', { selfId: BILI_SELF, nickname: 'BiliBot', calls: calls.bili });
+  const router = new ChannelRouter({
+    channels: {
+      qq: { enabled: qqEnabled, idRange: { start: 1, end: BILI_VIRTUAL_ID_START - 1 }, client: qq },
+      bili: { enabled: biliEnabled, idRange: { start: BILI_VIRTUAL_ID_START, end: Number.MAX_SAFE_INTEGER }, client: bili }
+    },
+    log: () => {}
+  });
+  return { router, calls, qq, bili };
+}
+
+const QQBOT_GROUP = 'qqbot_group_GROUP_OPENID_ABC';
+const QQBOT_USER = 'qqbot_user_C2C_OPENID';
+const QQBOT_MEMBER = 'MEMBER_OPENID_ABC';
+
+await test('qqbot_* 会话 ID 路由到官方适配器的 QQ 通道（保持字符串不转数字）', async () => {
+  const { router, calls } = buildQqbotRouter();
+  await router.sendText('group', QQBOT_GROUP, 'hi');
+  await router.sendText('private', QQBOT_USER, 'dm');
+  await router.call('get_group_info', { group_id: QQBOT_GROUP });
+  assert.deepEqual(calls.qq.map((c) => c.action), ['send_group_msg', 'send_private_msg', 'get_group_info']);
+  assert.equal(calls.qq[0].id, QQBOT_GROUP);
+  assert.equal(calls.qq[1].id, QQBOT_USER);
+  assert.equal(calls.bili.length, 0);
+  assert.equal(router.platformFor('group', QQBOT_GROUP), 'qq');
+  assert.equal(router.channelFor(`group:${QQBOT_GROUP}`), 'qq');
+  assert.equal(router.isBiliChat(`group:${QQBOT_GROUP}`), false);
+});
+
+await test('QQ 通道不是官方适配器 → qqbot_* ID 明确拒绝，不落号段', async () => {
+  const { router, calls } = buildQqbotRouter({ qqType: undefined });
+  router.channel('qq').client.type = 'onebot';
+  await assert.rejects(() => router.sendText('group', QQBOT_GROUP, 'hi'), /官方 QQBot 会话 ID/);
+  assert.equal(calls.qq.length + calls.bili.length, 0);
+});
+
+await test('QQ 通道未启用 → qqbot_* ID 拒绝，不会改发 B站', async () => {
+  const { router, calls } = buildQqbotRouter({ qqEnabled: false, biliEnabled: true });
+  await assert.rejects(() => router.sendText('group', QQBOT_GROUP, 'hi'), /未启用/);
+  assert.equal(calls.qq.length + calls.bili.length, 0);
+});
+
+await test('显式 platform 与 qqbot_* 归属冲突 → 拒绝', async () => {
+  const { router, calls } = buildQqbotRouter({ biliEnabled: true });
+  await assert.rejects(
+    () => router.call('send_group_msg', { group_id: QQBOT_GROUP, message: [] }, null, { platform: 'bili' }),
+    /冲突/
+  );
+  assert.equal(calls.qq.length + calls.bili.length, 0);
+});
+
+await test('官方 QQBot 的裸 OpenID 群成员可通过同平台校验', async () => {
+  const { router, calls } = buildQqbotRouter();
+  await router.getGroupMemberInfo(QQBOT_GROUP, QQBOT_MEMBER);
+  assert.equal(calls.qq.at(-1).action, 'get_group_member_info');
+  await router.sendText('group', QQBOT_GROUP, 'hi', { atUserId: QQBOT_MEMBER });
+  assert.equal(calls.qq.at(-1).action, 'send_group_msg');
+  await assert.rejects(() => router.getGroupMemberInfo(QQBOT_GROUP, '!!非法!!'), /非法目标 ID/);
+});
+
+await test('入站消息和通知不能使用其他入口的会话 ID', async () => {
+  const { router, events } = build();
+  assert.equal(router.dispatch('bili', groupMsg('bili', { group_id: 456, message_id: 6101 })), false);
+  assert.equal(router.dispatch('qq', groupMsg('qq', { group_id: BILI_GROUP, message_id: 6102 })), false);
+  assert.equal(router.dispatch('bili', { post_type: 'notice', notice_type: 'group_recall', group_id: 456, message_id: 6103 }), false);
+  assert.equal(router.dispatch('bili', { post_type: 'notice', notice_type: 'notify', sub_type: 'poke', user_id: 123 }), false);
+  assert.equal(events.length, 0);
+  assert.equal(router.dispatch('qq', groupMsg('qq', { message_id: 6101 })), true);
+  assert.equal(events.length, 1);
+
+  const official = buildQqbotRouter().router;
+  assert.equal(official.dispatch('qq', { post_type: 'message', message_type: 'group', group_id: 456, message_id: 6201 }), false);
+  assert.equal(official.dispatch('qq', { post_type: 'message', message_type: 'private', user_id: QQBOT_GROUP, message_id: 6202 }), false);
+  assert.equal(official.dispatch('qq', { post_type: 'message', message_type: 'group', group_id: QQBOT_GROUP, message_id: 6203 }), true);
+  for (const [kind, id, mid] of [['group', 'qqbot_channel_ABC', 6204], ['private', 'qqbot_user_ABC', 6205], ['private', 'qqbot_dm_ABC', 6206]]) {
+    assert.equal(official.dispatch('qq', { post_type: 'message', message_type: kind, [kind === 'group' ? 'group_id' : 'user_id']: id, sender: { user_id: 'bare_OpenID' }, message_id: mid }), true);
+  }
+  const desktopId = 7318349394477060;
+  const desktop = new ChannelRouter({ channels: { desktop: { enabled: true, client: makeFakeClient('desktop', { selfId: 7318349394477056 }) } } });
+  assert.equal(desktop.dispatch('desktop', { post_type: 'message', message_type: 'private', user_id: desktopId, message_id: 6301 }), true);
+  assert.equal(desktop.dispatch('desktop', { post_type: 'message', message_type: 'group', group_id: desktopId, message_id: 6302 }), false);
+});
+
+await test('失败的入站不能占住去重键；确认成功后的重放仍被去重', async () => {
+  const { router } = build(); let attempts = 0;
+  router.onEvent = async () => { attempts++; if (attempts === 1) return false; if (attempts === 2) throw new Error('temporary ingest failure'); return true; };
+  const event = { post_type: 'message', message_type: 'private', user_id: 1234567, message_id: 'retry-after-failure', message: [] };
+  assert.equal(await router.dispatch('qq', event, { wait: true }), false);
+  assert.equal(await router.dispatch('qq', event, { wait: true }), false);
+  assert.equal(await router.dispatch('qq', event, { wait: true }), true);
+  assert.equal(await router.dispatch('qq', event, { wait: true }), false);
+  assert.equal(attempts, 3);
+});
+
 console.log('\n' + '='.repeat(64));
 if (failed) {
   console.log(`ChannelRouter：${failed} 项失败`);

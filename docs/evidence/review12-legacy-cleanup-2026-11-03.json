@@ -1,0 +1,44 @@
+﻿[
+    {
+        "path":  "E:\\bigPeach\\fish\\var\\review9-bili-negative",
+        "files":  74,
+        "bytes":  674338,
+        "reparsePoints":  0,
+        "result":  "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+    },
+    {
+        "path":  "E:\\bigPeach\\fish\\var\\review10-processes",
+        "files":  454,
+        "bytes":  101712,
+        "reparsePoints":  0,
+        "result":  "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+    },
+    {
+        "path":  "E:\\bigPeach\\fish\\var\\review11-processes-bili",
+        "files":  4,
+        "bytes":  1028,
+        "reparsePoints":  0,
+        "result":  "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+    },
+    {
+        "path":  "E:\\bigPeach\\fish\\var\\review11-processes-desktop",
+        "files":  24,
+        "bytes":  6010,
+        "reparsePoints":  0,
+        "result":  "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+    },
+    {
+        "path":  "E:\\bigPeach\\fish\\var\\review11-processes-root",
+        "files":  374,
+        "bytes":  96826,
+        "reparsePoints":  0,
+        "result":  "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+    },
+    {
+        "path":  "E:\\bigPeach\\fish\\var\\review11-processes-security",
+        "files":  30,
+        "bytes":  6310,
+        "reparsePoints":  0,
+        "result":  "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+    }
+]

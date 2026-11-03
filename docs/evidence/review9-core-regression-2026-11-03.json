@@ -1,0 +1,13 @@
+{
+  "scope": "qq-agent-core targeted regression",
+  "command": "node --test packages/qq-agent-core/test/multi-entry.test.mjs packages/qq-agent-core/test/desktop-processing-recovery.test.mjs packages/qq-agent-core/test/memory-legacy-delete.test.mjs packages/qq-agent-core/test/checker-report.test.mjs packages/qq-agent-core/test/channel-router-test.mjs packages/qq-agent-core/test/send-guard-test.mjs packages/qq-agent-core/test/headless-runtime.test.mjs packages/qq-agent-core/test/headless-transport.test.mjs",
+  "exitCode": 0,
+  "tests": 52,
+  "passed": 51,
+  "failed": 0,
+  "skipped": 1,
+  "skipReason": "Windows does not deliver POSIX SIGTERM to Node",
+  "log": "docs/evidence/review9-core-regression-2026-11-03.txt",
+  "negativeControl": "An attempt to construct an isolated old-logic negative control was rejected by execution policy. It was not run and is not claimed as verified.",
+  "notRun": ["repository test:all", "real QQ or Bilibili integration"]
+}

@@ -3,6 +3,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { Writable } from 'node:stream';
 
 // 下载器测试：起一个本地 HTTP 服务，真实走一遍下载。
 //
@@ -93,9 +94,19 @@ console.log('\n=== 正常下载 ===');
 {
   const dest = path.join(tmp, 'ok.bin');
   const seen = [];
-  const r = await download(`${base}/file.bin`, dest, {
-    expectedSha256: SHA, quiet: true, onProgress: (p) => seen.push(p.got)
-  });
+  const originalCreateWriteStream = fs.createWriteStream;
+  let fileStream, peakErrors = 0;
+  fs.createWriteStream = (...args) => (fileStream = originalCreateWriteStream(...args));
+  let r;
+  try {
+    r = await download(`${base}/file.bin`, dest, {
+      expectedSha256: SHA, quiet: true, onProgress: (p) => {
+        seen.push(p.got);
+        peakErrors = Math.max(peakErrors, fileStream.listenerCount('error'));
+      }
+    });
+  } finally { fs.createWriteStream = originalCreateWriteStream; }
+  check(seen.length > 10 && peakErrors <= 6, `多次背压后 error 监听器保持有界（${seen.length} 块，最多 ${peakErrors} 个）`);
   check(fs.existsSync(dest), '文件已落到目标路径');
   check(r.bytes === PAYLOAD.length, `字节数正确（${r.bytes}）`);
   check(r.sha256 === SHA, '流式增量算出的 SHA256 正确');
@@ -130,6 +141,45 @@ console.log('\n=== 哈希不匹配 ===');
   check(!fs.existsSync(dest), '校验失败时目标文件不存在（不能留下可疑文件）');
   check(!fs.existsSync(`${dest}.part`), '校验失败时 .part 也被清掉');
   ok('哈希不匹配：报错并清理，绝不留半个文件');
+}
+
+console.log('\n=== 写盘失败 ===');
+{
+  const dest = path.join(tmp, 'write-failed.bin');
+  const originalCreateWriteStream = fs.createWriteStream;
+  fs.createWriteStream = () => {
+    fs.writeFileSync(`${dest}.part`, 'partial');
+    return new Writable({ highWaterMark: 1, write(_chunk, _encoding, cb) { setImmediate(() => cb(new Error('fixture disk failure'))); } });
+  };
+  let error;
+  try { await download(`${base}/file.bin`, dest, { quiet: true }); }
+  catch (e) { error = e; }
+  finally { fs.createWriteStream = originalCreateWriteStream; }
+  check(Boolean(error), '写盘错误使下载失败');
+  check(!fs.existsSync(dest) && !fs.existsSync(`${dest}.part`), '写盘错误清理临时文件且不生成目标');
+}
+
+console.log('\n=== 等待网络数据时写盘失败 ===');
+{
+  const dest = path.join(tmp, 'write-delayed-failed.bin');
+  const originalCreateWriteStream = fs.createWriteStream;
+  let fixtureStream;
+  slow = true;
+  fs.createWriteStream = () => {
+    fs.writeFileSync(`${dest}.part`, 'partial');
+    fixtureStream = new Writable({ write(_chunk, _encoding, cb) {
+      cb();
+      setTimeout(() => fixtureStream.destroy(new Error('delayed disk failure')), 1);
+    } });
+    return fixtureStream;
+  };
+  let error;
+  try { await download(`${base}/slow.bin`, dest, { quiet: true }); }
+  catch (e) { error = e; }
+  finally { slow = false; fs.createWriteStream = originalCreateWriteStream; }
+  check(error?.message === 'delayed disk failure', 'delayed disk failure preserves its diagnostic');
+  check(Boolean(error), '等待后续网络块时异步磁盘错误使下载失败');
+  check(!fs.existsSync(dest) && !fs.existsSync(`${dest}.part`), '异步写盘错误清理临时文件且不生成目标');
 }
 
 console.log('\n=== 连接中断（声明长度但只发一半）===');
@@ -210,6 +260,40 @@ console.log('\n=== fileSha256 与下载结果一致 ===');
 {
   const dest = path.join(tmp, 'ok.bin');
   check(fileSha256(dest) === SHA, 'fileSha256 与流式计算的哈希一致');
+}
+
+// A completed transfer can still fail when the destination cannot be replaced.
+{
+  const dest = path.join(tmp, 'rename-destination');
+  fs.mkdirSync(dest);
+  const originalRename = fs.renameSync;
+  const originalWrite = process.stderr.write;
+  const renameError = Object.assign(new Error('fixture rename failure'), { code: 'EACCES' });
+  let error;
+  let output = '';
+  fs.renameSync = (from, to) => {
+    if (from === `${dest}.part` && to === dest) throw renameError;
+    return originalRename(from, to);
+  };
+  process.stderr.write = chunk => { output += String(chunk); return true; };
+  try { await download(`${base}/file.bin`, dest, { quiet: false }); }
+  catch (e) { error = e; }
+  finally { fs.renameSync = originalRename; process.stderr.write = originalWrite; }
+  check(error === renameError && error.code === 'EACCES', 'rename failure preserves original error and code');
+  check(fs.statSync(dest).isDirectory(), 'rename failure preserves the destination');
+  check(!fs.existsSync(`${dest}.part`), 'rename failure removes the temporary download');
+  check(!output.includes('\u5b8c\u6210\uff1a'), 'rename failure does not print completion');
+}
+
+{
+  const dest = path.join(tmp, 'rename-success.bin');
+  const originalWrite = process.stderr.write;
+  let output = '';
+  process.stderr.write = chunk => { output += String(chunk); return true; };
+  try { await download(`${base}/file.bin`, dest, { quiet: false }); }
+  finally { process.stderr.write = originalWrite; }
+  check(fs.readFileSync(dest).equals(PAYLOAD), 'successful rename writes complete destination');
+  check(output.includes('\u5b8c\u6210\uff1a'), 'successful rename prints completion');
 }
 
 await new Promise((r) => server.close(r));

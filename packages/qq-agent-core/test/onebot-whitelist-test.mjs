@@ -86,10 +86,16 @@ await c.check('OneBot 不可达 → 502 + 可读 error（前端「拉取失败�
 // ── 2) 前端真实操作路径（jsdom + 真实后端）────────────────────────────────
 const c2 = createChecker('聊天白名单拉取（前端真实操作路径）');
 let JSDOM = null;
-try { ({ JSDOM } = await import('jsdom')); } catch { JSDOM = null; }
+try { ({ JSDOM } = await import('jsdom')); }
+catch (error) {
+  if (error.code !== 'ERR_MODULE_NOT_FOUND' || !/Cannot find package 'jsdom'/.test(error.message)) {
+    await teardown();
+    throw error;
+  }
+}
 
 if (!JSDOM) {
-  c2.ok('jsdom 未安装 —— 前端段已跳过（npm i -D jsdom 后自动启用）');
+  c2.skip('前端白名单交互', 'jsdom 未安装');
 } else {
   const html = fs.readFileSync(path.join(ROOT, 'ui', 'index.html'), 'utf8');
   let code = (await import('./_ui-load.mjs')).loadUiAppCode().code;

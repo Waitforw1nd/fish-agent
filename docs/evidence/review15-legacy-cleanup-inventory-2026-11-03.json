@@ -1,0 +1,427 @@
+﻿{
+    "capturedAt":  "2026-11-03T03:35:45.7741910Z",
+    "directories":  [
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review10-processes",
+                            "files":  454,
+                            "bytes":  101712,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100224-100520.json",
+                                             "child-100224-110160.json",
+                                             "child-100224-111200.json",
+                                             "child-100224-112648.json",
+                                             "child-100224-114740.json",
+                                             "child-100224-115268.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-bili",
+                            "files":  4,
+                            "bytes":  1028,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "process-103724-0.json",
+                                             "process-116088-0.json",
+                                             "process-34484-0.json",
+                                             "process-91520-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-desktop",
+                            "files":  24,
+                            "bytes":  6010,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-113968-101808.json",
+                                             "child-113968-116688.json",
+                                             "child-113968-5576.json",
+                                             "child-25500-108020.json",
+                                             "child-91412-25500.json",
+                                             "process-103092-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-root",
+                            "files":  374,
+                            "bytes":  96826,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100820-107136.json",
+                                             "child-100820-99432.json",
+                                             "child-101632-106724.json",
+                                             "child-101632-86800.json",
+                                             "child-102780-88304.json",
+                                             "child-105308-51136.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-security",
+                            "files":  30,
+                            "bytes":  6310,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-101500-103152.json",
+                                             "child-101500-104084.json",
+                                             "child-101500-108640.json",
+                                             "child-101500-109120.json",
+                                             "child-101500-109588.json",
+                                             "child-101500-109980.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-bili",
+                            "files":  42,
+                            "bytes":  12380,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-107816-101500.json",
+                                             "child-107816-114768.json",
+                                             "process-100736-0.json",
+                                             "process-101784-0.json",
+                                             "process-103800-0.json",
+                                             "process-103960-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-core",
+                            "files":  61,
+                            "bytes":  17280,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-112328-12952.json",
+                                             "child-65860-90240.json",
+                                             "child-81360-116652.json",
+                                             "child-98628-67480.json",
+                                             "process-100456-0.json",
+                                             "process-100584-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-desktop",
+                            "files":  26,
+                            "bytes":  7194,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-105840-114088.json",
+                                             "child-105840-65044.json",
+                                             "child-105840-65764.json",
+                                             "child-114716-70772.json",
+                                             "child-98640-114716.json",
+                                             "process-100872-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-root",
+                            "files":  408,
+                            "bytes":  104356,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100108-100152.json",
+                                             "child-100108-100736.json",
+                                             "child-100108-101656.json",
+                                             "child-100108-104596.json",
+                                             "child-100108-105468.json",
+                                             "child-100108-107808.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-desktop-negative",
+                            "files":  13,
+                            "bytes":  69430,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "src",
+                                             "test",
+                                             "package.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-bili",
+                            "files":  97,
+                            "bytes":  28678,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "process-100368-0.json",
+                                             "process-100556-0.json",
+                                             "process-100584-0.json",
+                                             "process-100852-0.json",
+                                             "process-101636-0.json",
+                                             "process-102808-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-core",
+                            "files":  44,
+                            "bytes":  11853,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-111812-113972.json",
+                                             "child-98328-115260.json",
+                                             "process-100232-0.json",
+                                             "process-101196-0.json",
+                                             "process-101660-0.json",
+                                             "process-101836-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-desktop",
+                            "files":  74,
+                            "bytes":  18351,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-101336-101904.json",
+                                             "child-101904-55884.json",
+                                             "child-104144-109628.json",
+                                             "child-104144-35632.json",
+                                             "child-104144-41140.json",
+                                             "child-108388-111632.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-root",
+                            "files":  1002,
+                            "bytes":  256483,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100636-34860.json",
+                                             "child-100900-102540.json",
+                                             "child-100900-104500.json",
+                                             "child-100900-97380.json",
+                                             "child-100900-97564.json",
+                                             "child-101236-100992.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-bili",
+                            "files":  44,
+                            "bytes":  11215,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "process-100556-0.json",
+                                             "process-102916-0.json",
+                                             "process-103464-0.json",
+                                             "process-105328-0.json",
+                                             "process-105576-0.json",
+                                             "process-106348-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-cloud",
+                            "files":  77,
+                            "bytes":  16063,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-103272-103072.json",
+                                             "child-103272-109924.json",
+                                             "child-103272-48304.json",
+                                             "child-103272-65764.json",
+                                             "child-112912-105748.json",
+                                             "child-112912-107820.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-desktop",
+                            "files":  37,
+                            "bytes":  8399,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-116368-52896.json",
+                                             "child-50160-104300.json",
+                                             "child-50160-109124.json",
+                                             "child-50160-90032.json",
+                                             "child-52896-97332.json",
+                                             "process-100256-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-root",
+                            "files":  766,
+                            "bytes":  181957,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100272-99040.json",
+                                             "child-101224-89132.json",
+                                             "child-101248-113444.json",
+                                             "child-101248-114616.json",
+                                             "child-101432-106012.json",
+                                             "child-101432-56952.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review6-processes",
+                            "files":  390,
+                            "bytes":  100141,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100140-115720.json",
+                                             "child-101392-113348.json",
+                                             "child-101392-47140.json",
+                                             "child-102200-99948.json",
+                                             "child-102372-115876.json",
+                                             "child-102372-92544.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review7-processes",
+                            "files":  242,
+                            "bytes":  94806,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "100088.jsonl",
+                                             "100184.jsonl",
+                                             "100216.jsonl",
+                                             "100312.jsonl",
+                                             "100320.jsonl",
+                                             "100652.jsonl"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy",
+                            "files":  76,
+                            "bytes":  669291,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "node_modules",
+                                             "src",
+                                             "test",
+                                             ".gitignore",
+                                             "package-lock.json",
+                                             "package.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review8-processes",
+                            "files":  863,
+                            "bytes":  223313,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100236-109600.json",
+                                             "child-100324-106752.json",
+                                             "child-100324-64908.json",
+                                             "child-100624-103104.json",
+                                             "child-101216-101748.json",
+                                             "child-101628-109744.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-bili-negative",
+                            "files":  74,
+                            "bytes":  674338,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "node_modules",
+                                             "src",
+                                             "test",
+                                             "package.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-bili",
+                            "files":  44,
+                            "bytes":  12796,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "process-100316-0.json",
+                                             "process-100568-0.json",
+                                             "process-101076-0.json",
+                                             "process-102044-0.json",
+                                             "process-103128-0.json",
+                                             "process-103460-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-core",
+                            "files":  42,
+                            "bytes":  11597,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "process-100256-0.json",
+                                             "process-100356-0.json",
+                                             "process-101144-0.json",
+                                             "process-101300-0.json",
+                                             "process-102180-0.json",
+                                             "process-103860-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-desktop",
+                            "files":  3,
+                            "bytes":  874,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "process-35396-0.json",
+                                             "process-71732-0.json",
+                                             "process-99028-0.json"
+                                         ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-root",
+                            "files":  754,
+                            "bytes":  194047,
+                            "reparsePoints":  [
+
+                                              ],
+                            "topLevel":  [
+                                             "child-100176-116144.json",
+                                             "child-100176-51688.json",
+                                             "child-100204-109724.json",
+                                             "child-100888-92980.json",
+                                             "child-101080-100980.json",
+                                             "child-101080-89316.json"
+                                         ]
+                        }
+                    ]
+}

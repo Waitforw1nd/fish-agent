@@ -1,0 +1,13 @@
+{
+  "review": "review14",
+  "at": "2026-11-03T03:27:19.738Z",
+  "markdownFiles": 37,
+  "missingRelativeFileLinks": [],
+  "focusedTests": [],
+  "note": "Inline relative Markdown file links checked. Anchor targets and external URLs excluded. Test skips are reported in the raw test log.",
+  "rootOrchestrationCheckExit": 0,
+  "diffWhitespaceCheckExit": 0,
+  "emptyUnusualRootDirectories": 7,
+  "runtimeLock": "33.4.11",
+  "runtimeGateExit": 1
+}

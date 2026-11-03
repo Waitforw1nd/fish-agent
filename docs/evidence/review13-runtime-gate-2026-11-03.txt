@@ -1,0 +1,7 @@
+﻿node.exe : 禁止打包：请更新 Electron 及锁文件到受支持稳定版（本次审查基线 >= 45），并完成原生安全验收。
+所在位置 行:2 字符: 88
++ ... +$env:Path; & node packages/desktop-pet/scripts/check-runtime.mjs 2>& ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (禁止打包：请更新 Electr... 45），并完成原生安全验收。:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

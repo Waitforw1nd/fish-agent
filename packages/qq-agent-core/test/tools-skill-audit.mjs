@@ -29,8 +29,10 @@ process.env.QQ_AGENT_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'qq-agent-
 
 let pass = 0;
 let fail = 0;
+let skipped = 0;
 const failures = [];
 function ok(msg) { pass += 1; console.log(`  ✓ ${msg}`); }
+function skip(msg) { skipped += 1; console.log(`  SKIP ${msg}`); }
 function bad(msg, detail) {
   fail += 1;
   failures.push(msg);
@@ -132,20 +134,23 @@ async function main() {
   const asyncAvail = [];
   for (const s of skills) {
     try {
-      // 用状态视图里的**真实目录**（s.dir），不靠清单文件名反推 ——
-      // 文件名与目录语义是两件事，反推会在改名/挪目录后静默指错地方。
-      if (!s.dir) continue;
-      const mod = await import(new URL(`../${s.dir}/index.js`, import.meta.url).href);
-      if (typeof mod.available === 'function') {
-        const r = mod.available({});
-        if (r instanceof Promise) asyncAvail.push(`${s.id}.available() 返回了 Promise`);
+      // Inspect the function loaded by production, including custom entry files.
+      // An exception is a failed check, never a missing-entry skip.
+      const skill = skillManager.registry.get(s.id);
+      assert.ok(skill, `${s.id} 未注册`);
+      if (typeof skill.available === 'function') {
+        const r = skill.available({});
+        if (r && typeof r.then === 'function') {
+          asyncAvail.push(`${s.id}.available() 返回了 Promise`);
+          void Promise.resolve(r).catch(() => {});
+        }
       }
-    } catch {
-      // 加载器支持插件目录下不同的入口名，这里 import 失败不代表技能有问题，跳过
+    } catch (error) {
+      bad(`${s.id} 的 available() 检查失败`, error?.message || error);
     }
   }
   check(asyncAvail.length === 0,
-    '所有 available() 同步返回（返回 Promise 会被当成"可用"，导致界面与实际不符）',
+    '已加载的 available() 同步返回（返回 Promise 会被当成"可用"，导致界面与实际不符）',
     asyncAvail.join('\n'));
 
   // ══ 五、工具定义自洽 ════════════════════════════════════════════════
@@ -238,7 +243,7 @@ async function main() {
   console.log('\n=== 八、开关联动（关掉技能 → 它的工具立刻不可用）===');
   const skillWithTools = skills.find((s) => (s.toolIds || []).length > 0);
   if (!skillWithTools) {
-    ok('当前没有"注册了工具的技能"，跳过联动检查（核心工具不受技能开关影响）');
+    skip('当前没有注册工具的技能，无法检查技能开关联动');
   } else {
     // ⚠️ 必须走**配置**这一条路，不能只调 manager.deactivate()。
     // 本项目的铁律是"开关只有一个来源：config.skills[id].enabled"。
@@ -552,7 +557,7 @@ async function main() {
       + pad((s.capabilities || []).length, 6) + (s.toolIds || []).length);
   }
 
-  console.log(`\n${fail === 0 ? '全部通过' : '存在失败'} —— 通过 ${pass} / 失败 ${fail}`);
+  console.log(`\n${fail ? '存在失败' : skipped ? '已执行的检查通过，存在跳过' : '全部通过'} —— 通过 ${pass} / 失败 ${fail} / 跳过 ${skipped}`);
   if (fail) { console.log('\n失败项：'); for (const f of failures) console.log('  -', f); }
   process.exit(fail ? 1 : 0);
 }

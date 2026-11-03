@@ -1,0 +1,32 @@
+Command: D:\tool\node\node.exe --test --test-name-pattern="logout prevents an in-flight live sync" packages/protocol-bili-bridge/test/auth-logout-race.test.mjs (before fix; expected failure)
+NODE_OPTIONS=--require=E:\bigPeach\fish\docs\evidence\review6-process-tracer.cjs
+FISH_REVIEW_PROCESS_DIR=E:\bigPeach\fish\docs\evidence\review17-processes
+
+✖ logout prevents an in-flight live sync from starting an old-session client (2.0985ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 160.7201
+
+✖ failing tests:
+
+test at packages\protocol-bili-bridge\test\auth-logout-race.test.mjs:180:1
+✖ logout prevents an in-flight live sync from starting an old-session client (2.0985ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/test/auth-logout-race.test.mjs:196:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

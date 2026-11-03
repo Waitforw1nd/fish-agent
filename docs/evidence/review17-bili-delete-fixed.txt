@@ -1,0 +1,34 @@
+Command: D:\tool\node\node.exe --test packages/protocol-bili-bridge/test/auth-logout-race.test.mjs packages/protocol-bili-bridge/test/auth.test.mjs (after fix)
+NODE_OPTIONS=--require=E:\bigPeach\fish\docs\evidence\review6-process-tracer.cjs
+FISH_REVIEW_PROCESS_DIR=E:\bigPeach\fish\docs\evidence\review17-processes
+
+✔ session validation cannot report stale login or overwrite state after logout (3.8112ms)
+✔ logout revokes in-flight ordinary, QR and refresh responses without preventing a new login (226.732ms)
+✔ replacing a QR invalidates cookies from its old in-flight poll (25.783ms)
+✔ a late QR generation cannot replace a newer request or its persisted state (0.5097ms)
+✔ logout while initializing buvid cannot start a late QR or restore device cookies (0.3783ms)
+✔ bridge logout revokes old requests before waiting for live clients to stop (0.3733ms)
+✔ logout prevents an in-flight live sync from starting an old-session client (0.6148ms)
+✔ logout cleanup cannot erase a newer login or its live client and tolerates stop errors (0.1922ms)
+✔ logout reports sanitized persistence failure after cleaning clients and supports retry (1.3461ms)
+✔ CookieJar 域名/路径/Secure/过期与登录跳转 query (1.6944ms)
+✔ SecretStore AES-GCM 加密、篡改检测与错误密钥 (19.4315ms)
+✔ FileLock 跨实例互斥、超时与过期锁抢占 (156.3466ms)
+✔ refresh_csrf 解析兼容官方 div 与旧赋值形态 (0.3611ms)
+✔ cookie 保活公钥与官方 JWK 黄金值一致 (0.4132ms)
+✔ correspondPath 使用固定 RSA 公钥生成可解密 token (31.8087ms)
+✔ 扫码四状态、持久化与凭据不外泄 (60.8498ms)
+✔ 二维码过期不产生登录态 (30.6927ms)
+✔ 四步 cookie 保活：顺序、轮换、持久化与 not_needed (48.3187ms)
+✔ 并发保活被 Mutex/FileLock 串行化 (51.1614ms)
+✔ 保活失败时给出明确错误且不破坏旧凭据 (42.7642ms)
+✔ buvid 接口失败时本地回退，成功后复用 cookie (16.5614ms)
+✔ 二维码在本地 TTL 到期时不再请求轮询接口 (24.0946ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 646.8842

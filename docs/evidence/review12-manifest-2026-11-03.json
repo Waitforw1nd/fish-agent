@@ -1,0 +1,644 @@
+{
+  "review": "review12",
+  "capturedAt": "2026-11-03T02:21:21.191Z",
+  "runtime": "v24.22.1",
+  "testAll": {
+    "log": "review12-test-all-2026-11-03.txt",
+    "started": [
+      "2026-11-03T02:11:13.216Z"
+    ],
+    "completed": [
+      "2026-11-03T02:14:17.428Z"
+    ],
+    "exits": [
+      {
+        "code": 0,
+        "signal": "none"
+      }
+    ],
+    "bili": 102,
+    "cloud": 210,
+    "cloudSkipped": 2,
+    "panel": 138,
+    "headless": 24,
+    "headlessSkipped": 1,
+    "multiEntry": 26,
+    "checker": 3,
+    "coreCoverage": [
+      148,
+      116,
+      46,
+      21,
+      5
+    ],
+    "desktop": 87,
+    "desktopSkipped": 1,
+    "llbot": 230,
+    "failures": 0,
+    "cancelled": 0,
+    "knownDefects": 0,
+    "platformSkips": 4,
+    "customEnvironmentSkips": 5,
+    "dangerousRoutesExcluded": 4
+  },
+  "simulatedChains": {
+    "log": "review12-simulated-chains-2026-11-03.txt",
+    "started": [
+      "2026-11-03T02:14:27.989Z",
+      "2026-11-03T02:14:41.264Z"
+    ],
+    "completed": [
+      "2026-11-03T02:14:41.264Z",
+      "2026-11-03T02:15:02.023Z"
+    ],
+    "exits": [
+      {
+        "code": 0,
+        "signal": "none"
+      },
+      {
+        "code": 0,
+        "signal": "none"
+      }
+    ],
+    "onebot": "passed real Agent/Relay send, receive, dedupe and tenant metering",
+    "officialGateway": "passed production lifecycle, local C2C/OpenID, reply, attribution and tenant binding rejection",
+    "webhook": "not implemented; outside the manual Gateway simulation requirements",
+    "desktop": "passed pairing, chat, queued resend, both replay streams, lost ACK receipt, revocation and metering",
+    "bili": "passed L0 journal, L1 draft, approval with zero publishing requests/events",
+    "fourEntryMeters": "passed authenticated simulated batches, 4 accepted/4 duplicates, attribution/tenant rejection and atomic rollback"
+  },
+  "confirmedFindings": [
+    {
+      "severity": "P2",
+      "name": "Input-only desktop recovery failed to pause after repeated opened handshakes without ready",
+      "beforeLog": "review12-desktop-repro.log",
+      "afterLog": "review12-desktop-recovery-final.log"
+    },
+    {
+      "severity": "P2",
+      "name": "memory_append tool rejected official member OpenIDs accepted by MemoryStore",
+      "beforeLog": "review12-core-memory-before.log",
+      "afterLog": "review12-core-memory-after.log"
+    }
+  ],
+  "frozenCodeFiles": 184,
+  "codeMismatches": [],
+  "codeChanges": [
+    {
+      "path": "packages/desktop-pet/src/client.js",
+      "sha256": "7da5310ddb76c4a2e9a27ce47c40f62431bc41866e12acbf36991ceb35c97c77"
+    },
+    {
+      "path": "packages/desktop-pet/test/recovery.test.mjs",
+      "sha256": "2c6161e62ceab7f16e2be807e05b4bc1d180d9f3ca1a58242648df7957952c85"
+    },
+    {
+      "path": "packages/qq-agent-core/src/tools.js",
+      "sha256": "f7792a42baf3279989f5cfbcd4a6a39f5e87781eb7cd82cdb3a7ee29846163a2"
+    },
+    {
+      "path": "packages/qq-agent-core/test/memory-legacy-delete.test.mjs",
+      "sha256": "1e3129450aa75c656f09b92ea491e305d1fefe086868a9336018222f78c23cf2"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "packages/qq-agent-core/modules/headless/qqbot.js",
+      "sha256": "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e",
+      "matchesReview11": true,
+      "currentSha256": "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/connection.js",
+      "sha256": "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787",
+      "matchesReview11": true,
+      "currentSha256": "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/index.js",
+      "sha256": "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3",
+      "matchesReview11": true,
+      "currentSha256": "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/src/qq/qqbot.js",
+      "sha256": "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d",
+      "matchesReview11": true,
+      "currentSha256": "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/src/qq-service.js",
+      "sha256": "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91",
+      "matchesReview11": true,
+      "currentSha256": "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/src/routes/qq.js",
+      "sha256": "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d",
+      "matchesReview11": true,
+      "currentSha256": "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/src/agent-settings.js",
+      "sha256": "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f",
+      "matchesReview11": true,
+      "currentSha256": "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/src/agent-runtime.js",
+      "sha256": "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec",
+      "matchesReview11": true,
+      "currentSha256": "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/panel/components/qq-panel.js",
+      "sha256": "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81",
+      "matchesReview11": true,
+      "currentSha256": "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+      "sha256": "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb",
+      "matchesReview11": true,
+      "currentSha256": "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+      "sha256": "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b",
+      "matchesReview11": true,
+      "currentSha256": "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/test/qq-qqbot.test.mjs",
+      "sha256": "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6",
+      "matchesReview11": true,
+      "currentSha256": "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6",
+      "matchesBaseline": true
+    },
+    {
+      "path": "packages/cloud-manager/test/qqbot-settings.test.mjs",
+      "sha256": "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2",
+      "matchesReview11": true,
+      "currentSha256": "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2",
+      "matchesBaseline": true
+    }
+  ],
+  "changeComparison": "Product changes compared with review11 frozen code and reviewed agent diffs. The first review12 baseline capture overlapped the early desktop fix, so its client.js hash already includes that fix.",
+  "cleanup": {
+    "capturedAt": "2026-11-03T02:16:03.1188431Z",
+    "trackedRecordCount": 537,
+    "trackedUniquePidCount": 508,
+    "liveTracked": [],
+    "recordsWithoutExit": [
+      {
+        "pid": 102560,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.576Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 104048,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.665Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 104988,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.889Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 105112,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.918Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 10652,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.034Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 108640,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.070Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 110144,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.605Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 11016,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.006Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 113020,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.548Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 114728,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.102Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 12564,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.194Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 38976,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.719Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 49620,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.125Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 52060,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.746Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 52688,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.800Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 55776,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.972Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 56696,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.716Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 58512,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.833Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 60940,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.946Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 63416,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.859Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 68452,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.774Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 94160,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:15.632Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 95320,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.151Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      },
+      {
+        "pid": 95416,
+        "parentPid": 15932,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:12:56.568Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": null
+      },
+      {
+        "pid": 98996,
+        "parentPid": 56668,
+        "threadId": 0,
+        "startedAt": "2026-11-03T02:14:16.220Z",
+        "executable": "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe",
+        "entry": "E:\\bigPeach\\fish\\packages\\protocol-qq-llbot\\node_modules\\vitest\\dist\\workers\\forks.js"
+      }
+    ],
+    "allNode": [
+      {
+        "Id": 11660,
+        "StartTime": "/Date(1793671609648)/",
+        "Path": null
+      },
+      {
+        "Id": 18352,
+        "StartTime": "/Date(1793627278388)/",
+        "Path": null
+      },
+      {
+        "Id": 51708,
+        "StartTime": "/Date(1793671836629)/",
+        "Path": null
+      },
+      {
+        "Id": 55544,
+        "StartTime": "/Date(1793476666302)/",
+        "Path": null
+      },
+      {
+        "Id": 76972,
+        "StartTime": "/Date(1793573795002)/",
+        "Path": null
+      },
+      {
+        "Id": 87576,
+        "StartTime": "/Date(1793627274760)/",
+        "Path": null
+      },
+      {
+        "Id": 87620,
+        "StartTime": "/Date(1793671732284)/",
+        "Path": null
+      },
+      {
+        "Id": 88580,
+        "StartTime": "/Date(1793658618089)/",
+        "Path": null
+      },
+      {
+        "Id": 113652,
+        "StartTime": "/Date(1793671700606)/",
+        "Path": null
+      }
+    ],
+    "finalTenantDirectory": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\fish-cloud-test-o0sWuy",
+    "finalTenantDirectoryExists": false,
+    "legacyCleanup": {
+      "value": [
+        {
+          "path": "E:\\bigPeach\\fish\\var\\review9-bili-negative",
+          "files": 74,
+          "bytes": 674338,
+          "reparsePoints": 0,
+          "result": "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+        },
+        {
+          "path": "E:\\bigPeach\\fish\\var\\review10-processes",
+          "files": 454,
+          "bytes": 101712,
+          "reparsePoints": 0,
+          "result": "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+        },
+        {
+          "path": "E:\\bigPeach\\fish\\var\\review11-processes-bili",
+          "files": 4,
+          "bytes": 1028,
+          "reparsePoints": 0,
+          "result": "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+        },
+        {
+          "path": "E:\\bigPeach\\fish\\var\\review11-processes-desktop",
+          "files": 24,
+          "bytes": 6010,
+          "reparsePoints": 0,
+          "result": "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+        },
+        {
+          "path": "E:\\bigPeach\\fish\\var\\review11-processes-root",
+          "files": 374,
+          "bytes": 96826,
+          "reparsePoints": 0,
+          "result": "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+        },
+        {
+          "path": "E:\\bigPeach\\fish\\var\\review11-processes-security",
+          "files": 30,
+          "bytes": 6310,
+          "reparsePoints": 0,
+          "result": "Automatic approval rejected verified batch cleanup and literal review10-processes cleanup, blocked by policy. Paths retained."
+        }
+      ],
+      "Count": 6
+    },
+    "traceDirectories": [
+      "E:\\bigPeach\\fish\\var\\review12-processes-root",
+      "E:\\bigPeach\\fish\\var\\review12-processes-bili",
+      "E:\\bigPeach\\fish\\var\\review12-processes-core",
+      "E:\\bigPeach\\fish\\var\\review12-processes-desktop"
+    ],
+    "processOwnershipQuery": "CIM rejected: 拒绝访问 "
+  },
+  "port": {
+    "checkedAt": "2026-11-03T02:16:52.725Z",
+    "host": "127.0.0.1",
+    "port": 50603,
+    "closed": true,
+    "result": "ECONNREFUSED"
+  },
+  "remaining": [
+    "9 Node processes have unreadable paths and unverified ownership; CIM access denied",
+    "6 named review9/review10/review11 test directories remain after automatic approval rejected cleanup",
+    "Electron lock remains 33.4.11 and fails the repository release floor of 45",
+    "Native Windows encryption/sandbox/UI/install/signing acceptance remains pending",
+    "Historical ambiguous memory ownership and billing records need manual reconciliation"
+  ],
+  "staticChecks": {
+    "file": "review12-static-checks-2026-11-03.json",
+    "passed": true
+  },
+  "documents": [
+    {
+      "path": "docs/v1.0-acceptance.md",
+      "sha256": "e671256ae4a8802ed521e305eb8a22198ef648f4d12bd29cd5c075c1aea03d46"
+    },
+    {
+      "path": "docs/goal-progress.md",
+      "sha256": "7637eb9b8f100b03f48555bbf3fbb75c248f58642e1e19ed61b28ba36818b61b"
+    },
+    {
+      "path": "docs/desktop-protocol.md",
+      "sha256": "8d478950771d6e298316cb362a70b5908a60f57d5d5c755227493eb2b781b412"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "review12-baseline-2026-11-03.json",
+      "sha256": "bf97e1a6314206ccc607fb17f26900a043c02f59bbc1b4da10809c7fb1e0e856"
+    },
+    {
+      "path": "review12-bili-bridge-tests.log",
+      "sha256": "0a7556f0e59e6afcc0dcd8d837d6e4abae1e719b524720ef84decb9997a7f2a8"
+    },
+    {
+      "path": "review12-bili-integration.log",
+      "sha256": "84619bfcefdb023b14428a025ced77a38fd32f7856148f5b046396946f4c37ca"
+    },
+    {
+      "path": "review12-bili-panel-tests.log",
+      "sha256": "1b09d8c3c4bf5471d814ebd463d70bc95a3c9f005a73957464948aeb1ef915fe"
+    },
+    {
+      "path": "review12-check-2026-11-03.txt",
+      "sha256": "460a7ab3b3448153d71a8b353494978981467c9a026f2549deadfc325e3f65f4"
+    },
+    {
+      "path": "review12-cleanup-2026-11-03.json",
+      "sha256": "9bbdaf2e7c13b3b603405dfab3fe3cb336cf821d8f7718255c159df14937c605"
+    },
+    {
+      "path": "review12-cloud-regression-2026-11-03.txt",
+      "sha256": "9b8f99f401d18688567048f650e0d6311eb23d8a9e271731d6d6ad6bf23c8030"
+    },
+    {
+      "path": "review12-core-headless.log",
+      "sha256": "a92b9a0d5dda008ff4c7ba6275ef0f1ae0078379f34434c5387ea39416b12a6f"
+    },
+    {
+      "path": "review12-core-memory-after.log",
+      "sha256": "8d294e0be85839242fe8a8c9f808a2c2b9ce6712030c0f62f855568ceb27f8f0"
+    },
+    {
+      "path": "review12-core-memory-before.log",
+      "sha256": "a82558c92d75b44aac1236a55e7bec41d77e76b2ff67f19ce8f6baa7b1d79a23"
+    },
+    {
+      "path": "review12-core-multi-entry-after.log",
+      "sha256": "22b462596448ab0c11ff813cc7ea1fe9264ff84fdd403317f5e6c5cdf4dad905"
+    },
+    {
+      "path": "review12-core-multi-entry.log",
+      "sha256": "dd2f383f5752db1a0c8e8f64e40d98c628f0205f21caa4bc040c0b917ab2e51d"
+    },
+    {
+      "path": "review12-core-test.log",
+      "sha256": "16176839c5641500406bc5e458e34a049f1f5a9e4c73136f942b1b2a97795a22"
+    },
+    {
+      "path": "review12-desktop-recovery-final.log",
+      "sha256": "ffd5fa8288c96a4f75b821ae73593c55c42406c1e4ac88322f19a381fb6e2721"
+    },
+    {
+      "path": "review12-desktop-repro.log",
+      "sha256": "b0dcb295cd0a523419c9597750e72d94d75835c188fb5ba5f659d88b9f3feb1e"
+    },
+    {
+      "path": "review12-desktop-tests.log",
+      "sha256": "d6d9038ae9ae73240564a163632fdad708b79807a934b1aa448d3c56cb699695"
+    },
+    {
+      "path": "review12-frozen-code-2026-11-03.json",
+      "sha256": "ce0cd82cbe33c765a4834a604c99b3705b90eadcc2ddebfa47866ec4cbefbd93"
+    },
+    {
+      "path": "review12-legacy-cleanup-2026-11-03.json",
+      "sha256": "962eb336bb338e59122d2fffdf17a54720f6aca6869558be7506994aeb5142a0"
+    },
+    {
+      "path": "review12-port-check-2026-11-03.json",
+      "sha256": "607c611b014fa766da7b429a3e92c07a2ba50e314f9854631e08be8e2b1f86d6"
+    },
+    {
+      "path": "review12-processes-2026-11-03.json",
+      "sha256": "d570eaf0f4bd97ce6ebc90ad35e08248a77183f2752b33dabc8ead412e128538"
+    },
+    {
+      "path": "review12-root-directory-check-2026-11-03.json",
+      "sha256": "00772cb1ce26aa79c76681194a99090cbb6bc064ec60cfc63ae25236bf1d3573"
+    },
+    {
+      "path": "review12-runtime-gate-2026-11-03.txt",
+      "sha256": "8fa66bf384094e963411995c8154aa8d5f121702a4d71c567125110300715f15"
+    },
+    {
+      "path": "review12-simulated-chains-2026-11-03.txt",
+      "sha256": "efef441892706d7b84ccc1fb01d449b812622607937ac46f2ef1dabac01b0d54"
+    },
+    {
+      "path": "review12-static-checks-2026-11-03.json",
+      "sha256": "c325262568e6358e1f4c673e7cf60be900807ccd6f68dc7938b9535ca4567a42"
+    },
+    {
+      "path": "review12-test-all-2026-11-03.txt",
+      "sha256": "3a408f7dcc524787fc84093b097371229d0e793946e7f2df569d0e98208c8496"
+    }
+  ]
+}

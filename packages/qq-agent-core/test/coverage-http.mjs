@@ -232,6 +232,7 @@ c.section('4. Skill / 工具');
     // 开关联动与 settings 白名单需要真实加载的 Skill 才能测 —— 空目录时跳过
     // 而不是假失败（架构加载/校验链路由 skill-test 锁定）。
     const loadedSkills = (await hit('GET', '/api/skills')).data.skills.filter((s) => s.loaded);
+    if (!loadedSkills.length) return c.skip('POST /api/skills/:id：关闭再开启，状态可往返', '没有已加载的 Skill');
     if (loadedSkills.length > 0) {
       const target = loadedSkills[0];
       const off = await hit('POST', `/api/skills/${encodeURIComponent(target.id)}`, { body: { enabled: false } });
@@ -1101,10 +1102,11 @@ c.section('15. 接口覆盖率统计');
 
     const covered = [];
     const missing = [];
+    const skipped = [];
     for (const r of routes) {
       if (!r.isRegex) {
         const key = `${r.method} ${r.literal}`;
-        if (SKIP.has(key)) { covered.push(`${key}（跳过：会开窗/动用户进程）`); continue; }
+        if (SKIP.has(key)) { skipped.push(key); c.skip(key, '会开窗或影响用户进程'); continue; }
         // method:'*' 声明（同一路由处理 GET/POST 等多种方法）：任一方法打过即算覆盖
         const hitAny = r.method === '*'
           ? [...exercised].some((e) => e.endsWith(' ' + r.literal))
@@ -1122,13 +1124,15 @@ c.section('15. 接口覆盖率统计');
       (ok ? covered : missing).push(`${r.method} ${r.literal}`);
     }
 
-    const pct = Math.round((covered.length / routes.length) * 100);
-    console.log(`      路由总数 ${routes.length}，已覆盖 ${covered.length}（${pct}%），跳过 ${SKIP.size} 条`);
+    assert.equal(skipped.length, SKIP.size, '跳过列表必须对应已声明的路由');
+    const eligible = routes.length - skipped.length;
+    const pct = covered.length / eligible * 100;
+    console.log(`      路由总数 ${routes.length}，已覆盖 ${covered.length}，跳过 ${skipped.length}，可测 ${eligible}，可测覆盖率 ${pct.toFixed(2)}%，总覆盖率 ${(covered.length / routes.length * 100).toFixed(2)}%`);
     if (missing.length) {
       console.log('      未覆盖：');
       for (const x of missing) console.log(`        - ${x}`);
     }
-    assert.ok(pct >= 90, `接口覆盖率只有 ${pct}%（${covered.length}/${routes.length}），未覆盖：\n  ${missing.join('\n  ')}`);
+    assert.ok(pct >= 90, `接口覆盖率只有 ${pct.toFixed(2)}%（${covered.length}/${eligible}），未覆盖：\n  ${missing.join('\n  ')}`);
   });
 }
 

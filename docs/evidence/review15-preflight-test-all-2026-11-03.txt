@@ -1,0 +1,157 @@
+Independent review review15-preflight; local fixtures only. UTC timestamps. Node v24.22.1
+Only the temporary desktop password line is redacted; test output and failures are retained.
+
+Started: 2026-11-03T03:35:27.665Z
+Check: npm run test:all
+Command: E:\harness\cursor\resources\app\resources\helpers\node.exe D:\tool\node\node_modules\npm\bin\npm-cli.js run test:all
+Child PID: 96000
+
+> fish-bot@0.1.0 test:all
+> node scripts/run-tests.mjs --all
+
+
+==> Bilibili bridge: npm run test
+
+> @fish/protocol-bili-bridge@0.1.0 test
+> node --test "test/*.test.mjs"
+
+✔ logout revokes in-flight ordinary, QR and refresh responses without preventing a new login (354.6619ms)
+✔ replacing a QR invalidates cookies from its old in-flight poll (52.3951ms)
+✔ a late QR generation cannot replace a newer request or its persisted state (0.7203ms)
+✔ logout while initializing buvid cannot start a late QR or restore device cookies (0.4101ms)
+✔ CookieJar 域名/路径/Secure/过期与登录跳转 query (1.8747ms)
+✔ SecretStore AES-GCM 加密、篡改检测与错误密钥 (23.3829ms)
+✔ FileLock 跨实例互斥、超时与过期锁抢占 (165.7547ms)
+✔ refresh_csrf 解析兼容官方 div 与旧赋值形态 (0.6142ms)
+✔ cookie 保活公钥与官方 JWK 黄金值一致 (0.7804ms)
+✔ correspondPath 使用固定 RSA 公钥生成可解密 token (56.9242ms)
+✔ 扫码四状态、持久化与凭据不外泄 (109.8396ms)
+✔ 二维码过期不产生登录态 (61.6913ms)
+✔ 四步 cookie 保活：顺序、轮换、持久化与 not_needed (88.4017ms)
+✔ 并发保活被 Mutex/FileLock 串行化 (70.4655ms)
+✔ 保活失败时给出明确错误且不破坏旧凭据 (50.6861ms)
+✔ buvid 接口失败时本地回退，成功后复用 cookie (25.3934ms)
+✔ 二维码在本地 TTL 到期时不再请求轮询接口 (38.3912ms)
+✔ 默认配置只绑定回环，端口/端点可覆盖 (3.8511ms)
+✔ 非回环绑定必须配置 OneBot/管理令牌，且令牌不能相同 (1.1939ms)
+✔ dynamic type 17 uses returned comment OID and reply threading (1.1378ms)
+✔ dynamic type 11 uses returned comment OID and reply threading (0.1233ms)
+✔ DM uploads validated image then sends type 2 with Bili URL (12.7211ms)
+✔ recent dynamics distinguish empty, restricted and failure (1.027ms)
+✔ real BiliApi emits multipart upload and form encoded type 2 send (3.8063ms)
+✔ 端到端：扫码→订阅→评论/私信/UP/直播事件→OneBot WS→HTTP action 回复→fake B 站 (400.2836ms)
+✔ explore transport rejects redirects and incomplete ACKs without reflecting secrets (84.9232ms)
+✔ explore response budget accepts the boundary and cancels oversized streams (3.2196ms)
+✔ completed video reads survive player failure and cancellation without duplicate billing or exceeding the browse limit (73.9393ms)
+✔ a watcher disabled and re-enabled between requests revokes the old round (42.5401ms)
+✔ logout or disabling watchers cancels an exploration already in progress (155.4995ms)
+✔ removing a watched UP or stopping the bridge revokes in-flight exploration (166.9824ms)
+✔ cancellation while flushing historical meters cannot revive an old exploration round (66.3038ms)
+✔ invalidating conditions between real video context stages stop later reads (50.0586ms)
+✔ cancelled exploration does not retry a read or send a signed request after WBI preparation (959.3197ms)
+✔ pause and resume invalidates an in-flight generation (34.152ms)
+✔ candidate discovery stops after an in-flight pause, risk, or window change (32.2427ms)
+✔ removing a keyword revokes candidates and generated results already in flight (33.4291ms)
+✔ a visit at the browse limit can generate, including when the limit is lowered in flight (38.6083ms)
+✔ browse limit uses a rolling 24-hour window for later candidates (12.1312ms)
+✔ lowering the browse limit during a visit stops later generation while accounting for the read (30.5694ms)
+✔ summary in flight does not trigger another model call after pause or outside the active window (25.3989ms)
+✔ in-flight drafts respect a lowered limit or newly cleared risk cooldown (21.4878ms)
+✔ L1 drafts require acknowledgement, evidence, review and never publish (23.4368ms)
+✔ three consecutive rejections follow review order and survive restart (27.5459ms)
+✔ browse retry keeps its identity while a later revisit is metered separately (15.3026ms)
+✔ pending meters retry while exploration is disabled and concurrent flushes share one delivery (6.8542ms)
+✔ meter scheduler retries without a logged-in account or active watcher (15.9669ms)
+✔ missing subtitles only records a diary and survives restart (6.1068ms)
+✖ late risk response from a disabled exploration cannot block the next run (12.9042ms)
+✔ live server list received over HTTP cannot direct production connections to arbitrary hosts (88.5758ms)
+✔ 直播包解析：明文、人气值、zlib/brotli 多子包与损坏包 (4.8246ms)
+✔ 直播 WS：认证、心跳、brotli 多事件、@ 过滤与礼物/SC/上舰 (1163.4292ms)
+✔ 直播断线重连后继续收事件与心跳 (2368.8516ms)
+✔ 所有虚拟号段位于 ChannelRouter 的 [2^52, 2^53-1] (0.773ms)
+✔ 虚拟视频/动态/直播群与用户 ID 可逆且全部为安全整数 (391.7699ms)
+✔ 虚拟 ID 映射重启可恢复，并拒绝跨租户读取 (7.8245ms)
+✔ MessageRing 使用安全整数、环形淘汰并跨重启恢复 (32.6405ms)
+✔ PollState 游标与去重跨重启保持，claimMany 只返回新 key (12.9549ms)
+✔ JsonStore 原子更新串行且损坏文件拒绝覆盖 (51.0408ms)
+✔ 低频队列串行且强制最小间隔，失败不阻断后续 (162.8538ms)
+✔ PollScheduler 周期执行、失败退避与 stop (111.4961ms)
+✔ CQ 转义、解析与数组消息规范化 (1.7349ms)
+✔ 出站消息段：CQ 还原、@ 反验、引用与不支持段 (0.7546ms)
+✔ OneBot 事件构造只接受安全整数 ID，并生成 CQ raw_message (0.3206ms)
+✔ custom action 名称覆盖 bili-agent-pack 契约 (0.879ms)
+✔ HTTP action 根路径/路径式、令牌与未知 action (126.0315ms)
+✔ WS 鉴权、生命周期与 OneBot 群/私聊事件投递 (118.0432ms)
+✔ 私信发送、2000 字节校验、入站私信与 message_id 安全 (52.7665ms)
+✔ 管理 API：健康检查、状态、订阅、映射、消息、登出与秘密不泄露 (118.4696ms)
+✔ 管理 API 未配置 admin token 时返回 503 (26.6544ms)
+✔ 视频上下文、UP 查询、点赞与自定义评论 action (85.4174ms)
+✔ 风控清除后写入仍被拒绝 (45.3336ms)
+✔ 同一桥接实例 stop 后可再次 start 并恢复 OneBot 服务 (36.5743ms)
+✔ dynamic group replies cannot publish (34.3099ms)
+✔ dispatcher rejection reaches polling caller (34.2458ms)
+[bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+[bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+[bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ cloud watcher lifecycle gates configured subscriptions and polling (79.0812ms)
+✔ cloud bridge restart loads current persisted tenant subscriptions (32.8808ms)
+✔ 评论 root/parent 计算与 msgfeed 归一化 (2.6609ms)
+✔ ReplyWatcher：首次基线不回补、投递回复/@、去重与订阅开关 (199.3541ms)
+✔ CommentWatcher：首次基线、增量投递、自评过滤与去重 (78.0413ms)
+✔ CommentWatcher 展开楼中楼预览并保留真实 root/parent (65.1726ms)
+✔ UpWatcher：首次基线、新视频映射群、去重 (46.3217ms)
+✔ DmWatcher：基线、增量、safe message_id、ack 与重启不重复 (59.5803ms)
+✔ 评论与 msgfeed 共用 rpid 去重，避免同一条 @ 回复投递两次 (59.0933ms)
+✔ 动态通知映射到动态群并保留图文评论主体 (37.1446ms)
+✔ cloud read-only policy cannot be overridden and standalone defaults are read-only (1.6906ms)
+✔ transport defaults to read-only and explicit test writes cannot reach remote targets or follow redirects (4.3893ms)
+✔ transport cancels response streams immediately after the byte limit (1.1896ms)
+✔ a revoked exploration response cannot restore cookies after logout (2.1534ms)
+✔ default bridge denies every publish action before contacting Bili; approving drafts only updates local state (164.8534ms)
+✔ failed msgfeed delivery retries even after unread count clears (33.6806ms)
+✔ failed video, UP and DM deliveries are retried (38.8994ms)
+✔ query 编码遵循 RFC3986 并排序 (0.7579ms)
+✔ 安全整数/大整数转换 (0.2386ms)
+✔ 日志脱敏覆盖 Cookie/令牌/二维码 key (0.6312ms)
+✔ 字符/字节截断不会切坏 UTF-8 (0.192ms)
+✔ 视频上下文：详情、分 P、AI 字幕下载与封面 (91.424ms)
+✔ untrusted subtitles and short-link redirects cannot reach internal services (1.5435ms)
+✔ 字幕缺失、地址过期、需要登录都明确返回原因 (31.6681ms)
+✔ b23 短链解析为 BV 号并拒绝外部域名 (0.83ms)
+✔ 字幕格式化、URL 规范与错误输入 (21.009ms)
+✔ WBI mixin key 与官方黄金向量一致 (1.1303ms)
+✔ WBI 过滤禁用字符并跳过空值 (0.1795ms)
+✔ extractWbiKeys 解析 nav 图片 URL (0.4884ms)
+✔ WbiSigner 缓存、失效与重新拉取 (0.4312ms)
+✔ RiskGuard 捕获 v_voucher 并明确标记需要人机验证 (0.7388ms)
+✔ RiskGuard 在 -101 等非风控错误上不误触发 (0.1227ms)
+✔ WBI 签名 -403 时刷新密钥并安全重放一次 (21.0262ms)
+ℹ tests 108
+ℹ suites 0
+ℹ pass 107
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4013.4312
+
+✖ failing tests:
+
+test at test\explore.test.mjs:569:1
+✖ late risk response from a disabled exploration cannot block the next run (12.9042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/test/explore.test.mjs:587:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+Completed: 2026-11-03T03:35:32.843Z
+Exit: 1; signal: none

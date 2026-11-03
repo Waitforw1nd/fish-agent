@@ -1,0 +1,6 @@
+﻿{
+    "command":  "node packages/desktop-pet/scripts/check-runtime.mjs",
+    "lockedVersion":  "33.4.11",
+    "actualExit":  1,
+    "repositoryMinimumMajor":  45
+}

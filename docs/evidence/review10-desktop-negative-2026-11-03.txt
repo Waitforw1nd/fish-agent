@@ -1,0 +1,36 @@
+Command: node docs/evidence/review10-desktop-negative.cjs (child: node --test-name-pattern="streamed replay failure never reports connected" --input-type=module < in-memory test)
+Old client status logic reconstructed in memory; product source unchanged.
+Exit: 1
+
+✖ streamed replay failure never reports connected (2.5778ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6.5473
+
+✖ failing tests:
+
+test at <in-memory-module>
+✖ streamed replay failure never reports connected (2.5778ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (<in-memory-module>)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.start (node:internal/test_runner/test:1262:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+

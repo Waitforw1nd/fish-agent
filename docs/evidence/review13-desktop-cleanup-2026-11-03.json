@@ -1,0 +1,9 @@
+﻿{
+    "trackedRecords":  74,
+    "missingExitRecords":  0,
+    "unfinished":  [
+
+                   ],
+    "temporaryNegativeCopyRetained":  true,
+    "note":  "No processes terminated; isolated negative copy cleanup was rejected by execution policy."
+}

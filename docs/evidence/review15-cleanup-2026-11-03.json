@@ -1,0 +1,73 @@
+﻿{
+    "review":  "review15",
+    "at":  "2026-11-03T03:54:48.3934723Z",
+    "traceRecordCount":  1016,
+    "uniquePidCount":  927,
+    "absent":  927,
+    "reused":  [
+
+               ],
+    "unresolved":  [
+
+                   ],
+    "recordsMissingExitCallback":  49,
+    "otherNodeProcesses":  [
+                               {
+                                   "Id":  18352,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-02T13:47:58.3885575Z"
+                               },
+                               {
+                                   "Id":  52016,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-03T03:35:58.7945613Z"
+                               },
+                               {
+                                   "Id":  55544,
+                                   "Path":  null,
+                                   "startedAt":  "2026-10-31T19:57:46.3024494Z"
+                               },
+                               {
+                                   "Id":  73888,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-03T03:36:40.0062471Z"
+                               },
+                               {
+                                   "Id":  76972,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-01T22:56:35.0027127Z"
+                               },
+                               {
+                                   "Id":  87576,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-02T13:47:54.7601702Z"
+                               },
+                               {
+                                   "Id":  90560,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-03T03:33:29.0422347Z"
+                               },
+                               {
+                                   "Id":  99944,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-03T03:37:55.6741813Z"
+                               },
+                               {
+                                   "Id":  107504,
+                                   "Path":  null,
+                                   "startedAt":  "2026-11-03T03:30:42.3496524Z"
+                               }
+                           ],
+    "newUnattributedNodeIds":  [
+                                   52016,
+                                   73888,
+                                   99944
+                               ],
+    "processMetadataQuery":  "Get-CimInstance Win32_Process denied with HRESULT 0x80041003",
+    "temporaryDataRemoved":  true,
+    "temporaryPortClosed":  true,
+    "legacyDirectoryDeletion":  "automatic approval rejected, 27 directories remain",
+    "traceDirectory":  "var/review15-processes-root",
+    "traceDirectoryDeletion":  "automatic approval rejected before execution: blocked by policy",
+    "note":  "No process was killed. Process IDs and observed start times were checked. Unknown Node processes retained."
+}

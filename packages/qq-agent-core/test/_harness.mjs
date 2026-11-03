@@ -5,10 +5,11 @@
 //   - mock OpenAI 兼容 API：脚本化响应 + 全量请求记录
 //   - 数据目录一律隔离到临时目录（QQ_AGENT_DATA_DIR），绝不碰真实 data/
 //
-// 断言收集器支持三种结果：
+// 断言收集器支持四种结果：
 //   pass  通过
 //   fail  失败（会让进程以非 0 退出）
-//   known 已知缺陷（不计入失败，但会明确列出；修好后会自动变成 pass）
+//   known 已知缺陷（明确列出并使进程失败；修好后会自动变成 pass）
+//   skip  未执行（明确列出原因）
 import http from 'node:http';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -71,7 +72,8 @@ export function writeConfig(dataDir, cfg) {
 
 // ── 断言收集器 ───────────────────────────────────────────────────────────
 export function createChecker(title) {
-  const results = { pass: [], fail: [], known: [] };
+  const results = { pass: [], fail: [], known: [], skip: [] };
+  const skipped = Symbol('skipped');
 
   const api = {
     results,
@@ -86,17 +88,23 @@ export function createChecker(title) {
       results.fail.push({ name, error: String(error?.message ?? error) });
       console.log(`  FAIL  ${name}\n        -> ${String(error?.message ?? error)}`);
     },
+    skip(name, reason) {
+      results.skip.push({ name, reason });
+      console.log(`  SKIP  ${name} —— ${reason}`);
+      return skipped;
+    },
     /** 期望通过；抛错即失败 */
     async check(name, fn) {
       try {
         const extra = await fn();
+        if (extra === skipped) return;
         api.ok(name, typeof extra === 'string' ? extra : '');
       } catch (error) {
         api.bad(name, error);
       }
     },
     /**
-     * 已知缺陷：断言"正确行为"，若确实不满足则记为 known（不算失败）。
+     * 已知缺陷：断言"正确行为"，若确实不满足则记为 known，并使进程失败。
      * 修好之后同一条会自动变成 OK。
      */
     async known(name, fn, note = '') {
@@ -121,21 +129,25 @@ export function createChecker(title) {
       }
     },
     finish() {
-      const { pass, fail, known } = results;
+      const { pass, fail, known, skip } = results;
       console.log(`\n${'='.repeat(64)}`);
-      console.log(`${title}：通过 ${pass.length}，失败 ${fail.length}，已知缺陷 ${known.length}`);
+      console.log(`${title}：通过 ${pass.length}，失败 ${fail.length}，已知缺陷 ${known.length}，跳过 ${skip.length}`);
       if (known.length) {
-        console.log('\n已知缺陷（不计入失败，修好后会自动转 OK）：');
+        console.log('\n已知缺陷（修好后会自动转 OK）：');
         for (const k of known) console.log(`  · ${k.name} —— ${k.note}`);
       }
       if (fail.length) {
         console.log('\n失败明细：');
         for (const f of fail) console.log(`  ✗ ${f.name}\n      ${f.error}`);
+      }
+      if (fail.length || known.length) {
         process.exitCode = 1;
+      } else if (skip.length) {
+        console.log('\n已执行的检查全部通过，存在跳过。');
       } else {
         console.log('\n全部通过 ✅');
       }
-      return fail.length === 0;
+      return fail.length === 0 && known.length === 0;
     }
   };
   return api;

@@ -1,0 +1,397 @@
+﻿{
+    "at":  "2026-11-03T04:40:01.9466828Z",
+    "directories":  [
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review10-processes",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  454,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review10-processes\\child-100224-100520.json",
+                                           "E:\\bigPeach\\fish\\var\\review10-processes\\child-100224-110160.json",
+                                           "E:\\bigPeach\\fish\\var\\review10-processes\\child-100224-111200.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-bili",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  4,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-bili\\process-103724-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-bili\\process-116088-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-bili\\process-34484-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-desktop",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  24,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-desktop\\child-113968-101808.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-desktop\\child-113968-116688.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-desktop\\child-113968-5576.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-root",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  374,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-root\\child-100820-107136.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-root\\child-100820-99432.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-root\\child-101632-106724.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review11-processes-security",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  30,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-security\\child-101500-103152.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-security\\child-101500-104084.json",
+                                           "E:\\bigPeach\\fish\\var\\review11-processes-security\\child-101500-108640.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-bili",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  42,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-bili\\child-107816-101500.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-bili\\child-107816-114768.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-bili\\process-100736-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-core",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  61,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-core\\child-112328-12952.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-core\\child-65860-90240.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-core\\child-81360-116652.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-desktop",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  26,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-desktop\\child-105840-114088.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-desktop\\child-105840-65044.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-desktop\\child-105840-65764.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review12-processes-root",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  408,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-root\\child-100108-100152.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-root\\child-100108-100736.json",
+                                           "E:\\bigPeach\\fish\\var\\review12-processes-root\\child-100108-101656.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-desktop-negative",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  13,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review13-desktop-negative\\package.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-desktop-negative\\src\\client.js",
+                                           "E:\\bigPeach\\fish\\var\\review13-desktop-negative\\src\\image.js"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-bili",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  97,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-bili\\process-100368-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-bili\\process-100556-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-bili\\process-100584-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-core",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  44,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-core\\child-111812-113972.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-core\\child-98328-115260.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-core\\process-100232-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-desktop",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  74,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-desktop\\child-101336-101904.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-desktop\\child-101904-55884.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-desktop\\child-104144-109628.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review13-processes-root",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  1002,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-root\\child-100636-34860.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-root\\child-100900-102540.json",
+                                           "E:\\bigPeach\\fish\\var\\review13-processes-root\\child-100900-104500.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-bili",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  44,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-bili\\process-100556-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-bili\\process-102916-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-bili\\process-103464-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-cloud",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  77,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-cloud\\child-103272-103072.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-cloud\\child-103272-109924.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-cloud\\child-103272-48304.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-desktop",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  37,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-desktop\\child-116368-52896.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-desktop\\child-50160-104300.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-desktop\\child-50160-109124.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review14-processes-root",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  766,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-root\\child-100272-99040.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-root\\child-101224-89132.json",
+                                           "E:\\bigPeach\\fish\\var\\review14-processes-root\\child-101248-113444.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review15-processes-root",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  848,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review15-processes-root\\child-100008-107228.json",
+                                           "E:\\bigPeach\\fish\\var\\review15-processes-root\\child-100008-109952.json",
+                                           "E:\\bigPeach\\fish\\var\\review15-processes-root\\child-100008-113400.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review6-processes",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  390,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review6-processes\\child-100140-115720.json",
+                                           "E:\\bigPeach\\fish\\var\\review6-processes\\child-101392-113348.json",
+                                           "E:\\bigPeach\\fish\\var\\review6-processes\\child-101392-47140.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review7-processes",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  242,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review7-processes\\100088.jsonl",
+                                           "E:\\bigPeach\\fish\\var\\review7-processes\\100184.jsonl",
+                                           "E:\\bigPeach\\fish\\var\\review7-processes\\100216.jsonl"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  76,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy\\.gitignore",
+                                           "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy\\package-lock.json",
+                                           "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy\\package.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review8-processes",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  863,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review8-processes\\child-100236-109600.json",
+                                           "E:\\bigPeach\\fish\\var\\review8-processes\\child-100324-106752.json",
+                                           "E:\\bigPeach\\fish\\var\\review8-processes\\child-100324-64908.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-bili-negative",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  74,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review9-bili-negative\\package.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-bili-negative\\node_modules\\.package-lock.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-bili-negative\\node_modules\\ws\\browser.js"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-bili",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  44,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-bili\\process-100316-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-bili\\process-100568-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-bili\\process-101076-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-core",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  42,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-core\\process-100256-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-core\\process-100356-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-core\\process-101144-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-desktop",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  3,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-desktop\\process-35396-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-desktop\\process-71732-0.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-desktop\\process-99028-0.json"
+                                       ]
+                        },
+                        {
+                            "path":  "E:\\bigPeach\\fish\\var\\review9-processes-root",
+                            "inWorkspace":  true,
+                            "reparsePoints":  [
+
+                                              ],
+                            "rootReparse":  false,
+                            "files":  754,
+                            "sample":  [
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-root\\child-100176-116144.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-root\\child-100176-51688.json",
+                                           "E:\\bigPeach\\fish\\var\\review9-processes-root\\child-100204-109724.json"
+                                       ]
+                        }
+                    ]
+}

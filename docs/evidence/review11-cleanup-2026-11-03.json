@@ -1,0 +1,80 @@
+{
+  "capturedAt": "2026-11-03T01:51:05.6261836Z",
+  "trackedUniquePidCount": 406,
+  "liveTracked": [],
+  "allNode": [
+    {
+      "Id": 18352,
+      "StartTime": "/Date(1793627278388)/",
+      "Path": null
+    },
+    {
+      "Id": 41464,
+      "StartTime": "/Date(1793670101394)/",
+      "Path": null
+    },
+    {
+      "Id": 55544,
+      "StartTime": "/Date(1793476666302)/",
+      "Path": null
+    },
+    {
+      "Id": 76972,
+      "StartTime": "/Date(1793573795002)/",
+      "Path": null
+    },
+    {
+      "Id": 82784,
+      "StartTime": "/Date(1793670106652)/",
+      "Path": null
+    },
+    {
+      "Id": 87576,
+      "StartTime": "/Date(1793627274760)/",
+      "Path": null
+    },
+    {
+      "Id": 88580,
+      "StartTime": "/Date(1793658618089)/",
+      "Path": null
+    },
+    {
+      "Id": 109544,
+      "StartTime": "/Date(1793669979466)/",
+      "Path": null
+    },
+    {
+      "Id": 115212,
+      "StartTime": "/Date(1793670067998)/",
+      "Path": null
+    }
+  ],
+  "temporaryTenant": {
+    "exists": false,
+    "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\fish-cloud-test-YtBGFn"
+  },
+  "residuals": [
+    {
+      "path": "var/review9-bili-negative",
+      "exists": true,
+      "files": 74,
+      "bytes": 674338,
+      "deletion": "Automatic approval rejected validated Remove-Item: blocked by policy"
+    },
+    {
+      "path": "var/review10-processes",
+      "exists": true,
+      "files": 454,
+      "bytes": 101712,
+      "deletion": "Automatic approval rejected validated Remove-Item: blocked by policy"
+    }
+  ],
+  "untrackedEarlyRuns": "Early agent target tests completed and used fixture teardown, individual child PID history unavailable",
+  "unknownProcesses": "CIM command-line access denied; no unowned processes terminated",
+  "loopbackPort": {
+    "port": 65092,
+    "state": "closed",
+    "error": "ECONNREFUSED"
+  },
+  "portCheckedAt": "2026-11-03T01:55:08.325Z"
+}

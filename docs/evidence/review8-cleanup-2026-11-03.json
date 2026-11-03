@@ -1,0 +1,101 @@
+{
+  "review": "review8",
+  "capturedAt": "2026-11-03T00:15:35.7400557Z",
+  "checkedPidCount": 810,
+  "remainingTracked": [],
+  "remainingNode": [
+    {
+      "Id": 18352,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793627278388)/"
+    },
+    {
+      "Id": 55544,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793476666302)/"
+    },
+    {
+      "Id": 76972,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793573795002)/"
+    },
+    {
+      "Id": 80992,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793664460566)/"
+    },
+    {
+      "Id": 87576,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793627274760)/"
+    },
+    {
+      "Id": 88580,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793658618089)/"
+    },
+    {
+      "Id": 97752,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793664219928)/"
+    },
+    {
+      "Id": 105064,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793664337261)/"
+    },
+    {
+      "Id": 110544,
+      "ProcessName": "node",
+      "Path": null,
+      "StartTime": "/Date(1793664381392)/"
+    }
+  ],
+  "nodeProcessesKilledByName": false,
+  "desktopTemporaryDirectory": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\fish-cloud-test-781H2j",
+  "desktopTemporaryDirectoryExists": false,
+  "desktopPort": 63382,
+  "desktopPortCheck": "connection refused",
+  "retainedNegativeControlCopy": {
+    "path": "E:\\bigPeach\\fish\\var\\review8-bili-negative-copy",
+    "reason": "Recursive and individually validated PowerShell deletion were rejected: blocked by policy. No more deletion attempts.",
+    "files": 76,
+    "bytes": 669291,
+    "containsRuntimeCredentials": false
+  },
+  "priorTransientPid": {
+    "subsequentGetProcessFound": false,
+    "recordedExit": "2026-11-03T00:05:33.261Z",
+    "pid": 83068,
+    "interpretation": "PID briefly existed during the first audit after the recorded child exit; not killed.",
+    "signal": "SIGTERM"
+  },
+  "processTracking": "Preload records spawned children and Node entrypoints. Completed shell/exec sessions and successful test teardown additionally prove completion. Unknown inaccessible Node processes are untouched.",
+  "trackedNodeProcessesStillRunning": [],
+  "finalNativeCheckAt": "2026-11-03T00:16:10.7372790Z",
+  "transientPidChecks": [
+    {
+      "pid": 83068,
+      "subsequentNativeCheck": "not present",
+      "action": "none"
+    },
+    {
+      "pid": 69568,
+      "subsequentNativeCheck": "not present",
+      "action": "none"
+    }
+  ],
+  "artifactWriter": {
+    "initialPowershellSession": 29634,
+    "stoppedViaOwnSessionInterrupt": true,
+    "reason": "PowerShell extended-string JSON serialization was slow. Final artifacts were written as plain JSON with Node."
+  }
+}

@@ -1,0 +1,354 @@
+{
+  "review": "review15",
+  "at": "2026-11-03T03:56:34.645Z",
+  "conclusion": "???",
+  "changedCodeAndTestFiles": [
+    "packages/cloud-manager/src/desktop/gateway.js",
+    "packages/cloud-manager/test/desktop-gateway.test.mjs",
+    "packages/protocol-bili-bridge/src/bili/api.js",
+    "packages/protocol-bili-bridge/src/bili/wbi.js",
+    "packages/protocol-bili-bridge/test/explore.test.mjs",
+    "packages/qq-agent-core/scripts/lib/download.mjs",
+    "packages/qq-agent-core/src/app.js",
+    "packages/qq-agent-core/src/instance-lock.js",
+    "packages/qq-agent-core/test/headless-runtime.test.mjs",
+    "packages/qq-agent-core/test/setup-download.mjs"
+  ],
+  "codeFrozenCount": 215,
+  "codeMismatches": [],
+  "protectedFileCount": 13,
+  "protectedFilesUnchanged": true,
+  "findings": [
+    {
+      "severity": "P1",
+      "issue": "Startup endpoint URLs disclosed embedded credentials",
+      "fix": "Log configuration presence only"
+    },
+    {
+      "severity": "P2",
+      "issue": "Revoked Bili exploration responses mutated RiskGuard and WBI state",
+      "fix": "Recheck cancellation before shared-state changes"
+    },
+    {
+      "severity": "P2",
+      "issue": "Desktop online intervals changed retry keys after an ambiguous committed write",
+      "fix": "Preserve pending endpoint and idempotency key until acknowledged"
+    },
+    {
+      "severity": "P2",
+      "issue": "Stopped Agent instances retained process signal listeners and exit timers",
+      "fix": "Unregister instance cleanup handlers and timers on stop"
+    },
+    {
+      "severity": "P2",
+      "issue": "Download backpressure accumulated error listeners",
+      "fix": "Use stream pipeline for bounded backpressure and complete error handling"
+    },
+    {
+      "severity": "P3",
+      "issue": "Reassigned log closure swallowed caller logging",
+      "fix": "Capture the original callback"
+    }
+  ],
+  "validation": {
+    "node": "v24.22.1",
+    "testAll": {
+      "command": "npm run test:all",
+      "startedAt": "2026-11-03T03:50:27.243Z",
+      "completedAt": "2026-11-03T03:53:30.900Z",
+      "exit": 0,
+      "failures": 0,
+      "cancelled": 0,
+      "platformSkips": 4,
+      "environmentOrRealSystemSkips": 5,
+      "excludedDangerousRoutes": 4,
+      "maxListenersWarnings": 0
+    },
+    "chains": {
+      "command": "node scripts/review-validation.mjs --chains",
+      "startedAt": "2026-11-03T03:53:30.993Z",
+      "completedAt": "2026-11-03T03:54:05.023Z",
+      "exit": 0,
+      "results": {
+        "qqOneBot": "pass",
+        "qqOfficialGatewayOpenID": "pass",
+        "desktopPairChatReplayRevoke": "pass",
+        "biliReadOnlyDrafts": "pass",
+        "fourEntryMetering": "pass"
+      },
+      "officialWebhook": "not implemented, not required by current Gateway simulation acceptance",
+      "bili": {
+        "browsed": 2,
+        "drafted": 1,
+        "published": 0
+      },
+      "desktop": {
+        "in": 7,
+        "out": 7,
+        "ledger": 14,
+        "tokens": 350
+      }
+    },
+    "checkExit": 0,
+    "diffCheckExit": 0
+  },
+  "cleanup": {
+    "traceRecords": 1016,
+    "trackedPids": 927,
+    "absent": 927,
+    "unresolved": [],
+    "unknownNodes": [
+      {
+        "Id": 18352,
+        "Path": null,
+        "startedAt": "2026-11-02T13:47:58.3885575Z"
+      },
+      {
+        "Id": 52016,
+        "Path": null,
+        "startedAt": "2026-11-03T03:35:58.7945613Z"
+      },
+      {
+        "Id": 55544,
+        "Path": null,
+        "startedAt": "2026-10-31T19:57:46.3024494Z"
+      },
+      {
+        "Id": 73888,
+        "Path": null,
+        "startedAt": "2026-11-03T03:36:40.0062471Z"
+      },
+      {
+        "Id": 76972,
+        "Path": null,
+        "startedAt": "2026-11-01T22:56:35.0027127Z"
+      },
+      {
+        "Id": 87576,
+        "Path": null,
+        "startedAt": "2026-11-02T13:47:54.7601702Z"
+      },
+      {
+        "Id": 90560,
+        "Path": null,
+        "startedAt": "2026-11-03T03:33:29.0422347Z"
+      },
+      {
+        "Id": 99944,
+        "Path": null,
+        "startedAt": "2026-11-03T03:37:55.6741813Z"
+      },
+      {
+        "Id": 107504,
+        "Path": null,
+        "startedAt": "2026-11-03T03:30:42.3496524Z"
+      }
+    ],
+    "legacyDirectories": 27,
+    "legacyDeletion": "automatic approval rejected: blocked by policy",
+    "newRootTraceDeletion": "automatic approval rejected: blocked by policy",
+    "temporaryDataRemoved": true,
+    "temporaryPortClosed": true
+  },
+  "remaining": [
+    "Electron lock 33.4.11 rejected by repository packaging gate >=45",
+    "Native Windows encryption, sandbox, UI and installer/signing acceptance pending",
+    "Historical ambiguous data and accounts require reconciliation",
+    "Pending desktop duration intervals remain in memory across persistent ledger failure",
+    "Unknown Node ownership and blocked directory cleanup need a permitted operator"
+  ],
+  "evidence": [
+    {
+      "path": "docs/evidence/review15-baseline-2026-11-03.json",
+      "sha256": "4fdc767839cc980d6cbbd7744b7b2b84d0cb08170fd0d24d5d942af76d35ace8"
+    },
+    {
+      "path": "docs/evidence/review15-bili-risk-negative.txt",
+      "sha256": "6bcb9ef8c3ee2ff52a2428fea4a7d07d71927cf0af1d10a7590727a331d045ce"
+    },
+    {
+      "path": "docs/evidence/review15-bili-tests.txt",
+      "sha256": "f6aea1f5ceb551d9f8739dfe4642686540841691169ea199fa8a911fa7679cb4"
+    },
+    {
+      "path": "docs/evidence/review15-bili-wbi-negative.txt",
+      "sha256": "bda86605ae327a4d83bafe749b69fc275df1c967b2d15731c63e15ff99405857"
+    },
+    {
+      "path": "docs/evidence/review15-chains-console-2026-11-03.txt",
+      "sha256": "b38491495c4fd18916c02f7c6d7a2f42c8312037dc1e632efc57c9296bd8267e"
+    },
+    {
+      "path": "docs/evidence/review15-check-2026-11-03.txt",
+      "sha256": "460a7ab3b3448153d71a8b353494978981467c9a026f2549deadfc325e3f65f4"
+    },
+    {
+      "path": "docs/evidence/review15-cleanup-2026-11-03.json",
+      "sha256": "8fe780f63bb01dfd7af338c076c6a55da231ffe95a437e11b0ce1f2178df018d"
+    },
+    {
+      "path": "docs/evidence/review15-cloud-regression-2026-11-03.txt",
+      "sha256": "d8c29aa7eaa1b13da3259d7fa464506c1009bf3504a64856612324245aaef6d1"
+    },
+    {
+      "path": "docs/evidence/review15-code-verification-2026-11-03.json",
+      "sha256": "a1ba34e60c0d76a87ec691dd1e828ef75b182d65a188db6a6b2c65b2b4b73028"
+    },
+    {
+      "path": "docs/evidence/review15-core-diagnostic.log",
+      "sha256": "213933c58df633ec6e563e5c54273cb68b90045442983590dbae279a5d4055db"
+    },
+    {
+      "path": "docs/evidence/review15-core-final.log",
+      "sha256": "913849cc5e0eac517005abc01e8f020b7fa986d6ed95c865239c628d92a4fd65"
+    },
+    {
+      "path": "docs/evidence/review15-core-freeze.log",
+      "sha256": "102a86e219a992adbd08f3c9be70980ace35e6c9b8d4c5c4be98c1f6c76a9869"
+    },
+    {
+      "path": "docs/evidence/review15-core-negative-callback.log",
+      "sha256": "31f19963b6215b22b163da3435f3af56118d4b631c610d3120f81ff65f24a7bf"
+    },
+    {
+      "path": "docs/evidence/review15-core-negative-endpoint.log",
+      "sha256": "91c7d3dad32821ed7ae18dced71473f76be66a8afdd2e76f07f7ed9e8068c4d9"
+    },
+    {
+      "path": "docs/evidence/review15-core-negative-loader.mjs",
+      "sha256": "1ee66c68897e504a3609b0c42bb45a64e068cf29b99e5d7044ea8912afff424c"
+    },
+    {
+      "path": "docs/evidence/review15-core-retest.log",
+      "sha256": "105c3d01b40fa57e3a758efa62e7121d08864611ed45e5e5f4d3962a274cfcaf"
+    },
+    {
+      "path": "docs/evidence/review15-core-retest2.log",
+      "sha256": "a2be2059d3d0b47295b3e4f0fd7663ae46a21b39249d2b5ef6b363c47ded72d6"
+    },
+    {
+      "path": "docs/evidence/review15-core-review14.log",
+      "sha256": "11f6a39e7dab342492f352b7f9ff7e6ae4e5a1b337992b6a1c1675bd9608b6f1"
+    },
+    {
+      "path": "docs/evidence/review15-core-tests.log",
+      "sha256": "eca1f9085d699afd9e15682414ee4fa6614790ee3305c9ea14199afb490f4a66"
+    },
+    {
+      "path": "docs/evidence/review15-desktop-ledger-negative.log",
+      "sha256": "c8de2ff46f11141055b998cf911d46c5ae49c9c4e295fd731815d10fd795a505"
+    },
+    {
+      "path": "docs/evidence/review15-desktop-ledger-positive.log",
+      "sha256": "12a61ac13d1219f86c059acfdd20f77f109a1adf7b6a14329b72cd1a6ab69bb0"
+    },
+    {
+      "path": "docs/evidence/review15-desktop-ledger-suite.log",
+      "sha256": "40b0e3dc56c44a31a43aafad7144cc09f032a71e30202a84e65be1aec63a73a5"
+    },
+    {
+      "path": "docs/evidence/review15-desktop-negative-control.cjs",
+      "sha256": "5acf5f24fa6b181d9509f4b141817bbc73e0cf35ec30360d019503149750d959"
+    },
+    {
+      "path": "docs/evidence/review15-diff-check-2026-11-03.txt",
+      "sha256": "6d7dde09c0e74c70fe1e630d7cc292f3332fa2ba4855c3fe52b12ed29476dbe5"
+    },
+    {
+      "path": "docs/evidence/review15-download-final.log",
+      "sha256": "064ec5fb47554332de32c244b75cea886f34467a136e74b595478338721a3933"
+    },
+    {
+      "path": "docs/evidence/review15-download-negative-loader.mjs",
+      "sha256": "373d5878d87bf44710edd9a72a6c161e4d943254694159da0067768a26e28afc"
+    },
+    {
+      "path": "docs/evidence/review15-download-negative.log",
+      "sha256": "c87fed81be09b88cbdc9c22d3618fcf3c158778ef451b8e96424d98661502ed7"
+    },
+    {
+      "path": "docs/evidence/review15-download-negative2.log",
+      "sha256": "b38ca390f9d86ef7dbd4c2c5d4bf24cc1633d18816c2dcc2588edaaffc7bfdd8"
+    },
+    {
+      "path": "docs/evidence/review15-download-pipeline.log",
+      "sha256": "9df093866a676dcde92d0f8354ab7c2d62fd2dbf4ad2bc765325d306eaf8f77c"
+    },
+    {
+      "path": "docs/evidence/review15-download.log",
+      "sha256": "c343577d0b28b88a2e149d3f80404f169edc089dda03e732b1d3cad9085c048c"
+    },
+    {
+      "path": "docs/evidence/review15-frozen-code-2026-11-03.json",
+      "sha256": "866c7503ff46455ccdfc012b08b3290edb63da602d50bf95953612d6e780e6a0"
+    },
+    {
+      "path": "docs/evidence/review15-legacy-cleanup-inventory-2026-11-03.json",
+      "sha256": "19934b142815bb9510161d749df2d42044b6c45e9a7d1480b07ccbbaa4bbc813"
+    },
+    {
+      "path": "docs/evidence/review15-legacy-cleanup-result-2026-11-03.json",
+      "sha256": "8243b6698c58a6744e5512ccf09a9e70aef3614e16d6f6b6d23dd230fd4d7ec6"
+    },
+    {
+      "path": "docs/evidence/review15-port-check-2026-11-03.json",
+      "sha256": "3db2a89f0b8884273e8189692308c484a8aa471f508d834d5381ee22582bb1d0"
+    },
+    {
+      "path": "docs/evidence/review15-prefinal-frozen-code-2026-11-03.json",
+      "sha256": "2d8495bb0bcd2b7f10d2e1379cbc495f3be7bcf5b03c8ddba4a9cad5acfbdc18"
+    },
+    {
+      "path": "docs/evidence/review15-prefinal-simulated-chains-2026-11-03.txt",
+      "sha256": "2a54b6d7303ea907cd9ef6e3ebe6c2b2cf5916b963994ce1d01234fb2a153afe"
+    },
+    {
+      "path": "docs/evidence/review15-prefinal-test-all-2026-11-03.txt",
+      "sha256": "7b75b54b7ab6ee903c145331283e8bdd6c0396613a3dbc1e9d1aabb2a108dac3"
+    },
+    {
+      "path": "docs/evidence/review15-preflight-console-2026-11-03.txt",
+      "sha256": "e2b5dd3bc9365e66c2c8d18d792515e67bd45c2aaff515a0b8279ccb271b03e0"
+    },
+    {
+      "path": "docs/evidence/review15-preflight-test-all-2026-11-03.txt",
+      "sha256": "733ffc3372ec0ff2ead84f5b1fbbcaeae06c9e2a66c2fa128196f82e7c95007f"
+    },
+    {
+      "path": "docs/evidence/review15-processes-2026-11-03.json",
+      "sha256": "00edbc2a44e94420b4215c328b57f7246b45f759de417c50a6340b14e38a3d2c"
+    },
+    {
+      "path": "docs/evidence/review15-runtime-gate-2026-11-03.txt",
+      "sha256": "38a73318f3d5bf108e6a132c05e09a393f3500f4f50462be7330e5bb3182492f"
+    },
+    {
+      "path": "docs/evidence/review15-simulated-chains-2026-11-03.txt",
+      "sha256": "542e4ed35ed6e0fa6ea48fc7b094aa9b0f6763da3a7911819d3ba844cbc7014e"
+    },
+    {
+      "path": "docs/evidence/review15-static-checks-2026-11-03.json",
+      "sha256": "38cc9d99160747fecc2246c4201c5d6881bf7457b7e7b15b3e69c76dbaaffda0"
+    },
+    {
+      "path": "docs/evidence/review15-test-all-2026-11-03.txt",
+      "sha256": "da9b187df8e126cf176a9e6dcfe0b54b811eae1c959698a92dc31e4cf8baa223"
+    },
+    {
+      "path": "docs/evidence/review15-test-console-2026-11-03.txt",
+      "sha256": "3082ce63ae6a6e741d8b3830c94c00f0c32c606476552bde998f6f8f55453659"
+    },
+    {
+      "path": "docs/v1.0-acceptance.md",
+      "sha256": "bb262f8fb72c33953ec8ae545ff09f8b4e82741c4ada7bff45f0034a73cfd5c7"
+    },
+    {
+      "path": "docs/goal-progress.md",
+      "sha256": "a87392997d94b14f870047edfc3d46e24e41895fd15768c3947202b8df522e61"
+    },
+    {
+      "path": "docs/billing-meters.md",
+      "sha256": "39c188226503b5a3bd117816c816587ba88341ca264d097a9ee2eb8d04f9efb4"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+﻿{
+    "review":  "review13",
+    "verifiedAt":  "2026-11-03T02:53:57.3056632Z",
+    "frozenCount":  210,
+    "changedFiles":  [
+
+                     ],
+    "protectedFiles":  [
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/qqbot.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/connection.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/index.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq/qqbot.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq-service.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/routes/qq.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-settings.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-runtime.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/qq-panel.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qq-qqbot.test.mjs",
+                               "unchanged":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qqbot-settings.test.mjs",
+                               "unchanged":  true
+                           }
+                       ]
+}

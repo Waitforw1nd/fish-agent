@@ -1,0 +1,728 @@
+{
+  "review": "review11",
+  "capturedAt": "2026-11-03T01:55:08.327Z",
+  "fullTestRuntime": "E:/harness/cursor/resources/app/resources/helpers/node.exe v24.22.1",
+  "otherRootChecksRuntime": "D:/tool/node/node.exe v24.21.0",
+  "testAll": {
+    "log": "review11-test-all-2026-11-03.txt",
+    "exitCode": 0,
+    "started": [
+      "2026-11-03T01:46:20.637Z"
+    ],
+    "completed": [
+      "2026-11-03T01:49:25.126Z"
+    ],
+    "bili": 102,
+    "cloud": 210,
+    "cloudSkipped": 2,
+    "panel": 138,
+    "headless": 24,
+    "headlessSkipped": 1,
+    "multiEntry": 25,
+    "checker": 3,
+    "coreCoverage": [
+      148,
+      116,
+      46,
+      21,
+      5
+    ],
+    "desktop": 85,
+    "desktopSkipped": 1,
+    "llbot": 230,
+    "failures": 0,
+    "knownDefects": 0,
+    "cancelled": 0,
+    "platformSkips": 4,
+    "customEnvironmentSkips": 5,
+    "dangerousRoutesExcluded": 4
+  },
+  "simulatedChains": {
+    "log": "review11-simulated-chains-2026-11-03.txt",
+    "exitCodes": [
+      0,
+      0
+    ],
+    "started": [
+      "2026-11-03T01:49:32.676Z",
+      "2026-11-03T01:49:45.933Z"
+    ],
+    "completed": [
+      "2026-11-03T01:49:45.933Z",
+      "2026-11-03T01:50:06.722Z"
+    ],
+    "onebot": "passed send/receive, dedupe, attribution and metering through real Agent and Relay",
+    "officialGateway": "passed production prepare/start/stop, C2C OpenID, reply and tenant attribution; group adapter separately tested",
+    "webhook": "not implemented; the current manual requires Gateway simulation",
+    "desktop": "passed pairing, chat, offline queue, both replay streams, receipt after lost ACK and revocation",
+    "bili": "passed L0 journal, L1 draft, zero publish or approval network calls",
+    "meters": "passed four-entry batches, duplicates, attribution, tenant isolation and rollback"
+  },
+  "confirmedFindings": [
+    {
+      "severity": "P2",
+      "name": "Successful Bili video detail reads lost metering on subsequent player errors",
+      "regression": "completed video reads survive player failure and cancellation without duplicate billing or exceeding the browse limit"
+    },
+    {
+      "severity": "P2",
+      "name": "Memory consolidation HTTP route rejected supported 16-digit Bili/desktop member IDs",
+      "regression": "memory consolidation HTTP route accepts full entry member IDs and rejects unsafe numeric IDs"
+    }
+  ],
+  "frozenCodeFiles": 184,
+  "codeChanges": [
+    {
+      "path": "packages/protocol-bili-bridge/src/bili/video.js",
+      "sha256": "bbf062ae80166c808003facb08411e619ab5c7ef81ae8a2c1c2e95efdcd738fb"
+    },
+    {
+      "path": "packages/protocol-bili-bridge/src/pollers/explore.js",
+      "sha256": "e85eb93be910757c6c02e60f7a722091ae5debe6d1a27898fd3e8ab43fe5eac5"
+    },
+    {
+      "path": "packages/protocol-bili-bridge/test/explore.test.mjs",
+      "sha256": "11978bab22ed53e860e090805b119648dcc3c234add6692af9fbe630e4aeb939"
+    },
+    {
+      "path": "packages/qq-agent-core/src/memory.js",
+      "sha256": "44265c811f4ef395dde8c61918724f5898e2a5d6ce5e9aa995331c6eb2b8b107"
+    },
+    {
+      "path": "packages/qq-agent-core/src/routes.js",
+      "sha256": "27ad54a438b05e2f04056a2431d600520a87a4e326c15c198749b64a3613b48b"
+    },
+    {
+      "path": "packages/qq-agent-core/test/headless-runtime.test.mjs",
+      "sha256": "1b338e29d6cc1d853dacdff2b491c9558090db82a0cdd3d2340c4c39840006ee"
+    }
+  ],
+  "cleanup": {
+    "capturedAt": "2026-11-03T01:51:05.6261836Z",
+    "trackedUniquePidCount": 406,
+    "liveTracked": [],
+    "allNode": [
+      {
+        "Id": 18352,
+        "StartTime": "/Date(1793627278388)/",
+        "Path": null
+      },
+      {
+        "Id": 41464,
+        "StartTime": "/Date(1793670101394)/",
+        "Path": null
+      },
+      {
+        "Id": 55544,
+        "StartTime": "/Date(1793476666302)/",
+        "Path": null
+      },
+      {
+        "Id": 76972,
+        "StartTime": "/Date(1793573795002)/",
+        "Path": null
+      },
+      {
+        "Id": 82784,
+        "StartTime": "/Date(1793670106652)/",
+        "Path": null
+      },
+      {
+        "Id": 87576,
+        "StartTime": "/Date(1793627274760)/",
+        "Path": null
+      },
+      {
+        "Id": 88580,
+        "StartTime": "/Date(1793658618089)/",
+        "Path": null
+      },
+      {
+        "Id": 109544,
+        "StartTime": "/Date(1793669979466)/",
+        "Path": null
+      },
+      {
+        "Id": 115212,
+        "StartTime": "/Date(1793670067998)/",
+        "Path": null
+      }
+    ],
+    "temporaryTenant": {
+      "exists": false,
+      "path": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\fish-cloud-test-YtBGFn"
+    },
+    "residuals": [
+      {
+        "path": "var/review9-bili-negative",
+        "exists": true,
+        "files": 74,
+        "bytes": 674338,
+        "deletion": "Automatic approval rejected validated Remove-Item: blocked by policy"
+      },
+      {
+        "path": "var/review10-processes",
+        "exists": true,
+        "files": 454,
+        "bytes": 101712,
+        "deletion": "Automatic approval rejected validated Remove-Item: blocked by policy"
+      }
+    ],
+    "untrackedEarlyRuns": "Early agent target tests completed and used fixture teardown, individual child PID history unavailable",
+    "unknownProcesses": "CIM command-line access denied; no unowned processes terminated",
+    "loopbackPort": {
+      "port": 65092,
+      "state": "closed",
+      "error": "ECONNREFUSED"
+    },
+    "portCheckedAt": "2026-11-03T01:55:08.325Z"
+  },
+  "normalization": "PowerShell UTF-16 logs and JSON normalized losslessly to UTF-8; test contents retained. Temporary desktop password redacted by the runner.",
+  "protectedFilesUnchanged": true,
+  "frozenUnchanged": true,
+  "staticChecks": {
+    "capturedAt": "2026-11-03T01:55:09.592Z",
+    "frozen": {
+      "files": 184,
+      "changed": []
+    },
+    "protectedFiles": [
+      {
+        "path": "packages/qq-agent-core/modules/headless/qqbot.js",
+        "sha256": "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/qq-agent-core/modules/headless/connection.js",
+        "sha256": "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/qq-agent-core/modules/headless/index.js",
+        "sha256": "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/src/qq/qqbot.js",
+        "sha256": "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/src/qq-service.js",
+        "sha256": "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/src/routes/qq.js",
+        "sha256": "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/src/agent-settings.js",
+        "sha256": "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/src/agent-runtime.js",
+        "sha256": "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/panel/components/qq-panel.js",
+        "sha256": "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+        "sha256": "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+        "sha256": "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/test/qq-qqbot.test.mjs",
+        "sha256": "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6",
+        "matchesReview10": true,
+        "unchanged": true
+      },
+      {
+        "path": "packages/cloud-manager/test/qqbot-settings.test.mjs",
+        "sha256": "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2",
+        "matchesReview10": true,
+        "unchanged": true
+      }
+    ],
+    "whitespace": {
+      "exitCode": 0,
+      "output": ""
+    },
+    "links": {
+      "documents": 37,
+      "checked": 226,
+      "missing": []
+    },
+    "focusedOnlyScan": {
+      "exitCode": 1,
+      "matches": ""
+    },
+    "npmRunCheck": {
+      "exitCode": 0,
+      "output": "\n> fish-bot@0.1.0 check\n> node scripts/check.mjs\n\nRoot orchestration check passed on Node.js v24.21.0.\n"
+    },
+    "electronPackagingGate": {
+      "exitCode": 1,
+      "output": "禁止打包：请更新 Electron 及锁文件到受支持稳定版（本次审查基线 >= 45），并完成原生安全验收。\n",
+      "launchedElectron": false
+    }
+  },
+  "gitStatus": [
+    " M DEVELOPMENT.md",
+    " M README.md",
+    " M UPSTREAM.md",
+    " M deploy/napcat/README.md",
+    " M docs/admin-upstream-model-management.md",
+    " M docs/cloud-manager.md",
+    " M docs/extensions.md",
+    " M docs/linux-vps-acceptance.md",
+    " M docs/protocols.md",
+    " M docs/testing.md",
+    " D docs/view-api-execution.md",
+    " D docs/view-api-linux-acceptance.md",
+    " D docs/view-api-modular-plan.md",
+    " D docs/view-api-qq-status-fix.md",
+    " D docs/view-api-stage-1.md",
+    " D docs/view-api-stage-2-backend.md",
+    " D docs/view-api-stage-2-services.md",
+    " D docs/view-api-stage-3.md",
+    " D docs/view-api-stage-4-admin.md",
+    " D docs/view-api-stage-4-user.md",
+    " D docs/view-api-stage-5.md",
+    " M package.json",
+    " M packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+    " M packages/cloud-manager/panel/components/qq-panel.js",
+    " M packages/cloud-manager/panel/lib/api.js",
+    " M packages/cloud-manager/panel/lib/api/bili.js",
+    " M packages/cloud-manager/panel/lib/api/billing.js",
+    " M packages/cloud-manager/panel/lib/api/qq.js",
+    " M packages/cloud-manager/panel/lib/normalize/channels.js",
+    " M packages/cloud-manager/panel/lib/normalize/tenant.js",
+    " M packages/cloud-manager/panel/views/admin/tenant-detail.js",
+    " M packages/cloud-manager/panel/views/user/instance.js",
+    " M packages/cloud-manager/panel/views/user/shared.js",
+    " M packages/cloud-manager/src/agent-runtime.js",
+    " M packages/cloud-manager/src/agent-settings.js",
+    " M packages/cloud-manager/src/api.js",
+    " M packages/cloud-manager/src/app.js",
+    " M packages/cloud-manager/src/bili-service.js",
+    " M packages/cloud-manager/src/billing.js",
+    " M packages/cloud-manager/src/config-guard.js",
+    " M packages/cloud-manager/src/config.js",
+    " M packages/cloud-manager/src/contracts/http.js",
+    " M packages/cloud-manager/src/db.js",
+    " M packages/cloud-manager/src/gateway.js",
+    " M packages/cloud-manager/src/hosting.js",
+    " M packages/cloud-manager/src/plans.js",
+    " M packages/cloud-manager/src/presenters/tenant-presenter.js",
+    " M packages/cloud-manager/src/qq-service.js",
+    " M packages/cloud-manager/src/relay/server.js",
+    " M packages/cloud-manager/src/routes/bili.js",
+    " M packages/cloud-manager/src/routes/qq.js",
+    " M packages/cloud-manager/src/supervisor.js",
+    " M packages/cloud-manager/src/util.js",
+    " M packages/cloud-manager/test/agent-extensions-view-api.test.mjs",
+    " M packages/cloud-manager/test/custom-recharge.test.mjs",
+    " M packages/cloud-manager/test/fixtures/fake-upstream.mjs",
+    " M packages/cloud-manager/test/qq-switch-api.test.mjs",
+    " M packages/cloud-manager/test/relay.test.mjs",
+    " M packages/cloud-manager/test/view-api-backend.test.mjs",
+    " M packages/protocol-bili-bridge/src/bili/api.js",
+    " M packages/protocol-bili-bridge/src/bili/live.js",
+    " M packages/protocol-bili-bridge/src/bili/video.js",
+    " M packages/protocol-bili-bridge/src/bili/wbi.js",
+    " M packages/protocol-bili-bridge/src/bridge.js",
+    " M packages/protocol-bili-bridge/src/config.js",
+    " M packages/protocol-bili-bridge/src/main.js",
+    " M packages/protocol-bili-bridge/src/mapping/ids.js",
+    " M packages/protocol-bili-bridge/src/onebot/admin.js",
+    " M packages/protocol-bili-bridge/test/dynamic-image.test.mjs",
+    " M packages/protocol-bili-bridge/test/e2e.test.mjs",
+    " M packages/protocol-bili-bridge/test/live.test.mjs",
+    " M packages/protocol-bili-bridge/test/mapping.test.mjs",
+    " M packages/protocol-bili-bridge/test/onebot.test.mjs",
+    " M packages/protocol-bili-bridge/test/pollers.test.mjs",
+    " M packages/protocol-bili-bridge/test/video.test.mjs",
+    " M packages/protocol-qq-llbot/README.md",
+    " M packages/protocol-qq-llbot/devtools/README.md",
+    " M packages/protocol-qq-llbot/test/onebot11-api-test/README.md",
+    " M packages/protocol-qq-llbot/test/test-framework/README.md",
+    " M packages/protocol-qq-llbot/test/webqq-api-test/README.md",
+    " M packages/qq-agent-core/README.md",
+    " M packages/qq-agent-core/doc/extend_development/multi-instance.md",
+    " M packages/qq-agent-core/doc/extend_development/plugin-development.md",
+    " M packages/qq-agent-core/doc/extend_development/prompt-pipeline.md",
+    " M packages/qq-agent-core/doc/extend_development/skill-development.md",
+    " M packages/qq-agent-core/doc/extend_development/skill-guide-for-beginners.md",
+    " M packages/qq-agent-core/doc/extend_development/skill-reference.md",
+    " M packages/qq-agent-core/doc/extend_development/skill-system.md",
+    " M packages/qq-agent-core/doc/extend_development/snowluma-capabilities.md",
+    " M packages/qq-agent-core/doc/extend_development/video-modes.md",
+    " M packages/qq-agent-core/modules/headless/README.en.md",
+    " M packages/qq-agent-core/modules/headless/README.md",
+    " M packages/qq-agent-core/modules/headless/connection.js",
+    " M packages/qq-agent-core/modules/headless/index.js",
+    " M packages/qq-agent-core/modules/headless/onebot.js",
+    " M packages/qq-agent-core/modules/headless/qqbot.js",
+    " M packages/qq-agent-core/package.json",
+    " M packages/qq-agent-core/plugins/bili-watcher/index.js",
+    " M packages/qq-agent-core/src/app.js",
+    " M packages/qq-agent-core/src/channel-router.js",
+    " M packages/qq-agent-core/src/config-defaults.js",
+    " M packages/qq-agent-core/src/config.js",
+    " M packages/qq-agent-core/src/llm.js",
+    " M packages/qq-agent-core/src/memory.js",
+    " M packages/qq-agent-core/src/orchestrator.js",
+    " M packages/qq-agent-core/src/routes.js",
+    " M packages/qq-agent-core/src/sender.js",
+    " M packages/qq-agent-core/src/store.js",
+    " M packages/qq-agent-core/src/tools.js",
+    " M packages/qq-agent-core/test/_harness.mjs",
+    " M packages/qq-agent-core/test/channel-router-test.mjs",
+    " M packages/qq-agent-core/test/coverage-e2e.mjs",
+    " M packages/qq-agent-core/test/coverage-http.mjs",
+    " M packages/qq-agent-core/test/coverage-offline.mjs",
+    " M packages/qq-agent-core/test/coverage-wiring.mjs",
+    " M packages/qq-agent-core/test/headless-runtime.test.mjs",
+    " M packages/qq-agent-core/test/headless-transport.test.mjs",
+    " M packages/qq-agent-core/test/onebot-whitelist-test.mjs",
+    " M packages/qq-agent-core/test/qq-pack.mjs",
+    " M packages/qq-agent-core/test/qq-process-detect.mjs",
+    " M packages/qq-agent-core/test/render-test.mjs",
+    " M packages/qq-agent-core/test/send-guard-test.mjs",
+    " M packages/qq-agent-core/test/setup-qq-version.mjs",
+    " M packages/qq-agent-core/test/tools-skill-audit.mjs",
+    " M packages/qq-agent-core/test/usage-e2e.mjs",
+    " M scripts/check.mjs",
+    " M scripts/run-tests.mjs",
+    "?? docs/bili-explore.md",
+    "?? docs/billing-meters.md",
+    "?? docs/desktop-client.md",
+    "?? docs/desktop-pet-architecture.md",
+    "?? docs/desktop-pet-gateway-followups.md",
+    "?? docs/desktop-protocol.md",
+    "?? docs/evidence/review-manifest-2026-11-03.json",
+    "?? docs/evidence/review-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review-test-all-2026-11-03.txt",
+    "?? docs/evidence/review10-baseline-2026-11-03.json",
+    "?? docs/evidence/review10-bili-negative-2026-11-03.txt",
+    "?? docs/evidence/review10-bili-negative.cjs",
+    "?? docs/evidence/review10-cleanup-2026-11-03.json",
+    "?? docs/evidence/review10-core-negative-2026-11-03.txt",
+    "?? docs/evidence/review10-core-regression-2026-11-03.txt",
+    "?? docs/evidence/review10-desktop-negative-2026-11-03.txt",
+    "?? docs/evidence/review10-desktop-negative.cjs",
+    "?? docs/evidence/review10-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review10-manifest-2026-11-03.json",
+    "?? docs/evidence/review10-processes-2026-11-03.json",
+    "?? docs/evidence/review10-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review10-static-checks-2026-11-03.json",
+    "?? docs/evidence/review10-test-all-2026-11-03.txt",
+    "?? docs/evidence/review11-baseline-2026-11-03.json",
+    "?? docs/evidence/review11-bili-fixed-2026-11-03.txt",
+    "?? docs/evidence/review11-bili-negative-2026-11-03.txt",
+    "?? docs/evidence/review11-bili-negative.mjs",
+    "?? docs/evidence/review11-bili-regression-2026-11-03.txt",
+    "?? docs/evidence/review11-cleanup-2026-11-03.json",
+    "?? docs/evidence/review11-core-negative-2026-11-03.txt",
+    "?? docs/evidence/review11-core-regression-2026-11-03.txt",
+    "?? docs/evidence/review11-desktop-regression-2026-11-03.txt",
+    "?? docs/evidence/review11-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review11-manifest-2026-11-03.json",
+    "?? docs/evidence/review11-processes-2026-11-03.json",
+    "?? docs/evidence/review11-security-regression-2026-11-03.txt",
+    "?? docs/evidence/review11-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review11-static-checks-2026-11-03.json",
+    "?? docs/evidence/review11-test-all-2026-11-03.txt",
+    "?? docs/evidence/review2-manifest-2026-11-03.json",
+    "?? docs/evidence/review2-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review2-test-all-2026-11-03.txt",
+    "?? docs/evidence/review3-manifest-2026-11-03.json",
+    "?? docs/evidence/review3-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review3-preflight2-test-all-2026-11-03.txt",
+    "?? docs/evidence/review3-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review3-test-all-2026-11-03.txt",
+    "?? docs/evidence/review4-baseline-2026-11-03.json",
+    "?? docs/evidence/review4-cleanup-2026-11-03.json",
+    "?? docs/evidence/review4-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review4-manifest-2026-11-03.json",
+    "?? docs/evidence/review4-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review4-processes-2026-11-03.json",
+    "?? docs/evidence/review4-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review4-test-all-2026-11-03.txt",
+    "?? docs/evidence/review5-baseline-2026-11-03.json",
+    "?? docs/evidence/review5-cleanup-2026-11-03.json",
+    "?? docs/evidence/review5-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review5-manifest-2026-11-03.json",
+    "?? docs/evidence/review5-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review5-processes-2026-11-03.json",
+    "?? docs/evidence/review5-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review5-test-all-2026-11-03.txt",
+    "?? docs/evidence/review6-baseline-2026-11-03.json",
+    "?? docs/evidence/review6-cleanup-2026-11-03.json",
+    "?? docs/evidence/review6-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review6-manifest-2026-11-03.json",
+    "?? docs/evidence/review6-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review6-process-tracer.cjs",
+    "?? docs/evidence/review6-processes-2026-11-03.json",
+    "?? docs/evidence/review6-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review6-static-checks-2026-11-03.json",
+    "?? docs/evidence/review6-test-all-2026-11-03.txt",
+    "?? docs/evidence/review7-baseline-2026-11-03.json",
+    "?? docs/evidence/review7-cleanup-2026-11-03.json",
+    "?? docs/evidence/review7-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review7-manifest-2026-11-03.json",
+    "?? docs/evidence/review7-negative-controls-2026-11-03.json",
+    "?? docs/evidence/review7-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review7-static-checks-2026-11-03.json",
+    "?? docs/evidence/review7-test-all-2026-11-03.txt",
+    "?? docs/evidence/review8-baseline-2026-11-03.json",
+    "?? docs/evidence/review8-cleanup-2026-11-03.json",
+    "?? docs/evidence/review8-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review8-manifest-2026-11-03.json",
+    "?? docs/evidence/review8-negative-controls-2026-11-03.json",
+    "?? docs/evidence/review8-owned-process-check-2026-11-03.json",
+    "?? docs/evidence/review8-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review8-processes-2026-11-03.json",
+    "?? docs/evidence/review8-root-regression-2026-11-03.txt",
+    "?? docs/evidence/review8-routing-regression-2026-11-03.txt",
+    "?? docs/evidence/review8-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review8-static-checks-2026-11-03.json",
+    "?? docs/evidence/review8-test-all-2026-11-03.txt",
+    "?? docs/evidence/review9-baseline-2026-11-03.json",
+    "?? docs/evidence/review9-bili-regression-2026-11-03.json",
+    "?? docs/evidence/review9-bili-regression-2026-11-03.txt",
+    "?? docs/evidence/review9-bili-suite-2026-11-03.txt",
+    "?? docs/evidence/review9-cleanup-2026-11-03.json",
+    "?? docs/evidence/review9-core-regression-2026-11-03.json",
+    "?? docs/evidence/review9-core-regression-2026-11-03.txt",
+    "?? docs/evidence/review9-desktop-negative-2026-11-03.json",
+    "?? docs/evidence/review9-desktop-negative-control.mjs",
+    "?? docs/evidence/review9-desktop-regression-2026-11-03.txt",
+    "?? docs/evidence/review9-frozen-code-2026-11-03.json",
+    "?? docs/evidence/review9-manifest-2026-11-03.json",
+    "?? docs/evidence/review9-preflight-test-all-2026-11-03.txt",
+    "?? docs/evidence/review9-processes-2026-11-03.json",
+    "?? docs/evidence/review9-root-regression-2026-11-03.txt",
+    "?? docs/evidence/review9-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/review9-static-checks-2026-11-03.json",
+    "?? docs/evidence/review9-test-all-2026-11-03.txt",
+    "?? docs/evidence/v1.0-electron-compat-2026-11-03.json",
+    "?? docs/evidence/v1.0-simulated-chains-2026-11-03.txt",
+    "?? docs/evidence/v1.0-test-all-2026-11-03.txt",
+    "?? docs/goal-progress.md",
+    "?? docs/multi-entry-implementation.md",
+    "?? docs/v1.0-acceptance.md",
+    "?? packages/cloud-manager/panel/components/bili-explore.js",
+    "?? packages/cloud-manager/panel/components/entries.js",
+    "?? packages/cloud-manager/panel/lib/api/entries.js",
+    "?? packages/cloud-manager/panel/test/entries.test.mjs",
+    "?? packages/cloud-manager/panel/test/official-whitelist.test.mjs",
+    "?? packages/cloud-manager/src/billing/hosting-meter.js",
+    "?? packages/cloud-manager/src/billing/provider.js",
+    "?? packages/cloud-manager/src/contracts/chat-id.js",
+    "?? packages/cloud-manager/src/desktop/device-service.js",
+    "?? packages/cloud-manager/src/desktop/gateway.js",
+    "?? packages/cloud-manager/src/entries.js",
+    "?? packages/cloud-manager/src/entry-types.js",
+    "?? packages/cloud-manager/src/lifecycle-lock.js",
+    "?? packages/cloud-manager/src/qq/qqbot.js",
+    "?? packages/cloud-manager/src/routes/billing.js",
+    "?? packages/cloud-manager/src/routes/entries.js",
+    "?? packages/cloud-manager/test/bili-explore-integration.test.mjs",
+    "?? packages/cloud-manager/test/billing-provider.test.mjs",
+    "?? packages/cloud-manager/test/desktop-agent-integration.test.mjs",
+    "?? packages/cloud-manager/test/desktop-gateway.test.mjs",
+    "?? packages/cloud-manager/test/entry-lifecycle.test.mjs",
+    "?? packages/cloud-manager/test/fixtures/schema-v9.sql",
+    "?? packages/cloud-manager/test/fixtures/v1-qq-agent.mjs",
+    "?? packages/cloud-manager/test/lifecycle-coordination.test.mjs",
+    "?? packages/cloud-manager/test/log-redaction.test.mjs",
+    "?? packages/cloud-manager/test/migration-v10.test.mjs",
+    "?? packages/cloud-manager/test/qq-qqbot.test.mjs",
+    "?? packages/cloud-manager/test/qqbot-settings.test.mjs",
+    "?? packages/cloud-manager/test/review-official-lifecycle.test.mjs",
+    "?? packages/cloud-manager/test/v1-billing-integration.test.mjs",
+    "?? packages/cloud-manager/test/v1-qq-integration.test.mjs",
+    "?? packages/desktop-pet/THIRD_PARTY_NOTICES.md",
+    "?? packages/desktop-pet/licenses/dsh-pet-MIT.txt",
+    "?? packages/desktop-pet/package-lock.json",
+    "?? packages/desktop-pet/package.json",
+    "?? packages/desktop-pet/resources/pets/placeholder-alt/LICENSE.txt",
+    "?? packages/desktop-pet/resources/pets/placeholder-alt/idle.png",
+    "?? packages/desktop-pet/resources/pets/placeholder-alt/manifest.json",
+    "?? packages/desktop-pet/resources/pets/placeholder/LICENSE.txt",
+    "?? packages/desktop-pet/resources/pets/placeholder/idle.png",
+    "?? packages/desktop-pet/resources/pets/placeholder/manifest.json",
+    "?? packages/desktop-pet/scripts/acceptance-cloud.mjs",
+    "?? packages/desktop-pet/scripts/check-runtime.mjs",
+    "?? packages/desktop-pet/scripts/dev.mjs",
+    "?? packages/desktop-pet/scripts/generate-placeholder.mjs",
+    "?? packages/desktop-pet/scripts/smoke-electron.mjs",
+    "?? packages/desktop-pet/src/client.js",
+    "?? packages/desktop-pet/src/core/presentation-machine.js",
+    "?? packages/desktop-pet/src/core/protocol-v1.js",
+    "?? packages/desktop-pet/src/core/recovery-contract.js",
+    "?? packages/desktop-pet/src/core/resource-manifest.js",
+    "?? packages/desktop-pet/src/core/session-machine.js",
+    "?? packages/desktop-pet/src/image.js",
+    "?? packages/desktop-pet/src/index.html",
+    "?? packages/desktop-pet/src/main.js",
+    "?? packages/desktop-pet/src/main/credential-store.js",
+    "?? packages/desktop-pet/src/main/resource-pack-loader.js",
+    "?? packages/desktop-pet/src/main/security.js",
+    "?? packages/desktop-pet/src/main/window-controller.js",
+    "?? packages/desktop-pet/src/pair-response.js",
+    "?? packages/desktop-pet/src/preload.cjs",
+    "?? packages/desktop-pet/src/renderer.js",
+    "?? packages/desktop-pet/src/secure-storage.js",
+    "?? packages/desktop-pet/src/style.css",
+    "?? packages/desktop-pet/src/ui/pet-view.js",
+    "?? packages/desktop-pet/src/vendor/dsh-pet/desktop-geometry.cjs",
+    "?? packages/desktop-pet/src/vendor/dsh-pet/pointer-target.cjs",
+    "?? packages/desktop-pet/test/acceptance-cloud.test.mjs",
+    "?? packages/desktop-pet/test/asset-provenance.test.mjs",
+    "?? packages/desktop-pet/test/client.test.mjs",
+    "?? packages/desktop-pet/test/credential-store.test.mjs",
+    "?? packages/desktop-pet/test/fixtures/electron-smoke.cjs",
+    "?? packages/desktop-pet/test/presentation.test.mjs",
+    "?? packages/desktop-pet/test/protocol.test.mjs",
+    "?? packages/desktop-pet/test/recovery-capabilities.test.mjs",
+    "?? packages/desktop-pet/test/recovery.test.mjs",
+    "?? packages/desktop-pet/test/renderer.test.mjs",
+    "?? packages/desktop-pet/test/resource-pack.test.mjs",
+    "?? packages/desktop-pet/test/security.test.mjs",
+    "?? packages/desktop-pet/test/window-controller.test.mjs",
+    "?? packages/protocol-bili-bridge/src/explore-services.js",
+    "?? packages/protocol-bili-bridge/src/pollers/explore.js",
+    "?? packages/protocol-bili-bridge/test/explore-services.test.mjs",
+    "?? packages/protocol-bili-bridge/test/explore.test.mjs",
+    "?? packages/protocol-bili-bridge/test/read-only.test.mjs",
+    "?? packages/qq-agent-core/modules/headless/desktop-channel.js",
+    "?? packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+    "?? packages/qq-agent-core/src/bili-explore.js",
+    "?? packages/qq-agent-core/src/metering.js",
+    "?? packages/qq-agent-core/src/storage-identifiers.js",
+    "?? packages/qq-agent-core/test/_isolated-child.mjs",
+    "?? packages/qq-agent-core/test/checker-report.test.mjs",
+    "?? packages/qq-agent-core/test/desktop-processing-recovery.test.mjs",
+    "?? packages/qq-agent-core/test/memory-legacy-delete.test.mjs",
+    "?? packages/qq-agent-core/test/multi-entry.test.mjs",
+    "?? scripts/review-validation.mjs"
+  ],
+  "gitWarnings": "warning: unable to access 'C:\\Users\\Administrator/.config/git/ignore': Permission denied\nwarning: unable to access 'C:\\Users\\Administrator/.config/git/ignore': Permission denied\nwarning: could not open directory '�㳡ě/': No such file or directory",
+  "documents": [
+    {
+      "path": "docs/v1.0-acceptance.md",
+      "sha256": "388b3dad1159ada87e5a9b71ce7dd3f5fe007fd81b1263375e3805d00101e03b"
+    },
+    {
+      "path": "docs/goal-progress.md",
+      "sha256": "e12f2e0378ddc1362f3ca59e3a2f228d30c6c5b2223b585b6ef8cec27b1913fa"
+    },
+    {
+      "path": "docs/bili-explore.md",
+      "sha256": "4f2f69c03bb0662a508863b2c2e56632c62be78c538e4607d8ac789917173438"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "review11-baseline-2026-11-03.json",
+      "sha256": "ceda9bbc40a8c7ad063d20aaf0de74126352d411a8ab01fc0312d3673b688faf",
+      "bytes": 69478
+    },
+    {
+      "path": "review11-bili-fixed-2026-11-03.txt",
+      "sha256": "bcef9b1c93af68b1ef4241e482ecb6c6efcdc03181b212680609fe9cc0fae120",
+      "bytes": 44
+    },
+    {
+      "path": "review11-bili-negative-2026-11-03.txt",
+      "sha256": "145770238ff6bfbb78d91db62cacf94b6e1ca1d6090832add2b864385f2d00b5",
+      "bytes": 762
+    },
+    {
+      "path": "review11-bili-negative.mjs",
+      "sha256": "4dae52af37c8d45e0e36242393b3c859ee1c7b6a554a573c9fbeea4ef9304a92",
+      "bytes": 2215
+    },
+    {
+      "path": "review11-bili-regression-2026-11-03.txt",
+      "sha256": "fb209436a069f194d6adff0c2bb650ccddb939dbd82dbaac57415dc6642e0c11",
+      "bytes": 1131
+    },
+    {
+      "path": "review11-cleanup-2026-11-03.json",
+      "sha256": "f50903da7918e5b5d5c6e2d3891f4e78afa07ffb542b06ee0f7f1487f0ba8701",
+      "bytes": 1907
+    },
+    {
+      "path": "review11-core-negative-2026-11-03.txt",
+      "sha256": "b5a521f4dab082d850c82f10b5f6edf750990a0b70a089f4490af12b4da097ad",
+      "bytes": 1138
+    },
+    {
+      "path": "review11-core-regression-2026-11-03.txt",
+      "sha256": "6f3e2a61c26f8f68c94d2138335bdfb096983d20438d97abe244d7f88113fa4c",
+      "bytes": 5579
+    },
+    {
+      "path": "review11-desktop-regression-2026-11-03.txt",
+      "sha256": "bae0ef6ba2cbe47a7e20deb7d2628649e2bc068ec00cc846abd173be29b48123",
+      "bytes": 10287
+    },
+    {
+      "path": "review11-frozen-code-2026-11-03.json",
+      "sha256": "19bc7faa46592e7dc8838c82f8c9a74c6e7a620b01c0039135a33d9c69454903",
+      "bytes": 30572
+    },
+    {
+      "path": "review11-processes-2026-11-03.json",
+      "sha256": "5b8a8cb3d64d3c92ce53c2293fb92d5cf1d23b9d57d8de0577c3af72e59afa4b",
+      "bytes": 161008
+    },
+    {
+      "path": "review11-security-regression-2026-11-03.txt",
+      "sha256": "4641872de6234acb03c135960894261e9170be7c8774b7ad43d5db7a6289297b",
+      "bytes": 2448
+    },
+    {
+      "path": "review11-simulated-chains-2026-11-03.txt",
+      "sha256": "6e6d09dfa686d2ae0abc2ad4807810759362045f78a68ead092e15f53df99dae",
+      "bytes": 2873
+    },
+    {
+      "path": "review11-static-checks-2026-11-03.json",
+      "sha256": "b7396e492f68e82d9957390f64dd7146acde51fdd2e49ba71e5d3a8a2d97808c",
+      "bytes": 3558
+    },
+    {
+      "path": "review11-test-all-2026-11-03.txt",
+      "sha256": "be5ed1d55a0a4011200e269b732c8032df5e8998b7b6f739a6f41ee23861f182",
+      "bytes": 154669
+    }
+  ]
+}

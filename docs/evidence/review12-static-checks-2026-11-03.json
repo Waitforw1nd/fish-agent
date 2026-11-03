@@ -1,0 +1,36 @@
+{
+  "at": "2026-11-03T02:21:21.134Z",
+  "npmRunCheck": {
+    "exitCode": 0,
+    "log": "review12-check-2026-11-03.txt"
+  },
+  "diffWhitespace": {
+    "exitCode": 0,
+    "stdout": ""
+  },
+  "onlyScan": {
+    "exitCode": 1,
+    "stdout": "",
+    "stderr": ""
+  },
+  "markdown": {
+    "files": 37,
+    "checkedLinks": 252,
+    "missing": [],
+    "scope": "ordinary inline path links without whitespace; validates targets, not headings or reference-style/HTML links"
+  },
+  "frozenCodeFiles": 184,
+  "codeMismatches": [],
+  "protectedFilesMatch": true,
+  "runtimeGate": {
+    "expectedExitCode": 1,
+    "actualExitCode": 1,
+    "lockedVersion": "33.4.11",
+    "log": "review12-runtime-gate-2026-11-03.txt"
+  },
+  "gitStagedChanges": false,
+  "rootDirectoryWarning": {
+    "inventory": "review12-root-directory-check-2026-11-03.json",
+    "result": "All seven pre-existing non-ASCII root directories are empty; one contains an unpaired UTF-16 surrogate and causes the git warning."
+  }
+}

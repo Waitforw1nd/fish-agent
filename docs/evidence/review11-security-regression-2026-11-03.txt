@@ -1,0 +1,33 @@
+✔ entry APIs escape ids and keep writes same-origin (1.9679ms)
+✔ entry cards show usage, pairing QR and device revoke safely (14.4958ms)
+✔ viewer cannot mutate and desktop must be enabled before pairing (0.9194ms)
+✔ Bili explore viewer renders external text safely and cannot approve drafts (2.1614ms)
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ local explore to authenticated agent and Relay meters L0 and L1 without sending (305.9036ms)
+✔ pairing code creation requires session and CSRF, and failed claims consume the IP budget (188.9902ms)
+✔ revocation while upstream handshake is pending prevents a new desktop socket (173.1556ms)
+✔ pairing codes are single-use, expire, and device tokens stay tenant-bound and hashed (154.6805ms)
+✔ seat hard limit rejects additional device without consuming pairing code (147.6022ms)
+✔ overlapping sockets for one device count online time once and terminal failures retain the end time (0.8834ms)
+✔ gateway overrides untrusted headers, rejects forgery and origin, meters online time, and revokes immediately (223.8189ms)
+✔ strict CSRF applies to canonical and repeated-slash entry routes (160.8943ms)
+✔ malformed multi-entry control bodies are rejected before state or process changes (127.4539ms)
+✔ Bili entry controls start, login and tenant restart (2405.8488ms)
+✔ concurrent entry changes finish in request order (1396.6862ms)
+✔ entry enable starts selected prepared QQ; explicit QQ start re-enables after disable (1989.1644ms)
+✔ QQ driver preparation reports only selected driver despite stale entries (188.4819ms)
+2026-11-03T01:42:41.113Z ERROR [fixture] Error: Authorization: [redacted] [redacted]
+    at TestContext.<anonymous> (file:///E:/bigPeach/fish/packages/cloud-manager/test/log-redaction.test.mjs:15:37)
+    at Test.runInAsyncScope (node:async_hooks:227:14)
+    at Test.run (node:internal/test_runner/test:1402:25)
+    at Test.start (node:internal/test_runner/test:1262:17)
+    at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {"cookie":"[redacted]","password":"[redacted]"} refresh_token=[redacted] device credential [redacted-device-token]
+✔ QQBot credentials, device tokens and complete cookie/password values are absent from logs (4.1847ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6577.2115

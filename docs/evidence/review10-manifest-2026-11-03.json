@@ -1,0 +1,358 @@
+{
+  "review": "review10",
+  "completedAt": "2026-11-03T01:21:56.255Z",
+  "node": "v24.21.0",
+  "fullTest": {
+    "command": "npm run test:all",
+    "start": "2026-11-03T01:13:22.418Z",
+    "end": "2026-11-03T01:16:28.955Z",
+    "exit": 0,
+    "logComplete": true
+  },
+  "chains": {
+    "command": "node scripts/review-validation.mjs --chains",
+    "start": "2026-11-03T01:16:40.821Z",
+    "end": "2026-11-03T01:17:14.933Z",
+    "commandExits": [
+      {
+        "code": 0,
+        "signal": "none"
+      },
+      {
+        "code": 0,
+        "signal": "none"
+      }
+    ],
+    "qqProtocol": "pass",
+    "qqOfficialGatewayOpenID": "pass",
+    "desktopPairChatReplayRevoke": "pass",
+    "biliReadonlyDrafts": "pass",
+    "billingAttributionIdempotency": "pass",
+    "officialWebhook": "Not implemented. Gateway-only manual acceptance is unaffected."
+  },
+  "changes": [
+    "packages/desktop-pet/src/client.js",
+    "packages/desktop-pet/test/recovery-capabilities.test.mjs",
+    "packages/protocol-bili-bridge/src/bridge.js",
+    "packages/protocol-bili-bridge/src/pollers/explore.js",
+    "packages/protocol-bili-bridge/test/explore.test.mjs",
+    "packages/qq-agent-core/plugins/bili-watcher/index.js",
+    "packages/qq-agent-core/src/app.js",
+    "packages/qq-agent-core/src/store.js",
+    "packages/qq-agent-core/test/headless-transport.test.mjs"
+  ],
+  "findings": [
+    {
+      "priority": "P2",
+      "issue": "Bili logout or watcher disable/re-enable did not revoke old exploration"
+    },
+    {
+      "priority": "P2",
+      "issue": "Desktop streamed replay reported connected before recovery completed"
+    },
+    {
+      "priority": "P2",
+      "issue": "Maximum-length official channel ID exceeded atomic temporary filename component limit"
+    },
+    {
+      "priority": "P2",
+      "issue": "UTF-8 BOM archive JSON omitted from chat discovery"
+    },
+    {
+      "priority": "P3",
+      "issue": "Progress summary still identified review 6 as latest"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "path": "packages/qq-agent-core/modules/headless/qqbot.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/connection.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/index.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/qq/qqbot.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/qq-service.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/routes/qq.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/agent-settings.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/agent-runtime.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/panel/components/qq-panel.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/test/qq-qqbot.test.mjs",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/test/qqbot-settings.test.mjs",
+      "unchanged": true
+    }
+  ],
+  "frozenFileCount": 184,
+  "frozenChanged": [],
+  "staged": [],
+  "limitations": [
+    "Electron 33.4.11 rejected by existing minimum-45 packaging gate",
+    "Normal Windows encryption, sandbox, multimonitor, sleep, installer and signing remain unverified",
+    "Legacy ambiguous memory and historical billing need manual reconciliation",
+    "Deletion of var/review9-bili-negative and var/review10-processes rejected by automatic approval review",
+    "Nine inaccessible Node processes without this run ownership evidence left for authorized investigation",
+    "Old lifecycle files use metadata revision fallback until written by the new lifecycle writer"
+  ],
+  "cleanup": {
+    "trackedPids": 433,
+    "trackedLive": 0,
+    "desktopDirectoryExists": false,
+    "desktopPort": {
+      "port": 52350,
+      "closed": true,
+      "error": "ECONNREFUSED"
+    }
+  },
+  "documents": [
+    {
+      "path": "DEVELOPMENT.md",
+      "sha256": "ed20277b2ef0782303c9cbbca287dad00abe85cc858a652183a90814150085e7"
+    },
+    {
+      "path": "README.md",
+      "sha256": "c2f5c4c70d4cbdf3582360609cfdeced6ffdbc07761107fc9b5ab79496bf72ea"
+    },
+    {
+      "path": "UPSTREAM.md",
+      "sha256": "c6f17ba2f9614ab063104b9bcdebf4c7e6be6512c4d702024562dc8af30a96ac"
+    },
+    {
+      "path": "deploy/napcat/README.md",
+      "sha256": "1130387729e0e068f0b9bc5fedec0075849066a14e317194a87ae6f56144c1e5"
+    },
+    {
+      "path": "docs/admin-upstream-model-management.md",
+      "sha256": "e4ee07f495d9e6dd928c8717bc3acaf641eca0590a0edc3580c13d4adcb50806"
+    },
+    {
+      "path": "docs/bili-explore.md",
+      "sha256": "2db534efb8a807fb0affd481f5713ad0e12a76f25d85e145960311d410e1c924"
+    },
+    {
+      "path": "docs/billing-meters.md",
+      "sha256": "5ea7334cb6cac32e1b47685d58986deca960f354124df9caea477abc55fd9745"
+    },
+    {
+      "path": "docs/cloud-manager.md",
+      "sha256": "4a588d44346eb709fb53538862dab6218803fbb7031b41c17a80b70b40d1854c"
+    },
+    {
+      "path": "docs/desktop-client.md",
+      "sha256": "b868ee5252313fb11c2b5901e22bd6f2fbc9e66509c3764dd90475e5356fa52a"
+    },
+    {
+      "path": "docs/desktop-pet-architecture.md",
+      "sha256": "3d6f9bf3919760e495e42421fd19b25bc1cdbd4568c421af9336166743b3d724"
+    },
+    {
+      "path": "docs/desktop-pet-gateway-followups.md",
+      "sha256": "95af205668fb5f345d6c5bd2c4aca137848d10987747a2fce4ff662cf35e4ea5"
+    },
+    {
+      "path": "docs/desktop-protocol.md",
+      "sha256": "b919b9af4a52f37b8cb247f7df034fd7ba22123f27928b88771e0c5143ca51e8"
+    },
+    {
+      "path": "docs/extensions.md",
+      "sha256": "261e542f9c1f8d77cc2faf55b2775819decdfad74fc5d96ea2a399710b64ec37"
+    },
+    {
+      "path": "docs/goal-progress.md",
+      "sha256": "7912692465356952d4b8ddc52d49ee3f074989d63ba49fa66585aa28d215b4bf"
+    },
+    {
+      "path": "docs/linux-vps-acceptance.md",
+      "sha256": "6623e9cfa799a387f2fe60bc1867ee52cafeb47aa4ab220811c2e11d1520c50e"
+    },
+    {
+      "path": "docs/multi-entry-implementation.md",
+      "sha256": "072eff75f7822a8f215e923d51ab229cd284ed43131c067b95c1a187d710f5d1"
+    },
+    {
+      "path": "docs/protocols.md",
+      "sha256": "16bda145b8e1987e47542d99729f54822242905caa2498b45c0df8b1996dd834"
+    },
+    {
+      "path": "docs/testing.md",
+      "sha256": "7b8478b4da057009187513672ffb648600bbf4d5bf18787580b71905a1889062"
+    },
+    {
+      "path": "docs/v1.0-acceptance.md",
+      "sha256": "a947c5474d68dab21ff79584019b74ff2f94e7035621277b38ac0f51009efb3e"
+    },
+    {
+      "path": "packages/desktop-pet/THIRD_PARTY_NOTICES.md",
+      "sha256": "7e5c738359e2844b1d21ace0a951c1094615ffb71432f27b78dc0d0855c65e03"
+    },
+    {
+      "path": "packages/protocol-qq-llbot/README.md",
+      "sha256": "e1ba4523548a5d8b146e88ec4ad15ac2e4c9df61dfd17b70f30db7c0f3671df6"
+    },
+    {
+      "path": "packages/protocol-qq-llbot/devtools/README.md",
+      "sha256": "8fbf9ad02d0fc28cfde8e039627d9ed07c4b3cd66b7d85ec1b6c13e2ddf2db9d"
+    },
+    {
+      "path": "packages/protocol-qq-llbot/test/onebot11-api-test/README.md",
+      "sha256": "aacf9a8a85c79cf6323539db5983e2db5726e89a394c13c40c84ec56bc02c7a3"
+    },
+    {
+      "path": "packages/protocol-qq-llbot/test/test-framework/README.md",
+      "sha256": "9bc4f8c802b7bbdf597ccaa7e3294021cd1c2bd5a72703ff9570efa6653bbabc"
+    },
+    {
+      "path": "packages/protocol-qq-llbot/test/webqq-api-test/README.md",
+      "sha256": "eefcf28d8ad97f64dc99c7f80efe4adae8889042e901b33b3434a185b1c60c75"
+    },
+    {
+      "path": "packages/qq-agent-core/README.md",
+      "sha256": "9c391589c6f99b90d89fb686555a9ad9a322e7d72844542301d7252be3113026"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/multi-instance.md",
+      "sha256": "e240f781d15eb8dae1ebd738697c340a933d283b87a8d0d4dbce2fc256e6fbe7"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/plugin-development.md",
+      "sha256": "49eddb13005a10b81583b9893c74b506b09e669825688d34edefe4aa2c21f482"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/prompt-pipeline.md",
+      "sha256": "8ea96839cd87868d78660380273573431ce5ad0b799b626db06eaddef30b272b"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/skill-development.md",
+      "sha256": "7404a451372c0336f15b529210ed0bec39a58ff2989b4af1bd523685ab07ee4a"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/skill-guide-for-beginners.md",
+      "sha256": "a5835ff940743953d8e4b8f5c337f44a2cd27c57d6ad4877bfcc0218d2cad032"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/skill-reference.md",
+      "sha256": "95a42d7cbf41873b48aeab4d109b628c79c8506bb3025711c610bf714e75e798"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/skill-system.md",
+      "sha256": "e1dfbf893f304255bd25f3294f08c3bb5f0b365c599fe865b8451584a5bdff2e"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/snowluma-capabilities.md",
+      "sha256": "d9db0d1bbfa76add8b58f38130ea65c0bc2587977756ee84fa27c9844e587f7a"
+    },
+    {
+      "path": "packages/qq-agent-core/doc/extend_development/video-modes.md",
+      "sha256": "999ac101854b0fb3c57d96f06e8597a5d06b3160df7420224c28ab5e5b337423"
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/README.en.md",
+      "sha256": "a005bc4fec87ad53e686a63958afbaad87f699a3f210be2c17a819f16248d6ea"
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/README.md",
+      "sha256": "d55d466521ca2d184ee6d8f3a39dbcc6f2cd8835fd555997fde998a4170dbf67"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "review10-baseline-2026-11-03.json",
+      "bytes": 49986,
+      "sha256": "a57ad676bf0b7ce56420a476fd3d9483a9409c38c5f9c248ea096e83a83c2a3c"
+    },
+    {
+      "path": "review10-bili-negative-2026-11-03.txt",
+      "bytes": 1079,
+      "sha256": "f1cbe7f28ebff548d138a489288444b8c73caa2170d7fdada9a006d9f01237b7"
+    },
+    {
+      "path": "review10-bili-negative.cjs",
+      "bytes": 1552,
+      "sha256": "2a6ceac69681f8987cc8fe428b7bf94c8e645b25d2ed6b93aeb237119de7ee34"
+    },
+    {
+      "path": "review10-cleanup-2026-11-03.json",
+      "bytes": 1840,
+      "sha256": "e529dddeafbd6597607a51ec5cc0a6073a6a3f5d724171a241f637ccedcc1707"
+    },
+    {
+      "path": "review10-core-negative-2026-11-03.txt",
+      "bytes": 2664,
+      "sha256": "60afedd37b9f9380074a6a33cca719a8212b844d7c614831fe878275463d9796"
+    },
+    {
+      "path": "review10-core-regression-2026-11-03.txt",
+      "bytes": 3580,
+      "sha256": "55c22ef366a5b107a46b90f9abb85892346597e82b173545237de1fbf39eb1f5"
+    },
+    {
+      "path": "review10-desktop-negative-2026-11-03.txt",
+      "bytes": 1186,
+      "sha256": "12b81513fa0b78016698dc001e5520693954a3cd896df90fc3e7b5e5e45eaae0"
+    },
+    {
+      "path": "review10-desktop-negative.cjs",
+      "bytes": 2107,
+      "sha256": "6c7643773f431400d617d443c845461def89d4779ec7f6aa9759d2471547fc6f"
+    },
+    {
+      "path": "review10-frozen-code-2026-11-03.json",
+      "bytes": 29584,
+      "sha256": "74b24ad5925e1822f4d1553d802617e31bf560d9349be50bd866b1ca05c6feda"
+    },
+    {
+      "path": "review10-processes-2026-11-03.json",
+      "bytes": 218692,
+      "sha256": "3881a6b08e6d117dc7f222458206f53765e63343246f8d263b651da6148c90ab"
+    },
+    {
+      "path": "review10-simulated-chains-2026-11-03.txt",
+      "bytes": 2800,
+      "sha256": "9b75207b1854d9ba6a3d55ca8b5fdd735817ee1aaf94b53f654a175d1ea55e69"
+    },
+    {
+      "path": "review10-static-checks-2026-11-03.json",
+      "bytes": 2626,
+      "sha256": "f654b15dece44fecf90de3e64abff995c30d592b06054d633fd9df647c22c544"
+    },
+    {
+      "path": "review10-test-all-2026-11-03.txt",
+      "bytes": 154038,
+      "sha256": "a916946c38658ef36b80c4f7fbf97758d124b66a5ff30a01ce309cd8fb5438a4"
+    }
+  ]
+}

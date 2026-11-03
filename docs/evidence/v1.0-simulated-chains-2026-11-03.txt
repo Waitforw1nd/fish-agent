@@ -1,0 +1,36 @@
+Local fixtures only. Temporary credential output redacted. Times are UTC.
+
+Started: 2026-11-02T19:32:07.812Z
+Command: node --test packages/cloud-manager/test/v1-qq-integration.test.mjs packages/cloud-manager/test/bili-explore-integration.test.mjs packages/cloud-manager/test/v1-billing-integration.test.mjs
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ local explore to authenticated agent and Relay meters L0 and L1 without sending (293.5587ms)
+✔ four entry usage APIs reflect idempotent authenticated batches and isolate tenants (135.8607ms)
+validated qq_protocol pid=105888 stopped; meters=[{"meter":"qq_protocol.message.in","quantity":1},{"meter":"qq_protocol.llm.tokens","quantity":50},{"meter":"qq_protocol.message.out","quantity":1},{"meter":"qq_protocol.llm.session","quantity":1},{"meter":"qq_protocol.hosting.seconds","quantity":6.274}]
+validated qq_official pid=116712 stopped; meters=[{"meter":"qq_official.api.call","quantity":2},{"meter":"qq_official.message.in","quantity":1},{"meter":"qq_official.llm.tokens","quantity":50},{"meter":"qq_official.message.out","quantity":1},{"meter":"qq_official.llm.session","quantity":1},{"meter":"qq_official.hosting.seconds","quantity":6.286}]
+✔ QQ OneBot and official gateway traverse real tenant agents and Relay locally (12781.1149ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13054.0139
+Completed: 2026-11-02T19:32:20.970Z
+Exit: 0
+
+Started: 2026-11-02T19:32:20.978Z
+Command: node packages/desktop-pet/scripts/acceptance-cloud.mjs --check
+PID: 104256
+Panel: http://127.0.0.1:57637/#/tenants/tnt_dd13456f-7f64-429f-9254-7069ef4022a6/hosting
+Server URL: http://127.0.0.1:57637
+Temporary admin: admin
+Temporary password: [omitted temporary credential]
+Temporary data: C:\Users\ADMINI~1\AppData\Local\Temp\fish-cloud-test-GoV3St
+CHECK PASS: client pair, three ack/replies, two-device echo, reconnect/replay, revoke
+RECOVERY PASS: queued resend, offline input history, lost ACK restart receipt, no duplicate model call
+METER PASS: desktop in=7 out=7 ledger=14 tokens=350; online seconds and usage API verified
+Processes stopped: 103744
+Temporary data removed: C:\Users\ADMINI~1\AppData\Local\Temp\fish-cloud-test-GoV3St
+Completed: 2026-11-02T19:32:41.719Z
+Exit: 0

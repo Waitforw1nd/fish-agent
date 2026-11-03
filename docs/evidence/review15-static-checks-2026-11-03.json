@@ -1,0 +1,13 @@
+{
+  "review": "review15",
+  "at": "2026-11-03T03:56:34.790Z",
+  "markdownFiles": 37,
+  "missingRelativeFileLinks": [],
+  "focusedTests": [],
+  "note": "Relative Markdown file targets checked. Anchors and external URLs excluded. Test skips are reported in raw logs.",
+  "rootOrchestrationCheckExit": 0,
+  "diffWhitespaceCheckExit": 0,
+  "diffWhitespaceMode": "CRLF accepted",
+  "runtimeLock": "33.4.11",
+  "runtimeGateExit": 1
+}

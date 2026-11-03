@@ -11,7 +11,25 @@ import http from 'node:http';
 // 数据目录隔离：必须在 import src/app.js 之前设置。
 // 否则用户正开着 QQ Agent 时本测试会被实例锁挡住（"已有实例在运行"），
 // 那是环境冲突而不是代码回归；隔离后测试随时可跑，也不碰真实 data/。
-process.env.QQ_AGENT_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'qq-agent-usage-'));
+const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qq-agent-usage-'));
+process.env.QQ_AGENT_DATA_DIR = dataDir;
+fs.writeFileSync(path.join(dataDir, 'config.json'), JSON.stringify({
+  channels: { qq: { enabled: false }, bili: { enabled: false }, desktop: { enabled: false } },
+  proactive: { enabled: false }, extensions: { hotReload: false }
+}));
+// Exercise nonempty usage and drilldown through the real HTTP implementation.
+const yesterday = new Date();
+yesterday.setDate(yesterday.getDate() - 1);
+yesterday.setHours(12, 0, 0, 0);
+fs.mkdirSync(path.join(dataDir, 'sessions'));
+fs.writeFileSync(path.join(dataDir, 'sessions', 'usage-fixture.json'), JSON.stringify({
+  id: 'usage-fixture', chatKey: 'group:10086', status: 'done',
+  startedAt: yesterday.getTime(), endedAt: yesterday.getTime() + 1000,
+  model: 'test-model', vendor: 'fixture', webSearchCount: 1,
+  usage: { promptTokens: 120, completionTokens: 30, totalTokens: 150, cachedTokens: 0, calls: 1 },
+  messages: [{ raw: { created: yesterday.getTime() / 1000, model: 'test-model', usage: { prompt_tokens: 120, completion_tokens: 30 } } }],
+  sent: []
+}));
 
 const { createApp } = await import('../src/app.js');
 
@@ -23,6 +41,7 @@ const check = (n, c, e = '') => { if (c) { pass++; console.log('  OK   ' + n); }
 
 // ── 起真服务 ──
 const app = createApp({ log: () => {} });
+try {
 const PORT = 40995;
 const port = await app.start(PORT);
 console.log('=== 真实服务已启动 :' + port + '（接口全部真实，无 mock）===\n');
@@ -91,6 +110,7 @@ const sandbox = {
   location: { href: 'http://127.0.0.1:' + port + '/' },
   fetch: realFetch,
   EventSource: function () { this.addEventListener = () => {}; this.close = () => {}; },
+  MutationObserver: class { observe() {} disconnect() {} },
   setTimeout, clearTimeout, setInterval, clearInterval, console,
   alert: () => {}, confirm: () => true,
   matchMedia: () => ({ matches: false, addEventListener() {} }),
@@ -174,6 +194,8 @@ console.log('\n=== 数值填充（真实数据）===');
 // DOM 桩不会解析 innerHTML，renderUsagePage 重建后 querySelector 缓存的是旧元素，
 // 所以显式再调一次 updateUsagePage，确保读到的是刚填入的值。
 const freshStats = await realFetch('/api/usage/stats?range=7').then((r) => r.json());
+check('真实统计包含 fixture token 和调用', freshStats.totals?.promptTokens === 120
+  && freshStats.totals?.completionTokens === 30 && freshStats.totals?.runs === 1);
 const freshSt = await realFetch('/api/status').then((r) => r.json());
 ctx.updateUsagePage(freshStats, freshSt, priceData || {});
 const f = (n) => String(usageBox.querySelector(`[data-field="${n}"]`)?.textContent || '');
@@ -202,12 +224,13 @@ vm.runInContext("usageRange = '7';", ctx);
 setUsageTab();
 const stats = await realFetch('/api/usage/stats?range=7').then((r) => r.json());
 const firstDay = (stats.days || [])[0];
+check('必须存在按天数据供下钻', !!firstDay?.day);
 if (firstDay) {
-  const r = await realFetch(`/api/usage/breakdown?range=7&dim=day&key=${encodeURIComponent(firstDay.key)}&by=model`);
+  const r = await realFetch(`/api/usage/breakdown?range=7&dim=day&key=${encodeURIComponent(firstDay.day)}&by=model`);
   const b = await r.json();
-  check('按天下钻返回数据（rows=' + ((b.rows || []).length) + '）', r.ok && Array.isArray(b.rows));
-} else {
-  console.log('  （无按天数据，跳过）');
+  check('按天下钻返回 fixture 的模型和 token', r.ok && b.rows?.length === 1
+    && b.rows[0].promptTokens === 120 && b.rows[0].completionTokens === 30
+    && b.totals?.promptTokens === 120);
 }
 
 // ── 回归：模拟真实点击「用量」页签 ──
@@ -232,6 +255,9 @@ check('点击后 state.tab = usage', vm.runInContext('state.tab', ctx) === 'usag
 check('点击后页面有实质内容（含「用量与成本」）', clickedHtml.includes('用量与成本'), clickedHtml.slice(0, 80));
 check('点击后不是错误提示', !clickedHtml.includes('加载失败'), clickedHtml.slice(0, 80));
 
-await app.stop();
+} finally {
+  await app.stop();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+}
 console.log('\n' + (fail ? 'FAILED ' + fail : 'ALL PASSED ' + pass));
 process.exit(fail ? 1 : 0);

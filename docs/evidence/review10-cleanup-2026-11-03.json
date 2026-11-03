@@ -1,0 +1,77 @@
+{
+  "at": "2026-11-03T01:17:59.2572116Z",
+  "trackedUniquePidCount": 433,
+  "liveTracked": [],
+  "allNode": [
+    {
+      "Id": 5060,
+      "StartTime": "/Date(1793668016444)/",
+      "Path": null
+    },
+    {
+      "Id": 18352,
+      "StartTime": "/Date(1793627278388)/",
+      "Path": null
+    },
+    {
+      "Id": 53112,
+      "StartTime": "/Date(1793668195867)/",
+      "Path": null
+    },
+    {
+      "Id": 55544,
+      "StartTime": "/Date(1793476666302)/",
+      "Path": null
+    },
+    {
+      "Id": 65328,
+      "StartTime": "/Date(1793668172726)/",
+      "Path": null
+    },
+    {
+      "Id": 76972,
+      "StartTime": "/Date(1793573795002)/",
+      "Path": null
+    },
+    {
+      "Id": 87576,
+      "StartTime": "/Date(1793627274760)/",
+      "Path": null
+    },
+    {
+      "Id": 88580,
+      "StartTime": "/Date(1793658618089)/",
+      "Path": null
+    },
+    {
+      "Id": 114564,
+      "StartTime": "/Date(1793668134605)/",
+      "Path": null
+    }
+  ],
+  "review9Residual": {
+    "path": "var/review9-bili-negative",
+    "exists": true,
+    "files": 74,
+    "bytes": 674338,
+    "reparsePoints": 0,
+    "deletion": "automatic approval review rejected recursive deletion as blocked by policy"
+  },
+  "desktopTemporaryDataExists": false,
+  "traceDirectory": "var/review10-processes",
+  "completedAt": "2026-11-03T01:21:04.502Z",
+  "desktopPort": {
+    "port": 52350,
+    "closed": true,
+    "error": "ECONNREFUSED"
+  },
+  "traceDirectoryResidual": {
+    "path": "var/review10-processes",
+    "files": 454,
+    "bytes": 101712,
+    "contents": "Process ownership JSON only; consolidated evidence saved",
+    "deletion": "automatic approval review rejected recursive deletion as blocked by policy"
+  },
+  "earlyUntracedAgentTests": "Completed with successful teardown assertions",
+  "knownNodeProcessesTerminatedManually": []
+}

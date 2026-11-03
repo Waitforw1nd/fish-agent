@@ -1,0 +1,134 @@
+Independent review; local fixtures only. UTC timestamps. Node v24.22.1
+Only the temporary desktop password line is redacted; test output and failures are retained.
+
+Started: 2026-11-02T20:07:17.720Z
+Check: npm run test:all
+Command: E:\harness\cursor\resources\app\resources\helpers\node.exe D:\tool\node\node_modules\npm\bin\npm-cli.js run test:all
+Child PID: 98772
+
+> fish-bot@0.1.0 test:all
+> node scripts/run-tests.mjs --all
+
+
+==> Bilibili bridge: npm run test
+
+> @fish/protocol-bili-bridge@0.1.0 test
+> node --test "test/*.test.mjs"
+
+✔ CookieJar 域名/路径/Secure/过期与登录跳转 query (2.7575ms)
+✔ SecretStore AES-GCM 加密、篡改检测与错误密钥 (19.2135ms)
+✔ FileLock 跨实例互斥、超时与过期锁抢占 (167.4521ms)
+✔ refresh_csrf 解析兼容官方 div 与旧赋值形态 (0.6403ms)
+✔ cookie 保活公钥与官方 JWK 黄金值一致 (0.7024ms)
+✔ correspondPath 使用固定 RSA 公钥生成可解密 token (55.6786ms)
+✔ 扫码四状态、持久化与凭据不外泄 (98.7298ms)
+✔ 二维码过期不产生登录态 (56.9081ms)
+✔ 四步 cookie 保活：顺序、轮换、持久化与 not_needed (83.513ms)
+✔ 并发保活被 Mutex/FileLock 串行化 (77.064ms)
+✔ 保活失败时给出明确错误且不破坏旧凭据 (46.1902ms)
+✔ buvid 接口失败时本地回退，成功后复用 cookie (19.3492ms)
+✔ 二维码在本地 TTL 到期时不再请求轮询接口 (33.4669ms)
+✔ 默认配置只绑定回环，端口/端点可覆盖 (3.4959ms)
+✔ 非回环绑定必须配置 OneBot/管理令牌，且令牌不能相同 (1.3813ms)
+✔ dynamic type 17 uses returned comment OID and reply threading (1.1844ms)
+✔ dynamic type 11 uses returned comment OID and reply threading (0.1257ms)
+✔ DM uploads validated image then sends type 2 with Bili URL (13.256ms)
+✔ recent dynamics distinguish empty, restricted and failure (0.3828ms)
+✖ real BiliApi emits multipart upload and form encoded type 2 send (1.1944ms)
+✔ 端到端：扫码→订阅→评论/私信/UP/直播事件→OneBot WS→HTTP action 回复→fake B 站 (380.1769ms)
+✔ explore transport rejects redirects and incomplete ACKs without reflecting secrets (61.6452ms)
+✔ L1 drafts require acknowledgement, evidence, review and never publish (71.2552ms)
+✔ three consecutive rejections follow review order and survive restart (76.7734ms)
+✔ browse retry keeps its identity while a later revisit is metered separately (34.5788ms)
+✔ missing subtitles only records a diary and survives restart (13.4752ms)
+✔ 直播包解析：明文、人气值、zlib/brotli 多子包与损坏包 (2.9682ms)
+✔ 直播 WS：认证、心跳、brotli 多事件、@ 过滤与礼物/SC/上舰 (1214.0473ms)
+✔ 直播断线重连后继续收事件与心跳 (2372.7787ms)
+✔ 所有虚拟号段位于 ChannelRouter 的 [2^52, 2^53-1] (1.1832ms)
+✔ 虚拟视频/动态/直播群与用户 ID 可逆且全部为安全整数 (410.2432ms)
+✔ 虚拟 ID 映射重启可恢复，并拒绝跨租户读取 (12.1807ms)
+✔ MessageRing 使用安全整数、环形淘汰并跨重启恢复 (35.3718ms)
+✔ PollState 游标与去重跨重启保持，claimMany 只返回新 key (13.0448ms)
+✔ JsonStore 原子更新串行且损坏文件拒绝覆盖 (50.2187ms)
+✔ 低频队列串行且强制最小间隔，失败不阻断后续 (161.3223ms)
+✔ PollScheduler 周期执行、失败退避与 stop (112.3851ms)
+✔ CQ 转义、解析与数组消息规范化 (3.7955ms)
+✔ 出站消息段：CQ 还原、@ 反验、引用与不支持段 (0.8956ms)
+✔ OneBot 事件构造只接受安全整数 ID，并生成 CQ raw_message (0.3551ms)
+✔ custom action 名称覆盖 bili-agent-pack 契约 (0.8921ms)
+✔ HTTP action 根路径/路径式、令牌与未知 action (125.7991ms)
+✔ WS 鉴权、生命周期与 OneBot 群/私聊事件投递 (111.4323ms)
+✔ 私信发送、2000 字节校验、入站私信与 message_id 安全 (51.1166ms)
+✔ 管理 API：健康检查、状态、订阅、映射、消息、登出与秘密不泄露 (114.2871ms)
+✔ 管理 API 未配置 admin token 时返回 503 (32.3854ms)
+✔ 视频上下文、UP 查询、点赞与自定义评论 action (73.9716ms)
+✔ 风控清除后写入仍被拒绝 (42.6527ms)
+✔ 同一桥接实例 stop 后可再次 start 并恢复 OneBot 服务 (38.8231ms)
+✔ dynamic group replies cannot publish (41.2556ms)
+✔ dispatcher rejection reaches polling caller (39.6705ms)
+[bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+[bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+[bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ cloud watcher lifecycle gates configured subscriptions and polling (70.6138ms)
+✔ cloud bridge restart loads current persisted tenant subscriptions (32.3591ms)
+✔ 评论 root/parent 计算与 msgfeed 归一化 (2.3097ms)
+✔ ReplyWatcher：首次基线不回补、投递回复/@、去重与订阅开关 (172.7765ms)
+✔ CommentWatcher：首次基线、增量投递、自评过滤与去重 (76.2357ms)
+✔ CommentWatcher 展开楼中楼预览并保留真实 root/parent (67.5682ms)
+✔ UpWatcher：首次基线、新视频映射群、去重 (45.2451ms)
+✔ DmWatcher：基线、增量、safe message_id、ack 与重启不重复 (56.3531ms)
+✔ 评论与 msgfeed 共用 rpid 去重，避免同一条 @ 回复投递两次 (60.4485ms)
+✔ 动态通知映射到动态群并保留图文评论主体 (40.6105ms)
+✔ cloud read-only policy cannot be overridden and standalone defaults are read-only (1.4868ms)
+✔ default bridge denies every publish action before contacting Bili; approving drafts only updates local state (144.0604ms)
+✔ failed msgfeed delivery retries even after unread count clears (34.7225ms)
+✔ failed video, UP and DM deliveries are retried (34.9128ms)
+✔ query 编码遵循 RFC3986 并排序 (0.7388ms)
+✔ 安全整数/大整数转换 (0.2226ms)
+✔ 日志脱敏覆盖 Cookie/令牌/二维码 key (0.6504ms)
+✔ 字符/字节截断不会切坏 UTF-8 (0.1618ms)
+✔ 视频上下文：详情、分 P、AI 字幕下载与封面 (82.2068ms)
+✔ untrusted subtitles and short-link redirects cannot reach internal services (1.1848ms)
+✔ 字幕缺失、地址过期、需要登录都明确返回原因 (29.0331ms)
+✔ b23 短链解析为 BV 号并拒绝外部域名 (0.7572ms)
+✔ 字幕格式化、URL 规范与错误输入 (25.298ms)
+✔ WBI mixin key 与官方黄金向量一致 (1.9559ms)
+✔ WBI 过滤禁用字符并跳过空值 (0.281ms)
+✔ extractWbiKeys 解析 nav 图片 URL (0.8613ms)
+✔ WbiSigner 缓存、失效与重新拉取 (0.4406ms)
+✔ RiskGuard 捕获 v_voucher 并明确标记需要人机验证 (0.8103ms)
+✔ RiskGuard 在 -101 等非风控错误上不误触发 (0.1133ms)
+✔ WBI 签名 -403 时刷新密钥并安全重放一次 (25.7064ms)
+ℹ tests 81
+ℹ suites 0
+ℹ pass 80
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3954.7887
+
+✖ failing tests:
+
+test at test\dynamic-image.test.mjs:48:1
+✖ real BiliApi emits multipart upload and form encoded type 2 send (1.1944ms)
+  Error [BridgeError]: B 站只读模式禁止发布和互动写入
+      at BiliApi.assertMethodAllowed (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/src/bili/api.js:135:40)
+      at BiliApi.request (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/src/bili/api.js:246:10)
+      at DmService.uploadImage (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/src/bili/dm.js:175:36)
+      at TestContext.<anonymous> (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/test/dynamic-image.test.mjs:56:26)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    kind: 'READ_ONLY',
+    code: 403,
+    retcode: 1403,
+    retryable: false,
+    wording: 'B 站只读模式禁止发布和互动写入',
+    details: null
+  }
+Completed: 2026-11-02T20:07:23.489Z
+Exit: 1; signal: none

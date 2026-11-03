@@ -1,0 +1,13 @@
+﻿{
+    "at":  "2026-11-03T04:49:43.1239304Z",
+    "host":  "127.0.0.1",
+    "connectProbe":  "Timed out after 1000 ms; no refusal inferred",
+    "netstatExit":  0,
+    "listeningRows":  [
+
+                      ],
+    "localPortRows":  [
+                          "  TCP    127.0.0.1:56581        127.0.0.1:56648        TIME_WAIT       0"
+                      ],
+    "port":  56581
+}

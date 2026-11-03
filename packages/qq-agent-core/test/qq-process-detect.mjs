@@ -1,6 +1,4 @@
 import fs from 'node:fs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 
 // QQ 进程检测的回归测试。
 //
@@ -9,12 +7,13 @@ import { promisify } from 'node:util';
 //   路径里的中文变成乱码，于是"QQ 明明在跑、界面却说未启动"。
 // 实测踩到时，用户的目录正好叫 "qq-agent - 副本"。
 //
-// 所以这里不只做静态断言，还会**真的调一次**检测函数，
-// 有 QQ 在跑时验证路径里没有乱码 —— 这才是能拦住回归的那一层。
+// 静态检查编码设置，并向真实检测函数注入中文 PowerShell 输出。
+// 本地夹具验证解析与过滤；真实系统进程检测明确列为跳过。
 
-let pass = 0; let fail = 0;
+let pass = 0; let fail = 0; let skipped = 0;
 const ok = (m) => { pass++; console.log('  ✓ ' + m); };
 const bad = (m, d) => { fail++; console.log('  ✗ ' + m); if (d) console.log('      ' + d); };
+const skip = (m) => { skipped++; console.log('  SKIP ' + m); };
 const check = (c, m, d) => (c ? ok(m) : bad(m, d));
 
 const SRC = fs.readFileSync('src/app.js', 'utf8');
@@ -55,36 +54,28 @@ console.log('\n=== 静态：优先用自己 spawn 的 pid ===');
     '用 signal 0 探测存活（不查系统，不受编码/权限影响）');
 }
 
-// ── 实测：真的调一次检测函数 ──
-console.log('\n=== 实测：调用检测函数，看路径有没有乱码 ===');
+// 仅使用模拟 PowerShell 输出，不枚举本机真实 QQ 进程。
+console.log('\n=== 本地夹具：检测函数保留 Unicode 路径 ===');
 {
   const i = SRC.indexOf('async function listQqProcesses');
   const j = SRC.indexOf('async function qqPortableRunningPid');
   if (i < 0 || j < 0) { bad('从源码里抠不出 listQqProcesses'); }
   else {
-    const fn = new Function('execFile', 'promisify', `${SRC.slice(i, j)}\n return listQqProcesses;`);
-    const listQqProcesses = fn(execFile, promisify);
+    const source = SRC.slice(i, j)
+      .replace("if (process.platform !== 'win32') return [];", '')
+      .replace("const { execFile } = await import('node:child_process');", '')
+      .replace("const { promisify } = await import('node:util');", '');
+    if (/\bimport\s*\(/.test(source)) throw new Error('检测函数的导入方式已改变，拒绝执行系统命令');
+    const fn = new Function('execFile', 'promisify', `${source}\n return listQqProcesses;`);
+    const expected = 'C:\\测试目录\\副本\\QQ.exe';
+    const listQqProcesses = fn(() => {}, () => async () => ({ stdout: JSON.stringify({ ProcessId: 123, ExecutablePath: expected }) }));
+    // The extracted function refers to execFile before promisification.
+    // Supply a harmless local placeholder, never an operating-system command.
     const procs = await listQqProcesses();
-    if (procs.length === 0) {
-      ok('当前没有 QQ 进程在跑，跳过实测（静态检查已覆盖）');
-    } else {
-      ok(`检测到 ${procs.length} 个 QQ.exe 进程`);
-      // 乱码的典型表现：U+FFFD 替换字符，或成串的 '?'
-      const garbled = procs.filter((p) => /\uFFFD|\?\?\?/.test(p.path));
-      check(garbled.length === 0,
-        '所有进程路径都没有乱码',
-        garbled.slice(0, 2).map((p) => p.path).join('\n'));
-      check(procs.every((p) => p.pid > 0 && p.path), '每个进程都有 pid 与路径');
-      check(procs.every((p) => /QQ\.exe$/i.test(p.path)), '返回的都是 QQ.exe');
-      // 非 ASCII 路径必须原样保留（这就是当初坏掉的地方）
-      const nonAscii = procs.filter((p) => /[^\x00-\x7f]/.test(p.path));
-      if (nonAscii.length) {
-        console.log(`      （信息）有 ${nonAscii.length} 个进程路径含非 ASCII 字符，原样保留：`);
-        console.log(`      ${nonAscii[0].path}`);
-      }
-    }
+    check(procs.length === 1 && procs[0].pid === 123 && procs[0].path === expected, '模拟中文路径及进程号原样保留');
   }
 }
+skip('真实系统 QQ 进程检测未执行（仅使用本地夹具）');
 
-console.log(`\n${fail === 0 ? '全部通过' : '存在失败'} —— 通过 ${pass} / 失败 ${fail}`);
+console.log(`\n${fail ? '存在失败' : skipped ? '已执行的检查通过，存在跳过' : '全部通过'} —— 通过 ${pass} / 失败 ${fail} / 跳过 ${skipped}`);
 process.exit(fail ? 1 : 0);

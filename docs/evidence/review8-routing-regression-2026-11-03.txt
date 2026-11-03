@@ -1,0 +1,86 @@
+
+== 配置解析：旧 snowluma 兼容与号段隔离 ==
+  OK    只有 snowluma 的旧配置 → channels.qq 回落到旧 URL/令牌
+  OK    channels.qq 非空值优先于 snowluma
+  OK    号段重叠 → resolveChannels 直接抛错（不带着歧义启动）
+  OK    B站虚拟 ID 常量在安全整数范围内且与 QQ 不相交
+
+== 事件入口：平台标记、自消息、重复事件 ==
+  OK    QQ / B站事件分别带上平台与各自 self 身份
+  OK    message_sent 与发送者等于本通道 self 的消息被丢弃（防自回环）
+  OK    重复事件只交付一次（桥接重连重放去重）
+
+== 出站路由：号段决定平台，绝不按默认通道猜 ==
+  OK    QQ 群 / B站虚拟群 / B站私信分别进入对应客户端
+  OK    send_msg 按 message_type 路由
+  OK    get_group_info / get_group_member_info / get_msg 按目标平台路由
+  OK    号段外 ID → 抛错且两侧都不调用
+  OK    B站通道未启用 → B站号段 ID 被拒绝，不会改发 QQ
+  OK    显式 platform 与号段冲突 → 拒绝（不允许强行改平台）
+
+== 能力表：B站不支持的动作必须明确抛错 ==
+  OK    B站 poke / 合并转发 / QQ 全局动作被拒绝
+  OK    B站消息段白名单：video / face / QQ 号 @ 被拒绝，text/image/reply 放行
+  OK    跨平台用户 ID 混用被拒绝（at / 群成员 / poke 目标）
+  OK    channels.bili.extraActions 可声明 custom action
+  OK    bili_* 命名空间无需参数也走 B站（bili-agent-pack 的 call 形态）
+  OK    channelFor / isBiliChat 为 Skill 提供会话平台判断
+  OK    B站未启用时 bili_* 动作明确报未启用，不落 QQ
+
+== 消息 ID 撞号：不猜，要求显式平台 ==
+  OK    两个平台出现同一 message_id → 未指定平台时拒绝
+  OK    显式 platform 可跨过撞号；未知 ID 在双通道下拒绝
+  OK    只有单通道启用时，未知 message_id 可安全回落该通道
+  OK    发送返回的 message_id 自动登记归属
+
+== 聚合动作 ==
+  OK    get_group_list 合并 QQ + B站；get_friend_list 跳过不支持的 B站
+  OK    聚合中单通道失败仍返回另一通道结果（可用性优先）
+  OK    显式 platform 的聚合只查该通道（B站不支持 get_friend_list 时明确抛错）
+
+== 兼容门面与连接生命周期 ==
+  OK    httpUrl / accessToken / tokenCandidates 写入 QQ 通道（旧 app.js 语义）
+  OK    connected / selfId / selfNickname 反映默认通道，connect 幂等
+  OK    状态聚合：任一通道变化都广播，且 QQ/B站明细互不覆盖
+  OK    B站-only 部署：默认身份回落到 B站
+  OK    号段重叠的 ChannelRouter 构造直接失败
+
+== 官方 QQBot（qqbot_* 字符串会话 ID）==
+  OK    qqbot_* 会话 ID 路由到官方适配器的 QQ 通道（保持字符串不转数字）
+  OK    QQ 通道不是官方适配器 → qqbot_* ID 明确拒绝，不落号段
+  OK    QQ 通道未启用 → qqbot_* ID 拒绝，不会改发 B站
+  OK    显式 platform 与 qqbot_* 归属冲突 → 拒绝
+  OK    官方 QQBot 的裸 OpenID 群成员可通过同平台校验
+  OK    入站消息和通知不能使用其他入口的会话 ID
+  OK    失败的入站不能占住去重键；确认成功后的重放仍被去重
+
+================================================================
+ChannelRouter：全部通过
+✔ packages\qq-agent-core\test\channel-router-test.mjs (113.2204ms)
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ desktop tools cannot touch shared stickers and reminder cancellation is scoped (11.4923ms)
+✔ desktop prompt does not sync or include shared sticker content (128.1825ms)
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ same client ID across devices has isolated in-progress receipts and distinct durable messages (69.017ms)
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ a failure after chat persistence never turns into an accepted retry, even after restart (181.3365ms)
+✔ real OneBot transports reject cross-entry events before archive or message attribution (221.4428ms)
+✔ OneBot forward WS: auth, concurrent echo, errors, timeouts and pending disconnect (100.9989ms)
+✔ OneBot reverse WS: bearer authentication, Universal role, duplicate rejection and listener cleanup (37.8553ms)
+✔ QQBot identify/token reuse, group/C2C normalization, reply binding and media upload (161.993ms)
+✔ QQBot gateway reconnect uses Resume; missed heartbeat ACK reconnects; close cancels retries (386.3532ms)
+✔ QQBot concurrent media sends reserve reply slots before upload and count failed API calls (48.6826ms)
+✔ QQBot ignores null gateway packets and bounds OpenIDs to the Relay contract (47.9671ms)
+✔ QQBot runtime errors never expose reflected credentials or invalid JSON bodies (63.7456ms)
+✔ numeric archive and memory persist; legacy endpoints migrate (8.2733ms)
+✔ official storage separates case-folding collisions and preserves unowned legacy memory (18.4513ms)
+✔ Disabled connection blocks API and scheduled sends before transport I/O (0.4928ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1326.2257

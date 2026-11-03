@@ -185,6 +185,22 @@ test('same-origin settings, personas, extension permissions and catalogue', asyn
   assert.equal(live.status, 200, live.text);
   assert.equal(live.json.config.store.contextTier, 2);
   assert.doesNotMatch(live.text, /api-secret|channel-secret|console-secret|opaque-sensitive/);
+  const officialGroups = ['qqbot_group_Group-A_1'];
+  const officialPrivate = ['qqbot_user_User-A_1'];
+  const officialPatch = await operator.call(base + '/agent/config', { method: 'PATCH', body: { allow: { groups: officialGroups, private: officialPrivate } } });
+  assert.equal(officialPatch.status, 200, officialPatch.text);
+  const officialRead = await viewer.call(base + '/agent/config');
+  assert.deepEqual(officialRead.json.config.allow.groups, officialGroups);
+  assert.deepEqual(officialRead.json.config.allow.private, officialPrivate);
+  for (const chat of ['group:qqbot_group_Group-A_1', 'private:qqbot_user_User-A_1']) {
+    const messages = await viewer.call(base + '/agent/chats/' + encodeURIComponent(chat) + '/messages');
+    assert.equal(messages.status, 200, messages.text);
+    const memory = await viewer.call(base + '/agent/memories/' + encodeURIComponent(chat));
+    assert.equal(memory.status, 200, memory.text);
+  }
+  const officialRemove = await operator.call(base + '/agent/config', { method: 'PATCH', body: { allow: { groups: ['123'], private: [] } } });
+  assert.equal(officialRemove.status, 200, officialRemove.text);
+  assert.deepEqual((await viewer.call(base + '/agent/config')).json.config.allow.private, []);
   const memoryWrite = await operator.call(`${base}/agent/memories/group%3A123/members/42`, {
     method: 'PUT', body: { name: 'friend', impressions: [{ content: 'likes fish' }] }
   });

@@ -1,0 +1,2572 @@
+﻿{
+    "review":  "review15",
+    "capturedAt":  "2026-11-03T03:34:51.8416594Z",
+    "note":  "Captured after delegation started, before root mutations.",
+    "status":  [
+                   " M DEVELOPMENT.md",
+                   " M README.md",
+                   " M UPSTREAM.md",
+                   " M deploy/napcat/README.md",
+                   " M docs/admin-upstream-model-management.md",
+                   " M docs/cloud-manager.md",
+                   " M docs/extensions.md",
+                   " M docs/linux-vps-acceptance.md",
+                   " M docs/protocols.md",
+                   " M docs/testing.md",
+                   " D docs/view-api-execution.md",
+                   " D docs/view-api-linux-acceptance.md",
+                   " D docs/view-api-modular-plan.md",
+                   " D docs/view-api-qq-status-fix.md",
+                   " D docs/view-api-stage-1.md",
+                   " D docs/view-api-stage-2-backend.md",
+                   " D docs/view-api-stage-2-services.md",
+                   " D docs/view-api-stage-3.md",
+                   " D docs/view-api-stage-4-admin.md",
+                   " D docs/view-api-stage-4-user.md",
+                   " D docs/view-api-stage-5.md",
+                   " M package.json",
+                   " M packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                   " M packages/cloud-manager/panel/components/qq-panel.js",
+                   " M packages/cloud-manager/panel/lib/api.js",
+                   " M packages/cloud-manager/panel/lib/api/bili.js",
+                   " M packages/cloud-manager/panel/lib/api/billing.js",
+                   " M packages/cloud-manager/panel/lib/api/qq.js",
+                   " M packages/cloud-manager/panel/lib/normalize/channels.js",
+                   " M packages/cloud-manager/panel/lib/normalize/tenant.js",
+                   " M packages/cloud-manager/panel/views/admin/tenant-detail.js",
+                   " M packages/cloud-manager/panel/views/user/instance.js",
+                   " M packages/cloud-manager/panel/views/user/shared.js",
+                   " M packages/cloud-manager/src/agent-runtime.js",
+                   " M packages/cloud-manager/src/agent-settings.js",
+                   " M packages/cloud-manager/src/api.js",
+                   " M packages/cloud-manager/src/app.js",
+                   " M packages/cloud-manager/src/bili-service.js",
+                   " M packages/cloud-manager/src/billing.js",
+                   " M packages/cloud-manager/src/config-guard.js",
+                   " M packages/cloud-manager/src/config.js",
+                   " M packages/cloud-manager/src/contracts/http.js",
+                   " M packages/cloud-manager/src/db.js",
+                   " M packages/cloud-manager/src/gateway.js",
+                   " M packages/cloud-manager/src/hosting.js",
+                   " M packages/cloud-manager/src/plans.js",
+                   " M packages/cloud-manager/src/presenters/tenant-presenter.js",
+                   " M packages/cloud-manager/src/qq-service.js",
+                   " M packages/cloud-manager/src/qq/common.js",
+                   " M packages/cloud-manager/src/relay/server.js",
+                   " M packages/cloud-manager/src/routes/bili.js",
+                   " M packages/cloud-manager/src/routes/qq.js",
+                   " M packages/cloud-manager/src/supervisor.js",
+                   " M packages/cloud-manager/src/util.js",
+                   " M packages/cloud-manager/test/agent-extensions-view-api.test.mjs",
+                   " M packages/cloud-manager/test/custom-recharge.test.mjs",
+                   " M packages/cloud-manager/test/fixtures/fake-upstream.mjs",
+                   " M packages/cloud-manager/test/qq-switch-api.test.mjs",
+                   " M packages/cloud-manager/test/relay.test.mjs",
+                   " M packages/cloud-manager/test/view-api-backend.test.mjs",
+                   " M packages/protocol-bili-bridge/src/bili/api.js",
+                   " M packages/protocol-bili-bridge/src/bili/auth.js",
+                   " M packages/protocol-bili-bridge/src/bili/buvid.js",
+                   " M packages/protocol-bili-bridge/src/bili/cookie-jar.js",
+                   " M packages/protocol-bili-bridge/src/bili/live.js",
+                   " M packages/protocol-bili-bridge/src/bili/refresh.js",
+                   " M packages/protocol-bili-bridge/src/bili/video.js",
+                   " M packages/protocol-bili-bridge/src/bili/wbi.js",
+                   " M packages/protocol-bili-bridge/src/bridge.js",
+                   " M packages/protocol-bili-bridge/src/config.js",
+                   " M packages/protocol-bili-bridge/src/main.js",
+                   " M packages/protocol-bili-bridge/src/mapping/ids.js",
+                   " M packages/protocol-bili-bridge/src/onebot/admin.js",
+                   " M packages/protocol-bili-bridge/test/dynamic-image.test.mjs",
+                   " M packages/protocol-bili-bridge/test/e2e.test.mjs",
+                   " M packages/protocol-bili-bridge/test/live.test.mjs",
+                   " M packages/protocol-bili-bridge/test/mapping.test.mjs",
+                   " M packages/protocol-bili-bridge/test/onebot.test.mjs",
+                   " M packages/protocol-bili-bridge/test/pollers.test.mjs",
+                   " M packages/protocol-bili-bridge/test/video.test.mjs",
+                   " M packages/protocol-qq-llbot/README.md",
+                   " M packages/protocol-qq-llbot/devtools/README.md",
+                   " M packages/protocol-qq-llbot/test/onebot11-api-test/README.md",
+                   " M packages/protocol-qq-llbot/test/test-framework/README.md",
+                   " M packages/protocol-qq-llbot/test/webqq-api-test/README.md",
+                   " M packages/qq-agent-core/README.md",
+                   " M packages/qq-agent-core/doc/extend_development/multi-instance.md",
+                   " M packages/qq-agent-core/doc/extend_development/plugin-development.md",
+                   " M packages/qq-agent-core/doc/extend_development/prompt-pipeline.md",
+                   " M packages/qq-agent-core/doc/extend_development/skill-development.md",
+                   " M packages/qq-agent-core/doc/extend_development/skill-guide-for-beginners.md",
+                   " M packages/qq-agent-core/doc/extend_development/skill-reference.md",
+                   " M packages/qq-agent-core/doc/extend_development/skill-system.md",
+                   " M packages/qq-agent-core/doc/extend_development/snowluma-capabilities.md",
+                   " M packages/qq-agent-core/doc/extend_development/video-modes.md",
+                   " M packages/qq-agent-core/modules/headless/README.en.md",
+                   " M packages/qq-agent-core/modules/headless/README.md",
+                   " M packages/qq-agent-core/modules/headless/connection.js",
+                   " M packages/qq-agent-core/modules/headless/index.js",
+                   " M packages/qq-agent-core/modules/headless/onebot.js",
+                   " M packages/qq-agent-core/modules/headless/qqbot.js",
+                   " M packages/qq-agent-core/package.json",
+                   " M packages/qq-agent-core/plugins/bili-watcher/index.js",
+                   " M packages/qq-agent-core/src/app.js",
+                   " M packages/qq-agent-core/src/channel-router.js",
+                   " M packages/qq-agent-core/src/config-defaults.js",
+                   " M packages/qq-agent-core/src/config.js",
+                   " M packages/qq-agent-core/src/llm.js",
+                   " M packages/qq-agent-core/src/memory.js",
+                   " M packages/qq-agent-core/src/orchestrator.js",
+                   " M packages/qq-agent-core/src/prompt.js",
+                   " M packages/qq-agent-core/src/routes.js",
+                   " M packages/qq-agent-core/src/sender.js",
+                   " M packages/qq-agent-core/src/store.js",
+                   " M packages/qq-agent-core/src/tools.js",
+                   " M packages/qq-agent-core/test/_harness.mjs",
+                   " M packages/qq-agent-core/test/channel-router-test.mjs",
+                   " M packages/qq-agent-core/test/coverage-e2e.mjs",
+                   " M packages/qq-agent-core/test/coverage-http.mjs",
+                   " M packages/qq-agent-core/test/coverage-offline.mjs",
+                   " M packages/qq-agent-core/test/coverage-wiring.mjs",
+                   " M packages/qq-agent-core/test/headless-runtime.test.mjs",
+                   " M packages/qq-agent-core/test/headless-transport.test.mjs",
+                   " M packages/qq-agent-core/test/onebot-whitelist-test.mjs",
+                   " M packages/qq-agent-core/test/qq-pack.mjs",
+                   " M packages/qq-agent-core/test/qq-process-detect.mjs",
+                   " M packages/qq-agent-core/test/render-test.mjs",
+                   " M packages/qq-agent-core/test/send-guard-test.mjs",
+                   " M packages/qq-agent-core/test/setup-qq-version.mjs",
+                   " M packages/qq-agent-core/test/skill-test.mjs",
+                   " M packages/qq-agent-core/test/tools-skill-audit.mjs",
+                   " M packages/qq-agent-core/test/usage-e2e.mjs",
+                   " M packages/qq-agent-core/ui/app/05-memory-settings.js",
+                   " M scripts/check.mjs",
+                   " M scripts/run-tests.mjs",
+                   "?? docs/bili-explore.md",
+                   "?? docs/billing-meters.md",
+                   "?? docs/desktop-client.md",
+                   "?? docs/desktop-pet-architecture.md",
+                   "?? docs/desktop-pet-gateway-followups.md",
+                   "?? docs/desktop-protocol.md",
+                   "?? docs/evidence/",
+                   "?? docs/goal-progress.md",
+                   "?? docs/multi-entry-implementation.md",
+                   "?? docs/v1.0-acceptance.md",
+                   "?? packages/cloud-manager/panel/components/bili-explore.js",
+                   "?? packages/cloud-manager/panel/components/entries.js",
+                   "?? packages/cloud-manager/panel/lib/api/entries.js",
+                   "?? packages/cloud-manager/panel/test/entries.test.mjs",
+                   "?? packages/cloud-manager/panel/test/official-whitelist.test.mjs",
+                   "?? packages/cloud-manager/src/billing/",
+                   "?? packages/cloud-manager/src/contracts/chat-id.js",
+                   "?? packages/cloud-manager/src/desktop/",
+                   "?? packages/cloud-manager/src/entries.js",
+                   "?? packages/cloud-manager/src/entry-types.js",
+                   "?? packages/cloud-manager/src/lifecycle-lock.js",
+                   "?? packages/cloud-manager/src/qq/qqbot.js",
+                   "?? packages/cloud-manager/src/routes/billing.js",
+                   "?? packages/cloud-manager/src/routes/entries.js",
+                   "?? packages/cloud-manager/test/bili-explore-integration.test.mjs",
+                   "?? packages/cloud-manager/test/billing-provider.test.mjs",
+                   "?? packages/cloud-manager/test/desktop-agent-integration.test.mjs",
+                   "?? packages/cloud-manager/test/desktop-gateway.test.mjs",
+                   "?? packages/cloud-manager/test/entry-lifecycle.test.mjs",
+                   "?? packages/cloud-manager/test/fixtures/schema-v9.sql",
+                   "?? packages/cloud-manager/test/fixtures/v1-qq-agent.mjs",
+                   "?? packages/cloud-manager/test/lifecycle-coordination.test.mjs",
+                   "?? packages/cloud-manager/test/log-redaction.test.mjs",
+                   "?? packages/cloud-manager/test/migration-v10.test.mjs",
+                   "?? packages/cloud-manager/test/qq-qqbot.test.mjs",
+                   "?? packages/cloud-manager/test/qqbot-settings.test.mjs",
+                   "?? packages/cloud-manager/test/review-official-lifecycle.test.mjs",
+                   "?? packages/cloud-manager/test/v1-billing-integration.test.mjs",
+                   "?? packages/cloud-manager/test/v1-qq-integration.test.mjs",
+                   "?? packages/desktop-pet/",
+                   "?? packages/protocol-bili-bridge/src/explore-services.js",
+                   "?? packages/protocol-bili-bridge/src/pollers/explore.js",
+                   "?? packages/protocol-bili-bridge/test/auth-logout-race.test.mjs",
+                   "?? packages/protocol-bili-bridge/test/explore-services.test.mjs",
+                   "?? packages/protocol-bili-bridge/test/explore.test.mjs",
+                   "?? packages/protocol-bili-bridge/test/read-only.test.mjs",
+                   "?? packages/qq-agent-core/modules/headless/desktop-channel.js",
+                   "?? packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                   "?? packages/qq-agent-core/src/bili-explore.js",
+                   "?? packages/qq-agent-core/src/member-notes.js",
+                   "?? packages/qq-agent-core/src/metering.js",
+                   "?? packages/qq-agent-core/src/storage-identifiers.js",
+                   "?? packages/qq-agent-core/test/_isolated-child.mjs",
+                   "?? packages/qq-agent-core/test/checker-report.test.mjs",
+                   "?? packages/qq-agent-core/test/desktop-processing-recovery.test.mjs",
+                   "?? packages/qq-agent-core/test/llm-error-redaction.test.mjs",
+                   "?? packages/qq-agent-core/test/memory-legacy-delete.test.mjs",
+                   "?? packages/qq-agent-core/test/multi-entry.test.mjs",
+                   "?? scripts/review-validation.mjs"
+               ],
+    "files":  [
+                  {
+                      "path":  "deploy/napcat/README.md",
+                      "sha256":  "1130387729e0e068f0b9bc5fedec0075849066a14e317194a87ae6f56144c1e5",
+                      "bytes":  3858
+                  },
+                  {
+                      "path":  "DEVELOPMENT.md",
+                      "sha256":  "ed20277b2ef0782303c9cbbca287dad00abe85cc858a652183a90814150085e7",
+                      "bytes":  10288
+                  },
+                  {
+                      "path":  "docs/admin-upstream-model-management.md",
+                      "sha256":  "e4ee07f495d9e6dd928c8717bc3acaf641eca0590a0edc3580c13d4adcb50806",
+                      "bytes":  1722
+                  },
+                  {
+                      "path":  "docs/bili-explore.md",
+                      "sha256":  "4f2f69c03bb0662a508863b2c2e56632c62be78c538e4607d8ac789917173438",
+                      "bytes":  5983
+                  },
+                  {
+                      "path":  "docs/billing-meters.md",
+                      "sha256":  "ca82d3fb45ec6898f82c3fd92960e8951183b46c6dbaa4a224296de07c8e7ed6",
+                      "bytes":  9099
+                  },
+                  {
+                      "path":  "docs/cloud-manager.md",
+                      "sha256":  "4a588d44346eb709fb53538862dab6218803fbb7031b41c17a80b70b40d1854c",
+                      "bytes":  17358
+                  },
+                  {
+                      "path":  "docs/desktop-client.md",
+                      "sha256":  "b868ee5252313fb11c2b5901e22bd6f2fbc9e66509c3764dd90475e5356fa52a",
+                      "bytes":  3380
+                  },
+                  {
+                      "path":  "docs/desktop-pet-architecture.md",
+                      "sha256":  "3d6f9bf3919760e495e42421fd19b25bc1cdbd4568c421af9336166743b3d724",
+                      "bytes":  48935
+                  },
+                  {
+                      "path":  "docs/desktop-pet-gateway-followups.md",
+                      "sha256":  "95af205668fb5f345d6c5bd2c4aca137848d10987747a2fce4ff662cf35e4ea5",
+                      "bytes":  3256
+                  },
+                  {
+                      "path":  "docs/desktop-protocol.md",
+                      "sha256":  "2a7dbb3f1d2c76ce713f78a5553b7b8545487d8443d4e99b3986f65c4caa83e0",
+                      "bytes":  9495
+                  },
+                  {
+                      "path":  "docs/evidence/review10-baseline-2026-11-03.json",
+                      "sha256":  "a57ad676bf0b7ce56420a476fd3d9483a9409c38c5f9c248ea096e83a83c2a3c",
+                      "bytes":  49986
+                  },
+                  {
+                      "path":  "docs/evidence/review10-bili-negative.cjs",
+                      "sha256":  "2a6ceac69681f8987cc8fe428b7bf94c8e645b25d2ed6b93aeb237119de7ee34",
+                      "bytes":  1552
+                  },
+                  {
+                      "path":  "docs/evidence/review10-bili-negative-2026-11-03.txt",
+                      "sha256":  "f1cbe7f28ebff548d138a489288444b8c73caa2170d7fdada9a006d9f01237b7",
+                      "bytes":  1079
+                  },
+                  {
+                      "path":  "docs/evidence/review10-cleanup-2026-11-03.json",
+                      "sha256":  "e529dddeafbd6597607a51ec5cc0a6073a6a3f5d724171a241f637ccedcc1707",
+                      "bytes":  1840
+                  },
+                  {
+                      "path":  "docs/evidence/review10-core-negative-2026-11-03.txt",
+                      "sha256":  "60afedd37b9f9380074a6a33cca719a8212b844d7c614831fe878275463d9796",
+                      "bytes":  2664
+                  },
+                  {
+                      "path":  "docs/evidence/review10-core-regression-2026-11-03.txt",
+                      "sha256":  "55c22ef366a5b107a46b90f9abb85892346597e82b173545237de1fbf39eb1f5",
+                      "bytes":  3580
+                  },
+                  {
+                      "path":  "docs/evidence/review10-desktop-negative.cjs",
+                      "sha256":  "6c7643773f431400d617d443c845461def89d4779ec7f6aa9759d2471547fc6f",
+                      "bytes":  2107
+                  },
+                  {
+                      "path":  "docs/evidence/review10-desktop-negative-2026-11-03.txt",
+                      "sha256":  "12b81513fa0b78016698dc001e5520693954a3cd896df90fc3e7b5e5e45eaae0",
+                      "bytes":  1186
+                  },
+                  {
+                      "path":  "docs/evidence/review10-frozen-code-2026-11-03.json",
+                      "sha256":  "74b24ad5925e1822f4d1553d802617e31bf560d9349be50bd866b1ca05c6feda",
+                      "bytes":  29584
+                  },
+                  {
+                      "path":  "docs/evidence/review10-manifest-2026-11-03.json",
+                      "sha256":  "51840acead8e665d8e4cadf8d24ae065a3e5039ee40c2fe5a1c6ce75a0e09560",
+                      "bytes":  12124
+                  },
+                  {
+                      "path":  "docs/evidence/review10-processes-2026-11-03.json",
+                      "sha256":  "3881a6b08e6d117dc7f222458206f53765e63343246f8d263b651da6148c90ab",
+                      "bytes":  218692
+                  },
+                  {
+                      "path":  "docs/evidence/review10-simulated-chains-2026-11-03.txt",
+                      "sha256":  "9b75207b1854d9ba6a3d55ca8b5fdd735817ee1aaf94b53f654a175d1ea55e69",
+                      "bytes":  2800
+                  },
+                  {
+                      "path":  "docs/evidence/review10-static-checks-2026-11-03.json",
+                      "sha256":  "f654b15dece44fecf90de3e64abff995c30d592b06054d633fd9df647c22c544",
+                      "bytes":  2626
+                  },
+                  {
+                      "path":  "docs/evidence/review10-test-all-2026-11-03.txt",
+                      "sha256":  "a916946c38658ef36b80c4f7fbf97758d124b66a5ff30a01ce309cd8fb5438a4",
+                      "bytes":  154038
+                  },
+                  {
+                      "path":  "docs/evidence/review11-baseline-2026-11-03.json",
+                      "sha256":  "ceda9bbc40a8c7ad063d20aaf0de74126352d411a8ab01fc0312d3673b688faf",
+                      "bytes":  69478
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-fixed-2026-11-03.txt",
+                      "sha256":  "bcef9b1c93af68b1ef4241e482ecb6c6efcdc03181b212680609fe9cc0fae120",
+                      "bytes":  44
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-negative.mjs",
+                      "sha256":  "4dae52af37c8d45e0e36242393b3c859ee1c7b6a554a573c9fbeea4ef9304a92",
+                      "bytes":  2215
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-negative-2026-11-03.txt",
+                      "sha256":  "145770238ff6bfbb78d91db62cacf94b6e1ca1d6090832add2b864385f2d00b5",
+                      "bytes":  762
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-regression-2026-11-03.txt",
+                      "sha256":  "fb209436a069f194d6adff0c2bb650ccddb939dbd82dbaac57415dc6642e0c11",
+                      "bytes":  1131
+                  },
+                  {
+                      "path":  "docs/evidence/review11-cleanup-2026-11-03.json",
+                      "sha256":  "f50903da7918e5b5d5c6e2d3891f4e78afa07ffb542b06ee0f7f1487f0ba8701",
+                      "bytes":  1907
+                  },
+                  {
+                      "path":  "docs/evidence/review11-core-negative-2026-11-03.txt",
+                      "sha256":  "b5a521f4dab082d850c82f10b5f6edf750990a0b70a089f4490af12b4da097ad",
+                      "bytes":  1138
+                  },
+                  {
+                      "path":  "docs/evidence/review11-core-regression-2026-11-03.txt",
+                      "sha256":  "6f3e2a61c26f8f68c94d2138335bdfb096983d20438d97abe244d7f88113fa4c",
+                      "bytes":  5579
+                  },
+                  {
+                      "path":  "docs/evidence/review11-desktop-regression-2026-11-03.txt",
+                      "sha256":  "bae0ef6ba2cbe47a7e20deb7d2628649e2bc068ec00cc846abd173be29b48123",
+                      "bytes":  10287
+                  },
+                  {
+                      "path":  "docs/evidence/review11-frozen-code-2026-11-03.json",
+                      "sha256":  "19bc7faa46592e7dc8838c82f8c9a74c6e7a620b01c0039135a33d9c69454903",
+                      "bytes":  30572
+                  },
+                  {
+                      "path":  "docs/evidence/review11-manifest-2026-11-03.json",
+                      "sha256":  "49404d104a3c774a13ccddecabf14b523e2b985196c2f3eb63798de3a31c00a5",
+                      "bytes":  32249
+                  },
+                  {
+                      "path":  "docs/evidence/review11-processes-2026-11-03.json",
+                      "sha256":  "5b8a8cb3d64d3c92ce53c2293fb92d5cf1d23b9d57d8de0577c3af72e59afa4b",
+                      "bytes":  161008
+                  },
+                  {
+                      "path":  "docs/evidence/review11-security-regression-2026-11-03.txt",
+                      "sha256":  "4641872de6234acb03c135960894261e9170be7c8774b7ad43d5db7a6289297b",
+                      "bytes":  2448
+                  },
+                  {
+                      "path":  "docs/evidence/review11-simulated-chains-2026-11-03.txt",
+                      "sha256":  "6e6d09dfa686d2ae0abc2ad4807810759362045f78a68ead092e15f53df99dae",
+                      "bytes":  2873
+                  },
+                  {
+                      "path":  "docs/evidence/review11-static-checks-2026-11-03.json",
+                      "sha256":  "b7396e492f68e82d9957390f64dd7146acde51fdd2e49ba71e5d3a8a2d97808c",
+                      "bytes":  3558
+                  },
+                  {
+                      "path":  "docs/evidence/review11-test-all-2026-11-03.txt",
+                      "sha256":  "be5ed1d55a0a4011200e269b732c8032df5e8998b7b6f739a6f41ee23861f182",
+                      "bytes":  154669
+                  },
+                  {
+                      "path":  "docs/evidence/review12-baseline-2026-11-03.json",
+                      "sha256":  "bf97e1a6314206ccc607fb17f26900a043c02f59bbc1b4da10809c7fb1e0e856",
+                      "bytes":  83814
+                  },
+                  {
+                      "path":  "docs/evidence/review12-check-2026-11-03.txt",
+                      "sha256":  "460a7ab3b3448153d71a8b353494978981467c9a026f2549deadfc325e3f65f4",
+                      "bytes":  218
+                  },
+                  {
+                      "path":  "docs/evidence/review12-cleanup-2026-11-03.json",
+                      "sha256":  "9bbdaf2e7c13b3b603405dfab3fe3cb336cf821d8f7718255c159df14937c605",
+                      "bytes":  20305
+                  },
+                  {
+                      "path":  "docs/evidence/review12-cloud-regression-2026-11-03.txt",
+                      "sha256":  "9b8f99f401d18688567048f650e0d6311eb23d8a9e271731d6d6ad6bf23c8030",
+                      "bytes":  31668
+                  },
+                  {
+                      "path":  "docs/evidence/review12-frozen-code-2026-11-03.json",
+                      "sha256":  "ce0cd82cbe33c765a4834a604c99b3705b90eadcc2ddebfa47866ec4cbefbd93",
+                      "bytes":  41736
+                  },
+                  {
+                      "path":  "docs/evidence/review12-legacy-cleanup-2026-11-03.json",
+                      "sha256":  "962eb336bb338e59122d2fffdf17a54720f6aca6869558be7506994aeb5142a0",
+                      "bytes":  1880
+                  },
+                  {
+                      "path":  "docs/evidence/review12-manifest-2026-11-03.json",
+                      "sha256":  "07a4e29b7764da19214bcf04459a672c29e9201124c7376bade58d9b28bd27b3",
+                      "bytes":  24382
+                  },
+                  {
+                      "path":  "docs/evidence/review12-port-check-2026-11-03.json",
+                      "sha256":  "607c611b014fa766da7b429a3e92c07a2ba50e314f9854631e08be8e2b1f86d6",
+                      "bytes":  131
+                  },
+                  {
+                      "path":  "docs/evidence/review12-processes-2026-11-03.json",
+                      "sha256":  "d570eaf0f4bd97ce6ebc90ad35e08248a77183f2752b33dabc8ead412e128538",
+                      "bytes":  197015
+                  },
+                  {
+                      "path":  "docs/evidence/review12-root-directory-check-2026-11-03.json",
+                      "sha256":  "00772cb1ce26aa79c76681194a99090cbb6bc064ec60cfc63ae25236bf1d3573",
+                      "bytes":  3205
+                  },
+                  {
+                      "path":  "docs/evidence/review12-runtime-gate-2026-11-03.txt",
+                      "sha256":  "8fa66bf384094e963411995c8154aa8d5f121702a4d71c567125110300715f15",
+                      "bytes":  810
+                  },
+                  {
+                      "path":  "docs/evidence/review12-simulated-chains-2026-11-03.txt",
+                      "sha256":  "efef441892706d7b84ccc1fb01d449b812622607937ac46f2ef1dabac01b0d54",
+                      "bytes":  2873
+                  },
+                  {
+                      "path":  "docs/evidence/review12-static-checks-2026-11-03.json",
+                      "sha256":  "c325262568e6358e1f4c673e7cf60be900807ccd6f68dc7938b9535ca4567a42",
+                      "bytes":  983
+                  },
+                  {
+                      "path":  "docs/evidence/review12-test-all-2026-11-03.txt",
+                      "sha256":  "3a408f7dcc524787fc84093b097371229d0e793946e7f2df569d0e98208c8496",
+                      "bytes":  154926
+                  },
+                  {
+                      "path":  "docs/evidence/review13-baseline-2026-11-03.json",
+                      "sha256":  "2c204691616b7847976e7959d243ab910302eea4d575b232ac0241cb173dc3bc",
+                      "bytes":  84268
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-cookie-before.txt",
+                      "sha256":  "ee37422ef23be079fd6aa1bb10fbc2d323609a6bbfaaba6feefd5abf578db1e3",
+                      "bytes":  1774
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-logout-race.txt",
+                      "sha256":  "8bbd37f6b8378a3b51022349e553e0c8bf74ed3d5ce9ec11652d82abe86c1f35",
+                      "bytes":  426
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-processes.txt",
+                      "sha256":  "f9379a260f3c30b9a0b90a66d47f791e632a2091a1720bad839deff22a2fa198",
+                      "bytes":  150
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-processes-final.txt",
+                      "sha256":  "4db4e677c61abd39b4d68e691fec8eca500b4f1a40634fc2cf2362ee39810ffa",
+                      "bytes":  150
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-processes-qr-final.txt",
+                      "sha256":  "b5b0eda8f57cf4849a4f9b5cde28de4e53fd3163e87df842d6501a49f6a40600",
+                      "bytes":  150
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests.txt",
+                      "sha256":  "afa29737adfd381a16a7070403f702ee24b8befd761bde2f1279c89b20fcf1e4",
+                      "bytes":  13202
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests-final.txt",
+                      "sha256":  "d3963f676480dc042452cb1e391f0088fa54d205e20079b878fa0717edeb1413",
+                      "bytes":  14820
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests-session-final.txt",
+                      "sha256":  "d843ecb603f720d819fad969e08fe09e7d5967ee78e6caaa8d8f9108447d7878",
+                      "bytes":  13592
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests-session-generation.txt",
+                      "sha256":  "d8f49e883bcb2a924929f2bb7d763338a2f1b82b2031f7d36de0bca84797c265",
+                      "bytes":  13584
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests-session-qr-final.txt",
+                      "sha256":  "af8458d2a45942e2ea3b0637580f13c749f4fd49da7a167128bfa960ab3e69fb",
+                      "bytes":  13732
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests-traced.txt",
+                      "sha256":  "e38d03d7ffaa9282fb98c348168ff1191d8e2d6701477ab79b9cfebefff44aeb",
+                      "bytes":  13370
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests-traced-final.txt",
+                      "sha256":  "45ffe9ca90fdce0ab01dbc238ee2d123a0a0478a76fe6322c81a9151ad2cdf1b",
+                      "bytes":  13366
+                  },
+                  {
+                      "path":  "docs/evidence/review13-check-2026-11-03.txt",
+                      "sha256":  "3fd99174e68e093d131ac6e3d996573e7394465cc3a29c813141799261fef1e9",
+                      "bytes":  57
+                  },
+                  {
+                      "path":  "docs/evidence/review13-cleanup-2026-11-03.json",
+                      "sha256":  "e7c57eb5b69baa6bff5f7cf9afbd6b7f60b24ff8c05ed10dd4430717dd06c65b",
+                      "bytes":  4769
+                  },
+                  {
+                      "path":  "docs/evidence/review13-cloud-regression-2026-11-03.txt",
+                      "sha256":  "038e9ddc8bcb7d32fc09598b7d167b13834ff030feb9eb2ef522973cc932aeda",
+                      "bytes":  16217
+                  },
+                  {
+                      "path":  "docs/evidence/review13-code-verification-2026-11-03.json",
+                      "sha256":  "1879b1eba78f0e8273e023120a7554dd1f4dacbb87a59f4082b6f0e60f547ead",
+                      "bytes":  2876
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-before-repro.txt",
+                      "sha256":  "330f788ac4f327c1c98a1dd6d2faa91f563a1effb81e6b809675cc13ba121329",
+                      "bytes":  1566
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-llm-before.txt",
+                      "sha256":  "f81a46ecc5c3c79d22bdd6a563aa694a489900808f96664e88e83933313d9668",
+                      "bytes":  2198
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-llm-tests.txt",
+                      "sha256":  "8f6afe344ccb7467471432af47d0efe27c9a38fc35a734cb1603ca12f77bf2fb",
+                      "bytes":  370
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-memory-tests.txt",
+                      "sha256":  "4a3728dc0324ea081091fbeb09de641839ac62cd0a7c2fbbf9e8b68f36b6838e",
+                      "bytes":  1758
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-multi-entry.txt",
+                      "sha256":  "822c1c177c90b2444cfa9e6a6dc2f1c5c4d1de6693414ed62e56c5cf76a1db8c",
+                      "bytes":  6330
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-notes-before.txt",
+                      "sha256":  "183a12c9cc2a41761731e5557dd7c6cfda0062da05c1b74b7e2bedc5bc488977",
+                      "bytes":  2288
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-numeric-legacy-after.txt",
+                      "sha256":  "ce9683de709f36c5d40d24cff2a9384ca68c5042bc64c7cda6d19a5b4a5a624e",
+                      "bytes":  1472
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-numeric-legacy-before.txt",
+                      "sha256":  "ced4e778313469592ce52659863174398d52d1f766a7ddcfd8c4b96c73be0a8d",
+                      "bytes":  2170
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-prompt-tests.txt",
+                      "sha256":  "e2c1d289747c25246effacd9c93f7f9edd9000e24be78f7fef417bf15f553037",
+                      "bytes":  256
+                  },
+                  {
+                      "path":  "docs/evidence/review13-core-skill-tests.txt",
+                      "sha256":  "39f7598fb6d061eb455fc747c6ade526f632677da58174ac971ab41f17ed4c43",
+                      "bytes":  1848
+                  },
+                  {
+                      "path":  "docs/evidence/review13-desktop-cleanup-2026-11-03.json",
+                      "sha256":  "d9216ec4056de16620aae5553df6f3860e4cb1256cc606e444e6a59617132223",
+                      "bytes":  266
+                  },
+                  {
+                      "path":  "docs/evidence/review13-desktop-lifecycle-negative-2026-11-03.txt",
+                      "sha256":  "f37aa97cf0e4a6a1d2ce7da14b407afe45c50c97d247dde2a0e5b4bf3449b6c6",
+                      "bytes":  1592
+                  },
+                  {
+                      "path":  "docs/evidence/review13-desktop-lifecycle-race-2026-11-03.txt",
+                      "sha256":  "c1d165668287e2ab99d2ea483319f6b184bb196db7f1d11213b4e2d24a13cd65",
+                      "bytes":  314
+                  },
+                  {
+                      "path":  "docs/evidence/review13-desktop-lifecycle-regression-2026-11-03.txt",
+                      "sha256":  "012b59d6f4e10f1e4e058ab227bf49c21c9c9da1de89f0b93b5440b12f2e67b2",
+                      "bytes":  3208
+                  },
+                  {
+                      "path":  "docs/evidence/review13-desktop-negative-2026-11-03.txt",
+                      "sha256":  "3c9049bf36997bb1325fdeff98df545924737256d393045c5c0546925ad936ec",
+                      "bytes":  4042
+                  },
+                  {
+                      "path":  "docs/evidence/review13-desktop-regression-2026-11-03.txt",
+                      "sha256":  "ca81d0204c23598a08a2afa6d1cf6a0be7975dd7d8f90f71ed7582d3e2a08bca",
+                      "bytes":  17884
+                  },
+                  {
+                      "path":  "docs/evidence/review13-diff-check-2026-11-03.txt",
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      "bytes":  0
+                  },
+                  {
+                      "path":  "docs/evidence/review13-frozen-code-2026-11-03.json",
+                      "sha256":  "50db0868ee68626346a7e80df06df605e6e95015469e7729e6538e8f36e3ed9c",
+                      "bytes":  47889
+                  },
+                  {
+                      "path":  "docs/evidence/review13-legacy-cleanup-inventory-2026-11-03.json",
+                      "sha256":  "346e372625b89cb8661d946ad194ef2be48fde5bab96b8cd3052b31836d9f526",
+                      "bytes":  4325
+                  },
+                  {
+                      "path":  "docs/evidence/review13-legacy-cleanup-result-2026-11-03.json",
+                      "sha256":  "7f82e6510844bdfc28a3f07c3df897ca280332c16789efd1fd991e760dc3ee47",
+                      "bytes":  1023
+                  },
+                  {
+                      "path":  "docs/evidence/review13-manifest-2026-11-03.json",
+                      "sha256":  "1efbddc04746e1140a00c2783c54d8b8e64e0ae6bbc5c7f0862ef3d4484a07c6",
+                      "bytes":  58338
+                  },
+                  {
+                      "path":  "docs/evidence/review13-port-check-2026-11-03.json",
+                      "sha256":  "4ff704792eeebdb17f468efc93d70f61f0e49ff568116dbb2bcb2c74eba77253",
+                      "bytes":  114
+                  },
+                  {
+                      "path":  "docs/evidence/review13-preflight2-frozen-code-2026-11-03.json",
+                      "sha256":  "2f106bac38900ccd2907a6c71f6b8e09245168496421e8b0120919eaec36b296",
+                      "bytes":  47889
+                  },
+                  {
+                      "path":  "docs/evidence/review13-preflight2-test-all-2026-11-03.txt",
+                      "sha256":  "66d7823f4beeaf04881de7c202ff49d5d06f2b66fda52635c03de4cf6201a6b3",
+                      "bytes":  156124
+                  },
+                  {
+                      "path":  "docs/evidence/review13-preflight-frozen-code-2026-11-03.json",
+                      "sha256":  "2ee8c5e75807985e5da3c23477ab9155f0a1cec0beda80e8c6c8d8bc8169d0df",
+                      "bytes":  47667
+                  },
+                  {
+                      "path":  "docs/evidence/review13-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "49f5e3b5c57ef559fb1b332ed802d7f55818b8d548cd2458b231bae135f1a5cc",
+                      "bytes":  63768
+                  },
+                  {
+                      "path":  "docs/evidence/review13-processes-2026-11-03.json",
+                      "sha256":  "a3b1fe082c17ec2e7d4ef3115b1ef499887aef236de38afe68cc2c7aa5379776",
+                      "bytes":  734636
+                  },
+                  {
+                      "path":  "docs/evidence/review13-runtime-gate-2026-11-03.txt",
+                      "sha256":  "3be428bee19f39450d1a55d6ad36ea2a00045ed0f3d7e4ce7f82fbe78f8ccd09",
+                      "bytes":  536
+                  },
+                  {
+                      "path":  "docs/evidence/review13-simulated-chains-2026-11-03.txt",
+                      "sha256":  "00b2e7776a8b00b351949c4eee920c87ccd3eb9b4cc6d9fc87bf1af1a2775575",
+                      "bytes":  2874
+                  },
+                  {
+                      "path":  "docs/evidence/review13-static-checks-2026-11-03.json",
+                      "sha256":  "1742695be03dcdae3e47b82b5399e49188a5467e15b34362b39d76fde919e21b",
+                      "bytes":  297
+                  },
+                  {
+                      "path":  "docs/evidence/review13-test-all-2026-11-03.txt",
+                      "sha256":  "34a2b1adbb397bd44c468b031e8e65a8692b315d0ade2fb9cd8492edf7578cce",
+                      "bytes":  156219
+                  },
+                  {
+                      "path":  "docs/evidence/review14-baseline-2026-11-03.json",
+                      "sha256":  "35124563adc29d86a962aa5b90fbef0b90b518d3eafdabe4654ebe4b75c821d0",
+                      "bytes":  59650
+                  },
+                  {
+                      "path":  "docs/evidence/review14-bili-qr-negative.txt",
+                      "sha256":  "243329fce129c76c84de9e57b51aa659946da4f1c535c55215a1d2e54dd96a7a",
+                      "bytes":  3690
+                  },
+                  {
+                      "path":  "docs/evidence/review14-bili-qr-negative-loader.mjs",
+                      "sha256":  "1eed9f4c2486787e6ebad0898ef4468ae37ef7c36957f83c9b90bf8ad1e5602a",
+                      "bytes":  1217
+                  },
+                  {
+                      "path":  "docs/evidence/review14-bili-qr-tests.txt",
+                      "sha256":  "a7690a405b0eba4ad08b96a630490cdf337e78a03bf6314bb2c1c39960fdeb60",
+                      "bytes":  760
+                  },
+                  {
+                      "path":  "docs/evidence/review14-bili-tests.txt",
+                      "sha256":  "0528d541a6bb0b9f0e5ce5e38b988af0582ad2f611f46f0ef93f4a947bdb01bd",
+                      "bytes":  14108
+                  },
+                  {
+                      "path":  "docs/evidence/review14-chains-console-2026-11-03.txt",
+                      "sha256":  "402db450313c9205c0624b6dbbf3ae8ce579cfe95f8b90c0d1ed15e19c7c9793",
+                      "bytes":  5830
+                  },
+                  {
+                      "path":  "docs/evidence/review14-check-2026-11-03.txt",
+                      "sha256":  "da849d0e0ae616565b2a4efedbee5f07c56554a70b97208d2829f766ffa07cff",
+                      "bytes":  110
+                  },
+                  {
+                      "path":  "docs/evidence/review14-cleanup-2026-11-03.json",
+                      "sha256":  "1e9f9807c131a0d24d5303c51eb7b433724255babb743f21a56d3729a5fc9e34",
+                      "bytes":  3130
+                  },
+                  {
+                      "path":  "docs/evidence/review14-cloud-negative-2026-11-03.txt",
+                      "sha256":  "6d24c281c97e0f8f383dfdf7f4c84891e9bacde6ab9033d18ffe8c47eed4ba8b",
+                      "bytes":  8946
+                  },
+                  {
+                      "path":  "docs/evidence/review14-cloud-negative-loader.mjs",
+                      "sha256":  "7b926ca1852cc1dd2a920cab5471d2cd2b31a16336b3adf93edf9b855bf0e334",
+                      "bytes":  1437
+                  },
+                  {
+                      "path":  "docs/evidence/review14-cloud-regression-2026-11-03.txt",
+                      "sha256":  "526b42eeb04538c19bc984968cc52fd7f599da26e7685600c60f2bb315fb90b7",
+                      "bytes":  32012
+                  },
+                  {
+                      "path":  "docs/evidence/review14-code-verification-2026-11-03.json",
+                      "sha256":  "1498836f6fb1f69a01371c20c2572d057fa7097a526feb5c3e738c35101024cf",
+                      "bytes":  151
+                  },
+                  {
+                      "path":  "docs/evidence/review14-core-omitted-tests-2026-11-03.txt",
+                      "sha256":  "948c5ad98db4cdc7a7dc4e37fe79a0fab246b1d8142a53f850aaf02dd02de3aa",
+                      "bytes":  2044
+                  },
+                  {
+                      "path":  "docs/evidence/review14-desktop-omitted-core-tests.txt",
+                      "sha256":  "9a254dbc4ba483cd1a2da3bdff0b2ea5568149684323a87322bf424b4765e665",
+                      "bytes":  2046
+                  },
+                  {
+                      "path":  "docs/evidence/review14-desktop-tests.txt",
+                      "sha256":  "499f52bff7b015ffc9f35a94f965cd3dc1e3c8b980544987b158a5f5743f5ceb",
+                      "bytes":  17886
+                  },
+                  {
+                      "path":  "docs/evidence/review14-diff-check-2026-11-03.txt",
+                      "sha256":  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      "bytes":  0
+                  },
+                  {
+                      "path":  "docs/evidence/review14-frozen-code-2026-11-03.json",
+                      "sha256":  "2544738964407d010a00f0691830b9722bb83525a7c148680b2e51298b958919",
+                      "bytes":  49306
+                  },
+                  {
+                      "path":  "docs/evidence/review14-legacy-cleanup-inventory-2026-11-03.json",
+                      "sha256":  "c0d3f1e3a85b9ad4f0bd2ce2180c1748457d85858adca4a43ccaf79aa30e83ab",
+                      "bytes":  18986
+                  },
+                  {
+                      "path":  "docs/evidence/review14-legacy-cleanup-result-2026-11-03.json",
+                      "sha256":  "940b0d8a9505c513bc5f95d11b8a4dfeba49d530040bc0de4ea7d2ce85f30b93",
+                      "bytes":  2540
+                  },
+                  {
+                      "path":  "docs/evidence/review14-manifest-2026-11-03.json",
+                      "sha256":  "af30e064446f9ef9df3406ff501201fd32f6904e6bd6f97e31fdb3a417e346c4",
+                      "bytes":  8116
+                  },
+                  {
+                      "path":  "docs/evidence/review14-port-check-2026-11-03.json",
+                      "sha256":  "723c01f4149d004423982284ba910db4aeaf6309325ff6fffffe7683a3022a09",
+                      "bytes":  146
+                  },
+                  {
+                      "path":  "docs/evidence/review14-preflight-frozen-code-2026-11-03.json",
+                      "sha256":  "f970f3925e99a1ea6c892e7c96354ea314a4b1a02e418d07a1ab30305035ad38",
+                      "bytes":  49306
+                  },
+                  {
+                      "path":  "docs/evidence/review14-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "aa2d3668b388636b906b6a91cc0e3fcb0d2fc77f0483c4e6b620d518f3696d6a",
+                      "bytes":  158095
+                  },
+                  {
+                      "path":  "docs/evidence/review14-processes-2026-11-03.json",
+                      "sha256":  "bbc63c1b80d0d5fdbb85b0848cfda3967d2e856e2b9dd3da8d0d47b76f0e27db",
+                      "bytes":  455222
+                  },
+                  {
+                      "path":  "docs/evidence/review14-root-directory-check-2026-11-03.json",
+                      "sha256":  "bc4239e4f791915d2328d7d777ae1e8e369b34b1e27514257467a0b5161e4aa6",
+                      "bytes":  1742
+                  },
+                  {
+                      "path":  "docs/evidence/review14-runtime-gate-2026-11-03.txt",
+                      "sha256":  "1b548d5a9f7b6b655529dc5ec36909354d0fde4cabf1e13a00f43c2397357255",
+                      "bytes":  886
+                  },
+                  {
+                      "path":  "docs/evidence/review14-simulated-chains-2026-11-03.txt",
+                      "sha256":  "e4645cf29266407714cd6047c4ece15a972fb8cc36d1045dff1e1869f036b49c",
+                      "bytes":  2929
+                  },
+                  {
+                      "path":  "docs/evidence/review14-static-checks-2026-11-03.json",
+                      "sha256":  "225c67578bdb6a1acd91f03b97f1b96403d1af5fced754ee8088b06b665c6764",
+                      "bytes":  442
+                  },
+                  {
+                      "path":  "docs/evidence/review14-test-all-2026-11-03.txt",
+                      "sha256":  "44706a431967a843dd3381cfa5770bf74f889741e9bac588b7ecf1bf91e77a9c",
+                      "bytes":  158074
+                  },
+                  {
+                      "path":  "docs/evidence/review14-test-console-2026-11-03.txt",
+                      "sha256":  "0d7155ff967d084787b2e1cac236ded076c448ddc8c3f602348e3ee49263f808",
+                      "bytes":  238836
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-102424-0.json",
+                      "sha256":  "b76a6d6942afb40dc4c5698e46ca828fc9e6d2ee6f969a248f5ec81a6cbea8a8",
+                      "bytes":  276
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-102472-0.json",
+                      "sha256":  "461a945232682517022c30c2e0caf54ff6d5241f8bf00356803e627a9d1a60dd",
+                      "bytes":  274
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-103852-0.json",
+                      "sha256":  "b0807f6c4e66da76799832ee05a32b23e966b57521896b3c4e286257b880b6e2",
+                      "bytes":  274
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-106028-0.json",
+                      "sha256":  "1090b6885b76cc40255a18c8b89764075ff9bedd93e97264a98dae7c7de1c604",
+                      "bytes":  283
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-106620-0.json",
+                      "sha256":  "1ce0d8c19724a5bae3b8b9ff1f2f1cb2434c467b4e9bfdcc2c64c653cc0e5e3f",
+                      "bytes":  270
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-106988-0.json",
+                      "sha256":  "3b4d3984169756ad985fb913b92decb5fd6c6cbadb58cb125e8cef20c55189f6",
+                      "bytes":  281
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-110840-0.json",
+                      "sha256":  "dbf3ccf9537d76250f0b2c4d26ed3e92f4ccc629346afa7e06ad22020b1d936c",
+                      "bytes":  270
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-113268-0.json",
+                      "sha256":  "c127151a3e7cd1576b17b79837dcabae8ed927eca98565be628455edca5d4302",
+                      "bytes":  280
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-17564-0.json",
+                      "sha256":  "4fb6903bb01238036e6a111ac33b81a6757d983732231f53e47dfd17a104d22f",
+                      "bytes":  244
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-42648-0.json",
+                      "sha256":  "990e8a521be0befa0f4eb30f51d76151b1bee65b2d3f34a06bad763983daa91d",
+                      "bytes":  273
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-43484-0.json",
+                      "sha256":  "bdf3b350e1e28d56b281fe84b7970c66e5d5998829ee6518ab75c61afd476618",
+                      "bytes":  270
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-56548-0.json",
+                      "sha256":  "f70346f8b691629bc3b7d20a73134f51190b7d22edb441a90da56f8571928ba0",
+                      "bytes":  272
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-64360-0.json",
+                      "sha256":  "4b0c16645bae57aa7ba762a13a7809e7ce4f9ae77cc135536f9c3b772a3f136e",
+                      "bytes":  282
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-86928-0.json",
+                      "sha256":  "814b3ff940cefea6c7041cc9ca14f09291beea8777a9f29d2498ecf52a5e2586",
+                      "bytes":  270
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-89452-0.json",
+                      "sha256":  "6b471f0ac11ef9e814046ffdf3b0b59f3e62b01c3400d19632453a309b0dd278",
+                      "bytes":  272
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-91348-0.json",
+                      "sha256":  "f7780fe8b0d652f9d0406c643218f3b47b641d49a15c65cf8d36d79cb69d105a",
+                      "bytes":  270
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-92916-0.json",
+                      "sha256":  "352e3b41278080040ddc8827eb71f0b81b010b9c11ee54d5c0c6e0511408dd98",
+                      "bytes":  271
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-94028-0.json",
+                      "sha256":  "b0d3efe20e8dfedd1fad9b6295dd91ef607e2cddc0b749551fc100b84af84b6e",
+                      "bytes":  283
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-processes/process-97664-0.json",
+                      "sha256":  "28157e1eb968dd8459e4670f30e48422c82839c219b918c0d7cf31ae60433815",
+                      "bytes":  273
+                  },
+                  {
+                      "path":  "docs/evidence/review15-bili-tests.txt",
+                      "sha256":  "98fe7023315c8800fbe4e133a6bd03f583fdf5dcd23e941cc4b7a1aa6f19b08a",
+                      "bytes":  14106
+                  },
+                  {
+                      "path":  "docs/evidence/review2-manifest-2026-11-03.json",
+                      "sha256":  "eb17716ecfe35e50784b6562b563af90f1d19810ca970d50a93cd730c19d09c4",
+                      "bytes":  48896
+                  },
+                  {
+                      "path":  "docs/evidence/review2-simulated-chains-2026-11-03.txt",
+                      "sha256":  "c8a0465bd3ba79af347e7884d8159587b6137ebe196279f0088403a97068b4d0",
+                      "bytes":  2873
+                  },
+                  {
+                      "path":  "docs/evidence/review2-test-all-2026-11-03.txt",
+                      "sha256":  "3131b748aa7263a4b576334ee8714f20390230a827127ef28e493bb3e4fb67d7",
+                      "bytes":  145471
+                  },
+                  {
+                      "path":  "docs/evidence/review3-manifest-2026-11-03.json",
+                      "sha256":  "f779a0ae7c8a1bf10d755e73b2092e7d321cc0e11b515a1bd0e913edd76a88c2",
+                      "bytes":  64219
+                  },
+                  {
+                      "path":  "docs/evidence/review3-preflight2-test-all-2026-11-03.txt",
+                      "sha256":  "9ccd7b78afdca178af791831076b6a8715298ccf1ea28a1a90b04475e25a86bd",
+                      "bytes":  147303
+                  },
+                  {
+                      "path":  "docs/evidence/review3-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "3db56b17c3d35a29c289419f06b8d520574830615af98a4c6e2336a34c5e49c1",
+                      "bytes":  147025
+                  },
+                  {
+                      "path":  "docs/evidence/review3-simulated-chains-2026-11-03.txt",
+                      "sha256":  "95c6a0b8964bf46c0cdf75a7a0d4ed20a8b8ba51c23edb3c75d37f83fd36e307",
+                      "bytes":  2871
+                  },
+                  {
+                      "path":  "docs/evidence/review3-test-all-2026-11-03.txt",
+                      "sha256":  "3e9a2d0b8125bc6964040c2a45eedf3145b8ec1715a23f926c0ff5e77213db51",
+                      "bytes":  148140
+                  },
+                  {
+                      "path":  "docs/evidence/review4-baseline-2026-11-03.json",
+                      "sha256":  "692932b12598502c32acd32c938db336d67a67dc97a2bc0ade549ea7875a9b7b",
+                      "bytes":  7776
+                  },
+                  {
+                      "path":  "docs/evidence/review4-cleanup-2026-11-03.json",
+                      "sha256":  "86938568718f42eace6c7d464d5fef2789f5ce83d53f5202cd2b88b2682d026f",
+                      "bytes":  3692
+                  },
+                  {
+                      "path":  "docs/evidence/review4-frozen-code-2026-11-03.json",
+                      "sha256":  "082a8a03a397d089667e459637aa5cc44bd5d69c3359bb729d92f579cc8fee6b",
+                      "bytes":  41822
+                  },
+                  {
+                      "path":  "docs/evidence/review4-manifest-2026-11-03.json",
+                      "sha256":  "d3e0697e57e4f00a6901b079d9f2c98ff5110841da95365b34bbb9853da80273",
+                      "bytes":  70588
+                  },
+                  {
+                      "path":  "docs/evidence/review4-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "a72315ee4756ad6ba34b226ced86b2ebbfe0e80f65790fb45078a50fab31fc34",
+                      "bytes":  148331
+                  },
+                  {
+                      "path":  "docs/evidence/review4-processes-2026-11-03.json",
+                      "sha256":  "b836f0b8220177dce160b5025482a29569d5a407eb83c0309dabd97576084d16",
+                      "bytes":  1107
+                  },
+                  {
+                      "path":  "docs/evidence/review4-simulated-chains-2026-11-03.txt",
+                      "sha256":  "97a579c210a195619f9f2e122ec09762ca09e0a8627ed869eacde572a6b28ac3",
+                      "bytes":  2870
+                  },
+                  {
+                      "path":  "docs/evidence/review4-test-all-2026-11-03.txt",
+                      "sha256":  "1648c50579d6d4f41f9a47647947903b2b1762af39de0d3dc7058586b8bf848c",
+                      "bytes":  151926
+                  },
+                  {
+                      "path":  "docs/evidence/review5-baseline-2026-11-03.json",
+                      "sha256":  "681f58812775467bf33bac008799d4a3edc9751030e6458bf6ea7869fea2a6fe",
+                      "bytes":  4630
+                  },
+                  {
+                      "path":  "docs/evidence/review5-cleanup-2026-11-03.json",
+                      "sha256":  "adf6867bc038c97054ded0c7c35e439e148a1e4d84e5ce6e26bff86704ea0195",
+                      "bytes":  3256
+                  },
+                  {
+                      "path":  "docs/evidence/review5-frozen-code-2026-11-03.json",
+                      "sha256":  "59a97815926bc2e869b1de956407956bb4b47ba031e683da6ca0f359d14d45bd",
+                      "bytes":  42343
+                  },
+                  {
+                      "path":  "docs/evidence/review5-manifest-2026-11-03.json",
+                      "sha256":  "1b7369017e33c7b277e5cf6352c35fd3998fea674acbd126eceacdc081e574bb",
+                      "bytes":  101982
+                  },
+                  {
+                      "path":  "docs/evidence/review5-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "aa8441dc1c535583a5163699a7df7709e8a2b78ced231174173c439f8a8eace7",
+                      "bytes":  152209
+                  },
+                  {
+                      "path":  "docs/evidence/review5-processes-2026-11-03.json",
+                      "sha256":  "38bec647b43342b94e0c8437c408b7fb26d1908400ff163db7823e74fde686cc",
+                      "bytes":  1099
+                  },
+                  {
+                      "path":  "docs/evidence/review5-simulated-chains-2026-11-03.txt",
+                      "sha256":  "448b9417319461f41f123bdaadb39367c3d22861cb8685cc9cadd61c9100c5ee",
+                      "bytes":  2872
+                  },
+                  {
+                      "path":  "docs/evidence/review5-test-all-2026-11-03.txt",
+                      "sha256":  "2f11029763d30a0b8fa8b094321ea1ad8f9c64a031ade9b13be2c6ab93a6af03",
+                      "bytes":  152192
+                  },
+                  {
+                      "path":  "docs/evidence/review6-baseline-2026-11-03.json",
+                      "sha256":  "c8f4ecd2922567d8f4b128b72bfe5df9c64e5fe76b899851208bbd65b6841e9e",
+                      "bytes":  61889
+                  },
+                  {
+                      "path":  "docs/evidence/review6-cleanup-2026-11-03.json",
+                      "sha256":  "ea97e70bd511c5f5ec31bbff63f22a6ac0b82edb273c59081b5bf5304e741f44",
+                      "bytes":  305414
+                  },
+                  {
+                      "path":  "docs/evidence/review6-frozen-code-2026-11-03.json",
+                      "sha256":  "38a12043af754de9b433463e03d8d4d68f5e22f6524cc293629fe2f1ea609001",
+                      "bytes":  40823
+                  },
+                  {
+                      "path":  "docs/evidence/review6-manifest-2026-11-03.json",
+                      "sha256":  "9478566e81b3723a3639af99268ea3daa91abc99eed1e63229eccc0c53888b4b",
+                      "bytes":  49847
+                  },
+                  {
+                      "path":  "docs/evidence/review6-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "86b8e5caf4f68caea2b628fd438c456db9e5b75641474442a1b7f92369db2745",
+                      "bytes":  152280
+                  },
+                  {
+                      "path":  "docs/evidence/review6-processes-2026-11-03.json",
+                      "sha256":  "37aa05c083b8e3ed2427916c6010590b172224fc24518357ea9b76749d9498f7",
+                      "bytes":  1965
+                  },
+                  {
+                      "path":  "docs/evidence/review6-process-tracer.cjs",
+                      "sha256":  "3793fa0dcdaa30e1a9443638fb3c01705bd49c708712d6f7edcf24971da5a528",
+                      "bytes":  1502
+                  },
+                  {
+                      "path":  "docs/evidence/review6-simulated-chains-2026-11-03.txt",
+                      "sha256":  "1765e716f8cc8db336030dbca245a2d11f19f59d5bde3ae7bae728b3d4568b7a",
+                      "bytes":  2873
+                  },
+                  {
+                      "path":  "docs/evidence/review6-static-checks-2026-11-03.json",
+                      "sha256":  "dd0a6472240286941de839f29bfab53f825e99f2fa3e0ded879b21d8a0865de1",
+                      "bytes":  4213
+                  },
+                  {
+                      "path":  "docs/evidence/review6-test-all-2026-11-03.txt",
+                      "sha256":  "5b837d2ca92af62565b1bc0384a980799f57459dd0a4c825e8f03d08b0f2145f",
+                      "bytes":  152433
+                  },
+                  {
+                      "path":  "docs/evidence/review7-baseline-2026-11-03.json",
+                      "sha256":  "16d6946ec11237652a985f929a963a3e69bdb8e660ea7aad6d657a87a54978d8",
+                      "bytes":  19893
+                  },
+                  {
+                      "path":  "docs/evidence/review7-cleanup-2026-11-03.json",
+                      "sha256":  "e2f792590a30f425feee212cf552d83b5076b624aa17718af20cc7346fc9ecf3",
+                      "bytes":  23737
+                  },
+                  {
+                      "path":  "docs/evidence/review7-frozen-code-2026-11-03.json",
+                      "sha256":  "23017d5026426059e1139523a9fa9f944a20222e9dcd3d63ef016d9e7dd5bdf2",
+                      "bytes":  29095
+                  },
+                  {
+                      "path":  "docs/evidence/review7-manifest-2026-11-03.json",
+                      "sha256":  "c02c358fa30b23c2c552bb32b6762aa9d022e9ce3823720368bf02c61db12bcd",
+                      "bytes":  52039
+                  },
+                  {
+                      "path":  "docs/evidence/review7-negative-controls-2026-11-03.json",
+                      "sha256":  "2703cb6de7e667f1e4d3c66b30b7364baab26e640b01992d3340327b255d4b45",
+                      "bytes":  8655
+                  },
+                  {
+                      "path":  "docs/evidence/review7-simulated-chains-2026-11-03.txt",
+                      "sha256":  "83d063120e152b3afc06efc54307a90038ae51ee5427938a1f52b4d89711352a",
+                      "bytes":  2868
+                  },
+                  {
+                      "path":  "docs/evidence/review7-static-checks-2026-11-03.json",
+                      "sha256":  "31f570503c20b07041ab6297015baf4cc1cd7aaa27843123801d0a5a42c1eb99",
+                      "bytes":  4241
+                  },
+                  {
+                      "path":  "docs/evidence/review7-test-all-2026-11-03.txt",
+                      "sha256":  "03f152380acd40be7559cfc061ce6d1f49b5ac5d2a06162b0d76cf49773228d6",
+                      "bytes":  152646
+                  },
+                  {
+                      "path":  "docs/evidence/review8-baseline-2026-11-03.json",
+                      "sha256":  "fe28b54ad349f27f38c1a6dc9735281cb43c026f804e6632998e961dca93f65a",
+                      "bytes":  6577
+                  },
+                  {
+                      "path":  "docs/evidence/review8-cleanup-2026-11-03.json",
+                      "sha256":  "cffd67e02bfcc3923b7554635867a373190ba666b69bffee8629529bf37ece45",
+                      "bytes":  2897
+                  },
+                  {
+                      "path":  "docs/evidence/review8-frozen-code-2026-11-03.json",
+                      "sha256":  "aecd597f12dbcb307531ab0e861d55f4a6e2a58feea1412623ca05ff8973bbad",
+                      "bytes":  31068
+                  },
+                  {
+                      "path":  "docs/evidence/review8-manifest-2026-11-03.json",
+                      "sha256":  "0184711f6b56c2192b2372d0d32e994c30ee701109b2519766f0c3a748991e75",
+                      "bytes":  19123
+                  },
+                  {
+                      "path":  "docs/evidence/review8-negative-controls-2026-11-03.json",
+                      "sha256":  "502a3d742e0369fd7dfc9b0fc62c8bdf859247d470d2405b034a55264ae2b974",
+                      "bytes":  5811
+                  },
+                  {
+                      "path":  "docs/evidence/review8-owned-process-check-2026-11-03.json",
+                      "sha256":  "238be61d7dc37b74e8481ffd1455953fb2b0733ed9007ee1b3b21e9aae6eb53f",
+                      "bytes":  45804
+                  },
+                  {
+                      "path":  "docs/evidence/review8-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "f57e5b13ec58eaa2855ebff68306b8c721ebcdb5d178cc3c7913f32814ab86ed",
+                      "bytes":  152760
+                  },
+                  {
+                      "path":  "docs/evidence/review8-processes-2026-11-03.json",
+                      "sha256":  "011e566b0b5840838963d03928f881810cd1ec617195c7eed2d845e7397cd266",
+                      "bytes":  284760
+                  },
+                  {
+                      "path":  "docs/evidence/review8-root-regression-2026-11-03.txt",
+                      "sha256":  "75337a82739e4c794e50d9e2e58f27d17c5ff4074a85a7ec9d96897222c2198d",
+                      "bytes":  17033
+                  },
+                  {
+                      "path":  "docs/evidence/review8-routing-regression-2026-11-03.txt",
+                      "sha256":  "9b5829db66955731ab20fa552a0492daaebbc2064c46e5d3180464c413c585d3",
+                      "bytes":  5417
+                  },
+                  {
+                      "path":  "docs/evidence/review8-simulated-chains-2026-11-03.txt",
+                      "sha256":  "ef0a6a5c2d69db3b74a6538288c40415096102a91b85073dd076abf5f2eb1b80",
+                      "bytes":  2870
+                  },
+                  {
+                      "path":  "docs/evidence/review8-static-checks-2026-11-03.json",
+                      "sha256":  "d14d4a8cea671a735b2f289f82ea948dd50ce6a174727a34e6937978942f16f4",
+                      "bytes":  4801
+                  },
+                  {
+                      "path":  "docs/evidence/review8-test-all-2026-11-03.txt",
+                      "sha256":  "98651a6646631eb5a922a31c066e6ed3f34ffd821f24b1ec5e50650a8d7a5d2f",
+                      "bytes":  153113
+                  },
+                  {
+                      "path":  "docs/evidence/review9-baseline-2026-11-03.json",
+                      "sha256":  "b233eee546cd89418d6ae1e03c5fd27af1128db1dc5b1140057064b584aa33e1",
+                      "bytes":  81304
+                  },
+                  {
+                      "path":  "docs/evidence/review9-bili-regression-2026-11-03.json",
+                      "sha256":  "3a697c059ea7412373ebd12e3eeb9b02bfea1b7beaaf595946f5fa8efaf46830",
+                      "bytes":  1662
+                  },
+                  {
+                      "path":  "docs/evidence/review9-bili-regression-2026-11-03.txt",
+                      "sha256":  "9d8285ceebb5401feda754bb441b3bdcc8e92c7b52eff5ed95ee5bff9bf39ad7",
+                      "bytes":  2665
+                  },
+                  {
+                      "path":  "docs/evidence/review9-bili-suite-2026-11-03.txt",
+                      "sha256":  "e33f0f5873d7c61a48df8d719de82bc40ed9913b7c7dc9d96159a9d937beeef9",
+                      "bytes":  12298
+                  },
+                  {
+                      "path":  "docs/evidence/review9-cleanup-2026-11-03.json",
+                      "sha256":  "ca96790462c8cb514ad403e7945c2d44fad659fbc556315e72c3e63def84f72b",
+                      "bytes":  200359
+                  },
+                  {
+                      "path":  "docs/evidence/review9-core-regression-2026-11-03.json",
+                      "sha256":  "6e4a3008f4d105f87d42c3045f693346fa3a3a42dbabee00ecbd5505b99db0dc",
+                      "bytes":  963
+                  },
+                  {
+                      "path":  "docs/evidence/review9-core-regression-2026-11-03.txt",
+                      "sha256":  "abfd2fe3b35f77abb0dffea5cbce4b76280e553314a6e11a7e934e2a808540d1",
+                      "bytes":  17286
+                  },
+                  {
+                      "path":  "docs/evidence/review9-desktop-negative-2026-11-03.json",
+                      "sha256":  "8fe1166f5ce51e1d658ae04139fd6294ed42e16830af974ad9351245bc04ee33",
+                      "bytes":  326
+                  },
+                  {
+                      "path":  "docs/evidence/review9-desktop-negative-control.mjs",
+                      "sha256":  "7bd340fbe57b121b13f5e50c3f3a4906eb4b05ad87e1cedb927a988a44d68d9a",
+                      "bytes":  1315
+                  },
+                  {
+                      "path":  "docs/evidence/review9-desktop-regression-2026-11-03.txt",
+                      "sha256":  "5532791f047fadb42f2ecd4f1a66179aae07f8fe96fc46eb9cc74bf3cf14996a",
+                      "bytes":  4446
+                  },
+                  {
+                      "path":  "docs/evidence/review9-frozen-code-2026-11-03.json",
+                      "sha256":  "cf60e0cead69b19c571b7992598517b72b2370c2f60806eccb034e792bcd911c",
+                      "bytes":  29479
+                  },
+                  {
+                      "path":  "docs/evidence/review9-manifest-2026-11-03.json",
+                      "sha256":  "f7fd7bb0ca1a4ce4a77ec7ba934731028fd1741260d65ff9e39fb6d989ccb791",
+                      "bytes":  21279
+                  },
+                  {
+                      "path":  "docs/evidence/review9-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "cf747dd271238e87d2b91d86152e73cea28d4217dacb09d5a1f93336dbede88d",
+                      "bytes":  153492
+                  },
+                  {
+                      "path":  "docs/evidence/review9-processes-2026-11-03.json",
+                      "sha256":  "9df350d2acf25754dfdfdf2d3c5d9c67d0f04276ec04b1ce544d206341e973a2",
+                      "bytes":  306469
+                  },
+                  {
+                      "path":  "docs/evidence/review9-root-regression-2026-11-03.txt",
+                      "sha256":  "87f4f6428a0b59723eed58c26df47b82cb3641847ee562b23194a25b36a74d09",
+                      "bytes":  16547
+                  },
+                  {
+                      "path":  "docs/evidence/review9-simulated-chains-2026-11-03.txt",
+                      "sha256":  "532533706692847ef5cd5e6ffe2ce84650043622f5ad30172c0f08a97d52a89f",
+                      "bytes":  2870
+                  },
+                  {
+                      "path":  "docs/evidence/review9-static-checks-2026-11-03.json",
+                      "sha256":  "0999c514a3dff5566eeb49e7854ac2d215a5759de326c7ba06c09422b9ec25b5",
+                      "bytes":  2552
+                  },
+                  {
+                      "path":  "docs/evidence/review9-test-all-2026-11-03.txt",
+                      "sha256":  "6bb98328cf7fedb164b6cf9101cc75442fa87a10ddb5daaae9e713a42ed03aa0",
+                      "bytes":  153681
+                  },
+                  {
+                      "path":  "docs/evidence/review-manifest-2026-11-03.json",
+                      "sha256":  "65bc2e7b8550fcffb61112f390c3390a55dc50249f17261f1db19c400ce9ad8e",
+                      "bytes":  45321
+                  },
+                  {
+                      "path":  "docs/evidence/review-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "2708085c1f0ca5689bb09389d7c6e1e5325c3a0ec31fca7ae98e0daca835c4fb",
+                      "bytes":  8224
+                  },
+                  {
+                      "path":  "docs/evidence/review-simulated-chains-2026-11-03.txt",
+                      "sha256":  "841c8e9f30ebef35883f8fca40d7c9f55f7e68ba53473c67e965bd1471f52745",
+                      "bytes":  2863
+                  },
+                  {
+                      "path":  "docs/evidence/review-test-all-2026-11-03.txt",
+                      "sha256":  "98e5ed056d5267979762155acc0a4e06e05f106de45f281e4c820ae95cd82a60",
+                      "bytes":  144398
+                  },
+                  {
+                      "path":  "docs/evidence/v1.0-electron-compat-2026-11-03.json",
+                      "sha256":  "b8a7c437c20357bdac3f6812eaddb8981312e1fb21f12a7f8a94949525dd30f0",
+                      "bytes":  1655
+                  },
+                  {
+                      "path":  "docs/evidence/v1.0-simulated-chains-2026-11-03.txt",
+                      "sha256":  "bce10f6ce699f0abd00e6d62fab6f01ae863f35e07388b05ed07fb5d98f1dfc1",
+                      "bytes":  2319
+                  },
+                  {
+                      "path":  "docs/evidence/v1.0-test-all-2026-11-03.txt",
+                      "sha256":  "7d73ac6e3fd368ffa68815d83cd0e16304c225252bb178a440feb7a84f3d1a40",
+                      "bytes":  146213
+                  },
+                  {
+                      "path":  "docs/extensions.md",
+                      "sha256":  "261e542f9c1f8d77cc2faf55b2775819decdfad74fc5d96ea2a399710b64ec37",
+                      "bytes":  6237
+                  },
+                  {
+                      "path":  "docs/goal-progress.md",
+                      "sha256":  "371d8289d59be2d78b08f7e188c88f91fc8c5faefe2a63ebb40a0421a110a854",
+                      "bytes":  79025
+                  },
+                  {
+                      "path":  "docs/linux-vps-acceptance.md",
+                      "sha256":  "6623e9cfa799a387f2fe60bc1867ee52cafeb47aa4ab220811c2e11d1520c50e",
+                      "bytes":  5435
+                  },
+                  {
+                      "path":  "docs/multi-entry-implementation.md",
+                      "sha256":  "40721330a06bdbea1a0ad308e11007feb529a4a3ea0a60eb3d8e01107c96b933",
+                      "bytes":  5735
+                  },
+                  {
+                      "path":  "docs/protocols.md",
+                      "sha256":  "16bda145b8e1987e47542d99729f54822242905caa2498b45c0df8b1996dd834",
+                      "bytes":  10790
+                  },
+                  {
+                      "path":  "docs/testing.md",
+                      "sha256":  "731598747d3e87a18c88f4e0faad6cfea535597c05a8dd222be83894e6654a59",
+                      "bytes":  8800
+                  },
+                  {
+                      "path":  "docs/v1.0-acceptance.md",
+                      "sha256":  "56fd539f8dbacfe8a6a5fa22f3924b69132bc08b14d6ee6de6cb872191da0da9",
+                      "bytes":  130424
+                  },
+                  {
+                      "path":  "package.json",
+                      "sha256":  "aeb3095029ae5dc7b72fe199cd278ae5df25f20bdb75eaf902efbd80da7e77bb",
+                      "bytes":  811
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                      "sha256":  "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb",
+                      "bytes":  5291
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/bili-explore.js",
+                      "sha256":  "a8e86549ca7c0e014ccaa3349ff09e2b87b67313bd7fe3c0c9895f3b0957f655",
+                      "bytes":  4363
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/entries.js",
+                      "sha256":  "ce7d255475306400e1b8454f34174463dbbb2be0f8cedab6e2e1829c304f677a",
+                      "bytes":  4463
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/qq-panel.js",
+                      "sha256":  "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81",
+                      "bytes":  11262
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api.js",
+                      "sha256":  "b4d987e3cd8cdc07d5de89f07f18818e153a1818912ce5670fccaaf84ec3f5d1",
+                      "bytes":  1436
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/bili.js",
+                      "sha256":  "5985b576732f52c927e139d8642c0a7de9b110c00c36713586532272eb639b2f",
+                      "bytes":  1979
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/billing.js",
+                      "sha256":  "f3954e13b0d33313058d8f6b25f5568888838fb1d330c78f63adf682b3609838",
+                      "bytes":  573
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/entries.js",
+                      "sha256":  "5c425abfd9f25419dcda987122fa99aa339d5aad9c9e323d74067ef6002efbb7",
+                      "bytes":  934
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/qq.js",
+                      "sha256":  "f2f259e02a70cadb486c68fcd5b21edbcc7870a2ef23988f5928fd004a8e890b",
+                      "bytes":  2865
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/normalize/channels.js",
+                      "sha256":  "33b00dee55112b56cec4c48405068c7aa63d7d91803586fdd28a15a479faa723",
+                      "bytes":  21881
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/normalize/tenant.js",
+                      "sha256":  "ca5a61ef6056af4c1be10b27723396e7c32128a2192a6c89b9c952406888abd0",
+                      "bytes":  6754
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/test/entries.test.mjs",
+                      "sha256":  "24daec6a3983f33d9a755c322c1e619d5ac346d6f5523e0fca6ef650bcc181be",
+                      "bytes":  4853
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/test/official-whitelist.test.mjs",
+                      "sha256":  "799613ac5c8d6e8db7d890b6789f18b0e6802be901cc7277cf0ceb0a4f7f9be2",
+                      "bytes":  1415
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/views/admin/tenant-detail.js",
+                      "sha256":  "eb7e6364465cb9717793625a0cb459419a4bfa0de337154ed4fd687fbeacabca",
+                      "bytes":  9478
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/views/user/instance.js",
+                      "sha256":  "d2535e9a22e03cb429627b3efe87546efabd372460edf2d5826394e0bb6af633",
+                      "bytes":  10463
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/views/user/shared.js",
+                      "sha256":  "bc3eb464f6ea475516bf5b6a6bf68ddd1e17f5f07d0e74e8ea634a4a709ac31c",
+                      "bytes":  4431
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/agent-runtime.js",
+                      "sha256":  "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec",
+                      "bytes":  16926
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/agent-settings.js",
+                      "sha256":  "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f",
+                      "bytes":  20862
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/api.js",
+                      "sha256":  "b2eab99dbc8e2a4f711287646324dff8411f6f85b888f73a89b54ec95af3308f",
+                      "bytes":  2886
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/app.js",
+                      "sha256":  "9d4aa100b76a49e3bf76e1c4d004d4773a44c2441b9f836f66f8ff1aee8b2b7f",
+                      "bytes":  17649
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/bili-service.js",
+                      "sha256":  "edfdb634c07d24286ef35001d92bfeb32c2d37d505d6e5bd6c73ddf6aa552a80",
+                      "bytes":  23058
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/billing.js",
+                      "sha256":  "f1a39a12c1e502b2657bba05183cb9259cbf7627606e82b14764b613790b6fa7",
+                      "bytes":  21662
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/billing/hosting-meter.js",
+                      "sha256":  "2286d3c1959bae3899e16257e45ce55940087916d6048da3c2c9c79e552cf0eb",
+                      "bytes":  6511
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/billing/provider.js",
+                      "sha256":  "4770703ae38c4b2cb90204639781bb822ee23ce10e79f6d898aa4b5982ff59ce",
+                      "bytes":  11208
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/config.js",
+                      "sha256":  "52864f5d886780dec493efaee6a9d397f23f90303c40c110c98956a584dadab9",
+                      "bytes":  7874
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/config-guard.js",
+                      "sha256":  "d289940119084fe260be6bf0aa2b6655220986a3fd8d21323e7194e7194114f3",
+                      "bytes":  7271
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/contracts/chat-id.js",
+                      "sha256":  "e0e46cc9631a98f2c38e1c95d2c37c8b216814d6f811e272542ccaf4ee449667",
+                      "bytes":  725
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/contracts/http.js",
+                      "sha256":  "634b6a8da797a278eb03e781cf92c1426524017670f3edf656abd1f1351d0de7",
+                      "bytes":  3428
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/db.js",
+                      "sha256":  "a44ac3668074bd4d0d46cc480afad1bd29f4e4a3e21e111583b20b025936f098",
+                      "bytes":  19916
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/desktop/device-service.js",
+                      "sha256":  "4fc2f539e54052680d23a040a0b045c25ab38e64c0e4c4ada14bd5331d96fa7a",
+                      "bytes":  7431
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/desktop/gateway.js",
+                      "sha256":  "5e8e06cb916c2379e7e7cc4f7ee27ba6ec1d7cf2379065245a90b8e990c34d3d",
+                      "bytes":  8561
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/entries.js",
+                      "sha256":  "1c8c2f4f14f801f4e8e6a162e4a8ce2cffa713f6bd6197d10ba1b314e675c21e",
+                      "bytes":  2710
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/entry-types.js",
+                      "sha256":  "06fc2f38b9f75a4ee53e6bf60d4c8fb6458997271267c2e97af0e3b133799e2f",
+                      "bytes":  170
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/gateway.js",
+                      "sha256":  "877aef2591db43e979776010674f88ad17565b0b701adbf561f97f8070667152",
+                      "bytes":  23010
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/hosting.js",
+                      "sha256":  "bb96d981c836fd667c7df5cad6b164597b1510a7dfaeed986ccc46adc780c4a4",
+                      "bytes":  8959
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/lifecycle-lock.js",
+                      "sha256":  "c3978fe948dc42dbbe56feb50ffc26a7647ca1683379eae35780e7a4cf2ef464",
+                      "bytes":  831
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/plans.js",
+                      "sha256":  "798c48011340e8f05ca609fef82ad595bf79a7173aa0ca07b37a858452ee9d9d",
+                      "bytes":  4755
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/presenters/tenant-presenter.js",
+                      "sha256":  "4868b2cff04e5b8a3dff2cb52090799b87a98f7d30a468c6be1b461df31f9560",
+                      "bytes":  7536
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/qq/common.js",
+                      "sha256":  "ab81768c7417ab70e8e875f94219abef2bc331bbcc62b23a55feb9f87a1bad24",
+                      "bytes":  3536
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/qq/qqbot.js",
+                      "sha256":  "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d",
+                      "bytes":  3560
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/qq-service.js",
+                      "sha256":  "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91",
+                      "bytes":  62434
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/relay/server.js",
+                      "sha256":  "f0f9a8a802a509e0043122796fece03036f6a6128e4d1e3dc00c196dfb38006c",
+                      "bytes":  38732
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/bili.js",
+                      "sha256":  "a9b06d2550a9ac197814079e75d3644d6222ef22ca26ba3501a7228bbfe08932",
+                      "bytes":  4362
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/billing.js",
+                      "sha256":  "fe3a7c4a620a0013ccf09f7f553558f755169cf74714a6e6cedef1b75266dd60",
+                      "bytes":  3318
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/entries.js",
+                      "sha256":  "f53b2ea5e2805fec8f825a8e6fdcd5e6976756553a89cca3f33b3a71562c4648",
+                      "bytes":  2810
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/qq.js",
+                      "sha256":  "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d",
+                      "bytes":  7632
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/supervisor.js",
+                      "sha256":  "30a88b60d7b4bed995aa0e359dc9fde1c230dcf04a0a7d7d500d7fc48663ec67",
+                      "bytes":  20560
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/util.js",
+                      "sha256":  "03c2d8dff98d42efd6a3098c06769488dad0d0e24afbe248bd37a005c6b8ee41",
+                      "bytes":  5764
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/agent-extensions-view-api.test.mjs",
+                      "sha256":  "4a8407d3429c390e2d090f84b8c70ecea5e144fa7ecc16bb9f91e54a7d34eff3",
+                      "bytes":  15166
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/bili-explore-integration.test.mjs",
+                      "sha256":  "07315132c5e08e51e6eae56e7e15e4fc84c90fc5a58e2b0a30e86ba59495b6f1",
+                      "bytes":  7084
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/billing-provider.test.mjs",
+                      "sha256":  "216d84b027e4a976dcd5dffd4f198617f3d2b1f12cb762af89f3d2eb15f35d73",
+                      "bytes":  27623
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/custom-recharge.test.mjs",
+                      "sha256":  "9707a6a419b9b62f14c278d7ed7f68672d7ccb5d3ef3bd9cd9aff374988fd098",
+                      "bytes":  8509
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/desktop-agent-integration.test.mjs",
+                      "sha256":  "a6df60e752c8ce5b42ee7d7d8742fef5f7c0c6acd3455ef62981df37f91475e8",
+                      "bytes":  6754
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/desktop-gateway.test.mjs",
+                      "sha256":  "0181b731ae74e1a01410df3e6762b486ec3cdec4cd0057485cbf3a3e87a6defa",
+                      "bytes":  12251
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/entry-lifecycle.test.mjs",
+                      "sha256":  "52d15304fd853cb035962e0e2bfc1a101ffa50f0d4856e2117d9e0b9ed396b0b",
+                      "bytes":  10458
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/fixtures/fake-upstream.mjs",
+                      "sha256":  "39c57464337f9df23aa80d4924b5609263172229366ce682757d538c38e087e2",
+                      "bytes":  9340
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/fixtures/schema-v9.sql",
+                      "sha256":  "c41191677263512b8ff364ed5d5cf198af97fdcb4ac6e4e4292c0552c04b1363",
+                      "bytes":  14034
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/fixtures/v1-qq-agent.mjs",
+                      "sha256":  "1e7aedfb2c8faac6ec9bc54e7666d3b09f96dbecbfd1f29fbd86fd8ca3876c61",
+                      "bytes":  690
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/lifecycle-coordination.test.mjs",
+                      "sha256":  "d503ebc958d121d12f5abd157a10fe13da8300685f138b3590d37198495bc3b2",
+                      "bytes":  13210
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/log-redaction.test.mjs",
+                      "sha256":  "fa0e1d6e4c5652e7b8ef623f69972221ffd2ce27946de449b53b30465b94032b",
+                      "bytes":  1444
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/migration-v10.test.mjs",
+                      "sha256":  "c8ca53d713df5a9e5df4ffc821de17224222eeb9346cf13b66113640b2f83ec5",
+                      "bytes":  8408
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/qqbot-settings.test.mjs",
+                      "sha256":  "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2",
+                      "bytes":  2803
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/qq-qqbot.test.mjs",
+                      "sha256":  "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6",
+                      "bytes":  10499
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/qq-switch-api.test.mjs",
+                      "sha256":  "ffa5a448ad8965357e758bf9fd33baba2cf448342832face75427dc91fc4b94b",
+                      "bytes":  10006
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/relay.test.mjs",
+                      "sha256":  "83db334100866fd612a1c0ea08d9d9b79b5fb81c44bcf4dba49f1a713490828c",
+                      "bytes":  37602
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/review-official-lifecycle.test.mjs",
+                      "sha256":  "b89a11e7e96f0e6a066d8b9d18e56d9c27dcca93de3999405080f6522f370cbe",
+                      "bytes":  9537
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/v1-billing-integration.test.mjs",
+                      "sha256":  "5a480ede97f7592eb44702506e6dfb6ad2d70763845fe96babe0dc8c2a435785",
+                      "bytes":  5051
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/v1-qq-integration.test.mjs",
+                      "sha256":  "dbcd8673e5c4bbccf253eb93f46c32a8021d7340f6938d390dcca156a63ea7dd",
+                      "bytes":  7884
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/view-api-backend.test.mjs",
+                      "sha256":  "956326396291f4cf9383e0329c09db536c74b0d4656d5f28a246e0d6813ba5fd",
+                      "bytes":  11718
+                  },
+                  {
+                      "path":  "packages/desktop-pet/licenses/dsh-pet-MIT.txt",
+                      "sha256":  "22757dc9c895b2729a2fc684d227cadfb54d5af3dd300029926839e8c4e269ce",
+                      "bytes":  1069
+                  },
+                  {
+                      "path":  "packages/desktop-pet/package.json",
+                      "sha256":  "b50bd95c2a5ea7a52472cc5a268b73f8b224aeae2bc227d9100cd71675c92d42",
+                      "bytes":  975
+                  },
+                  {
+                      "path":  "packages/desktop-pet/package-lock.json",
+                      "sha256":  "c5206f980a893c2147c05d48b27e7f5f4b56d1314a2bf71d91be3e99edf639da",
+                      "bytes":  166374
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder/idle.png",
+                      "sha256":  "e2c7a2052aa4e2c6d7b552cce53bbe4f39da7abcf7225bd2417dd691f5571901",
+                      "bytes":  1441
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder/LICENSE.txt",
+                      "sha256":  "05a9d2cb214c47b232f0ad14b4a4c3aecf18100c01ad45ec4f7a91a228eb6bde",
+                      "bytes":  208
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder/manifest.json",
+                      "sha256":  "146e719ce77dc9ab5ca11cc88f5e73250ef0cf21a1612e6bdc6778faf31e9d3f",
+                      "bytes":  748
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder-alt/idle.png",
+                      "sha256":  "1e8f858162ef9e8db40fef473a88c5670b5e040fda3eaa95a51829b0bb97c82b",
+                      "bytes":  1438
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder-alt/LICENSE.txt",
+                      "sha256":  "05a9d2cb214c47b232f0ad14b4a4c3aecf18100c01ad45ec4f7a91a228eb6bde",
+                      "bytes":  208
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder-alt/manifest.json",
+                      "sha256":  "33038a773e0f0ecde9ca97b553b623a92343f15de819cf0184d233351eee2efb",
+                      "bytes":  752
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/acceptance-cloud.mjs",
+                      "sha256":  "fd37f1603bffd7f37c3de9473cebd4c2b11d73c652790ab9d7d38072458722a4",
+                      "bytes":  14484
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/check-runtime.mjs",
+                      "sha256":  "44137fae30b7e4a4de0ccebdf1989e61931737aeafcf6cc97494b1d94126a00d",
+                      "bytes":  1432
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/dev.mjs",
+                      "sha256":  "dbe17025e23cd527d841d25debd3d2aa0b854dfcb28eeaefa943e8475be628cb",
+                      "bytes":  727
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/generate-placeholder.mjs",
+                      "sha256":  "734f3761140061f8edfc1c83e08ecbfe741bdc67a5a3480ba4989cda40a3ee01",
+                      "bytes":  2931
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/smoke-electron.mjs",
+                      "sha256":  "0bd94de0bc7e35adb1cbde943df22dabfd8c6eaf4452ed60cb248020932f9d4f",
+                      "bytes":  1782
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/client.js",
+                      "sha256":  "a396da00473bfd4cac688ae7c9fe5723cb54ac737603b5fd86a30e1199462f1d",
+                      "bytes":  24403
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/presentation-machine.js",
+                      "sha256":  "55521b2ac76bb6263464e7935cca2f96d9fd03563c365fb75963651229028be8",
+                      "bytes":  967
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/protocol-v1.js",
+                      "sha256":  "e5125225acc8843b43ab763dd8325c3df3ae00819ac4585cbda50741d3da65a0",
+                      "bytes":  1898
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/recovery-contract.js",
+                      "sha256":  "b2c782eb35a5f3c4a6f4313b26d02e53d51fac183e22423699563e8ab89757b7",
+                      "bytes":  2005
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/resource-manifest.js",
+                      "sha256":  "50547d3333d2eb1b8463a494f825ffb8fbdc791bc6e4097fc2a41a7fac406b4f",
+                      "bytes":  2254
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/session-machine.js",
+                      "sha256":  "015232fa60353a7789787903caa81663e5a972043343e8c97615cdcbb83cea07",
+                      "bytes":  4394
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/image.js",
+                      "sha256":  "ab8a86794c30b9a160b3a5b05ee654afab2b81342be0705e0e13d1e1074fa63f",
+                      "bytes":  626
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/index.html",
+                      "sha256":  "4bcc5f8fd0ee2318933af6685bc055eae23256b4a0509272dc41b07fe870edee",
+                      "bytes":  2826
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main.js",
+                      "sha256":  "0cea128a8cd91302047fd3fb31adcaa0f6799b901a7ca208148dac00ef0fbeed",
+                      "bytes":  6597
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/credential-store.js",
+                      "sha256":  "ec527d6b9d84d9e7882bae6d0df5e0e02bd37536a434223e036356f1582ae705",
+                      "bytes":  1930
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/resource-pack-loader.js",
+                      "sha256":  "553508bd9e74a135bec84a45d4d980054b9a740a82d40e91b10cd75035ec6a23",
+                      "bytes":  5159
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/security.js",
+                      "sha256":  "4d8f8601690ed643b5e904178113e5de51ca9a1fab35e906632622e7d0e4c153",
+                      "bytes":  2213
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/window-controller.js",
+                      "sha256":  "7ccae89ca050bef84d9311f3336b188471ad0080b79c85f8604b2823e95954cb",
+                      "bytes":  4843
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/pair-response.js",
+                      "sha256":  "037fe4ad16438cfd31e11327970af59960e65ea3041c63b756edb2cb77e35d83",
+                      "bytes":  810
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/preload.cjs",
+                      "sha256":  "9874740387297e6795e7ffe7d3c7f5db3f71429b27528ae459110c2d1cca0c32",
+                      "bytes":  1225
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/renderer.js",
+                      "sha256":  "33970d12ef4ad38e750fec14cbf13ce563be92b10617d34c196610040fba34fb",
+                      "bytes":  10760
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/secure-storage.js",
+                      "sha256":  "84cdf3002f42f4253e4835407877a7c3893c67ad4ef0da2c704adf3ffc42cedf",
+                      "bytes":  354
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/style.css",
+                      "sha256":  "d489991cbcbf70f6cbd39296a2f5e2a65cc40c97e5f1466cdec94db5455edc9a",
+                      "bytes":  5756
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/ui/pet-view.js",
+                      "sha256":  "b712979fac394cae7bb5ddad8906e2e3f9419bef27dcdb287ec9fb12aa2d0a5c",
+                      "bytes":  1200
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/vendor/dsh-pet/desktop-geometry.cjs",
+                      "sha256":  "2c83a69d8f98482024660f6b85cff1c830dae218bfe8cb32b6d175043eb4e5b6",
+                      "bytes":  1436
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/vendor/dsh-pet/pointer-target.cjs",
+                      "sha256":  "2e18340d085c345fffd880af1a5f211fb71c3149aa820f1618d846700ab904c7",
+                      "bytes":  1570
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/acceptance-cloud.test.mjs",
+                      "sha256":  "5d419c7727eb7658e254abbcfc0002e17b0b4e02728bb80f1f96d84fa1108825",
+                      "bytes":  1221
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/asset-provenance.test.mjs",
+                      "sha256":  "01acd1b3e131590d44f9a2ba6215cf33af728c57d9e2020143aec2c7d6263cac",
+                      "bytes":  2414
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/client.test.mjs",
+                      "sha256":  "5ecdc59d0145ce2119327c8080ef6034bdd0b63790a4f43010977920035135cc",
+                      "bytes":  10106
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/credential-store.test.mjs",
+                      "sha256":  "766f8f55c2fbb24e73030efcd28e97ac0f32190153e97b528b40ca04b30f65fb",
+                      "bytes":  2247
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/fixtures/electron-smoke.cjs",
+                      "sha256":  "8a2ef63a3451891bef8d658cbe3bc4f26cc15b1787a1cd3d35701bafefef001e",
+                      "bytes":  6227
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/presentation.test.mjs",
+                      "sha256":  "8677bbb3fdae5b6557d4bbad827dec4a2a5dc3cfb77ee7bc45f7f36b718ee240",
+                      "bytes":  2482
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/protocol.test.mjs",
+                      "sha256":  "030c85831fbf984e578cf98eeb8364fabc8b68767b4daee6cc88a2b6705e34ef",
+                      "bytes":  1801
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/recovery.test.mjs",
+                      "sha256":  "2c6161e62ceab7f16e2be807e05b4bc1d180d9f3ca1a58242648df7957952c85",
+                      "bytes":  16418
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/recovery-capabilities.test.mjs",
+                      "sha256":  "f11a62600fe9ec9fa43310c7721344483d9b00546269961baec75206ad7c59a6",
+                      "bytes":  13413
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/renderer.test.mjs",
+                      "sha256":  "8c3f35c19fe08a59a16d85d6aa0e0615a9c67be2ffa0983d9b8cc4c9377c3cf4",
+                      "bytes":  5121
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/resource-pack.test.mjs",
+                      "sha256":  "bea36801bdd5717c7116286ef6e554f171d0a6cfb2977d92d3353cc2d18ab8aa",
+                      "bytes":  5744
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/security.test.mjs",
+                      "sha256":  "0feea10b355f30549ff0ebf539ba304ab92f8cb33bf0bbf1c078ef96aef44fa0",
+                      "bytes":  4620
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/window-controller.test.mjs",
+                      "sha256":  "38974d91ac3d1482a188beac7f6efea736c281d0c81c6e2ee883c0cd919611db",
+                      "bytes":  2791
+                  },
+                  {
+                      "path":  "packages/desktop-pet/THIRD_PARTY_NOTICES.md",
+                      "sha256":  "7e5c738359e2844b1d21ace0a951c1094615ffb71432f27b78dc0d0855c65e03",
+                      "bytes":  1940
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/api.js",
+                      "sha256":  "dfb2ac67974b563692b37376e9cfba28c626c1fb2d7ef7b5382ffec8098f1bac",
+                      "bytes":  20472
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/auth.js",
+                      "sha256":  "35885e2bc4ce94aab6fde6e54f29c3ceeeb23c7192bdb3d46472641bd6092422",
+                      "bytes":  14978
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/buvid.js",
+                      "sha256":  "3ce61d83305685024d7024bb9804e34dbcac079d0c74648f1a6afb2318e547c7",
+                      "bytes":  1862
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/cookie-jar.js",
+                      "sha256":  "d39be82acefe73212514156369f1a480c65f68fca0a83cacc27dbf72a95e3389",
+                      "bytes":  9180
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/live.js",
+                      "sha256":  "cea9052b84cafb52bc40aee982c4fbbf9a7281620fe0e34abf92c32e844060a1",
+                      "bytes":  24559
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/refresh.js",
+                      "sha256":  "2765b82a38c9075fabab762ace32a761d846b554bc09dec4243f347ace9ea85a",
+                      "bytes":  9408
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/video.js",
+                      "sha256":  "bbf062ae80166c808003facb08411e619ab5c7ef81ae8a2c1c2e95efdcd738fb",
+                      "bytes":  18845
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/wbi.js",
+                      "sha256":  "9f0952f9f2c70374a9895dc78f8fccc9fc59129e2d54a4544adcc13046f59e1e",
+                      "bytes":  4721
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bridge.js",
+                      "sha256":  "ae80634c7a42ddd7dd17d42c6ff653b6c61bdd2cc9137b59970b3e1e7853a5d4",
+                      "bytes":  58767
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/config.js",
+                      "sha256":  "6d433ed3116f5fd9ddb968e176f91359b3414aaa5cc6ec1d28c4599a99ff6762",
+                      "bytes":  11797
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/explore-services.js",
+                      "sha256":  "1b8bc114dcc9e4900127f2bd9ce51007239d3e3f1e04c0e9034f95b6c6cf47d5",
+                      "bytes":  2949
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/main.js",
+                      "sha256":  "88be8017ea9080c49e8f0aa349ca6b57feb5548fb733bd26bd96d6843d05b197",
+                      "bytes":  2681
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/mapping/ids.js",
+                      "sha256":  "6a9152a26a451c90ed4f2ec637a4dd0733242c206350e270c63a41f98b8027d6",
+                      "bytes":  11039
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/onebot/admin.js",
+                      "sha256":  "29a9fd691b207499dcfa1f8ffab093813a3430eaed4a3a69d80331741b3b4a38",
+                      "bytes":  5451
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/pollers/explore.js",
+                      "sha256":  "e85eb93be910757c6c02e60f7a722091ae5debe6d1a27898fd3e8ab43fe5eac5",
+                      "bytes":  12306
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/auth-logout-race.test.mjs",
+                      "sha256":  "4988c1e56dba5b7680decba992d00cf0c640ab89668c0e0a7f9345a58b1259d8",
+                      "bytes":  6288
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/dynamic-image.test.mjs",
+                      "sha256":  "ab3548e2168fff0661f189c5f2ed7b1c86a73a5c565cf1b4e123c5d834dd163d",
+                      "bytes":  4113
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/e2e.test.mjs",
+                      "sha256":  "19dd422b5c16aa8a1d1d17497b1ebe4878bd09dd065ff09b06732aeeae9f55eb",
+                      "bytes":  8317
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/explore.test.mjs",
+                      "sha256":  "11978bab22ed53e860e090805b119648dcc3c234add6692af9fbe630e4aeb939",
+                      "bytes":  36631
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/explore-services.test.mjs",
+                      "sha256":  "1de11a06a145f5cbfc1b83c58da8f7a873c4c654b616f9afeec8d2a01b8bfd62",
+                      "bytes":  3620
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/live.test.mjs",
+                      "sha256":  "034cb3f77706881183835b8dc2d7c41b0341bb98e63c8e20f156332b767983be",
+                      "bytes":  10441
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/mapping.test.mjs",
+                      "sha256":  "cf1a0543cd8ad46b1e39e5fe78d2d477a01f3105c8a9a645ebc3904f1476b105",
+                      "bytes":  9898
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/onebot.test.mjs",
+                      "sha256":  "f73198f7a163c208dfb578f64f9d1b1c54a44ddb4aef63441ed489e5beebb4e8",
+                      "bytes":  24176
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/pollers.test.mjs",
+                      "sha256":  "ebac8aa54fafbb84514b8259e61097c02e3a3cfc4ff54c33e6d0983ae75bb91a",
+                      "bytes":  15125
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/read-only.test.mjs",
+                      "sha256":  "83da07cd73c55c48114c038cd4fd963febefa9fa889a9baca1b25e2c75ad3238",
+                      "bytes":  6796
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/video.test.mjs",
+                      "sha256":  "37b65a3ad5a91bc8e1f9814fe59436bbfe0b37fcbc32ac6a0093aee295afd384",
+                      "bytes":  7060
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/devtools/README.md",
+                      "sha256":  "8fbf9ad02d0fc28cfde8e039627d9ed07c4b3cd66b7d85ec1b6c13e2ddf2db9d",
+                      "bytes":  1030
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/README.md",
+                      "sha256":  "e1ba4523548a5d8b146e88ec4ad15ac2e4c9df61dfd17b70f30db7c0f3671df6",
+                      "bytes":  2692
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/test/onebot11-api-test/README.md",
+                      "sha256":  "aacf9a8a85c79cf6323539db5983e2db5726e89a394c13c40c84ec56bc02c7a3",
+                      "bytes":  1226
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/test/test-framework/README.md",
+                      "sha256":  "9bc4f8c802b7bbdf597ccaa7e3294021cd1c2bd5a72703ff9570efa6653bbabc",
+                      "bytes":  1697
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/test/webqq-api-test/README.md",
+                      "sha256":  "eefcf28d8ad97f64dc99c7f80efe4adae8889042e901b33b3434a185b1c60c75",
+                      "bytes":  1294
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/multi-instance.md",
+                      "sha256":  "e240f781d15eb8dae1ebd738697c340a933d283b87a8d0d4dbce2fc256e6fbe7",
+                      "bytes":  1476
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/plugin-development.md",
+                      "sha256":  "49eddb13005a10b81583b9893c74b506b09e669825688d34edefe4aa2c21f482",
+                      "bytes":  6493
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/prompt-pipeline.md",
+                      "sha256":  "8ea96839cd87868d78660380273573431ce5ad0b799b626db06eaddef30b272b",
+                      "bytes":  3145
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-development.md",
+                      "sha256":  "7404a451372c0336f15b529210ed0bec39a58ff2989b4af1bd523685ab07ee4a",
+                      "bytes":  6048
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-guide-for-beginners.md",
+                      "sha256":  "a5835ff940743953d8e4b8f5c337f44a2cd27c57d6ad4877bfcc0218d2cad032",
+                      "bytes":  5832
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-reference.md",
+                      "sha256":  "95a42d7cbf41873b48aeab4d109b628c79c8506bb3025711c610bf714e75e798",
+                      "bytes":  7773
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-system.md",
+                      "sha256":  "e1dfbf893f304255bd25f3294f08c3bb5f0b365c599fe865b8451584a5bdff2e",
+                      "bytes":  3308
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/snowluma-capabilities.md",
+                      "sha256":  "d9db0d1bbfa76add8b58f38130ea65c0bc2587977756ee84fa27c9844e587f7a",
+                      "bytes":  8417
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/video-modes.md",
+                      "sha256":  "999ac101854b0fb3c57d96f06e8597a5d06b3160df7420224c28ab5e5b337423",
+                      "bytes":  1632
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/connection.js",
+                      "sha256":  "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787",
+                      "bytes":  6241
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/desktop-channel.js",
+                      "sha256":  "6cf41793294e931ae8a13232d626625b18ec2cac15b80cfed57be47cc2ef0e72",
+                      "bytes":  17804
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/index.js",
+                      "sha256":  "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3",
+                      "bytes":  5854
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/onebot.js",
+                      "sha256":  "5f1a315c51e6fd06ec8b42d35c850b3e750715035c603f91a12fbf42e225ceda",
+                      "bytes":  7872
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/qqbot.js",
+                      "sha256":  "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e",
+                      "bytes":  18915
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/README.en.md",
+                      "sha256":  "a005bc4fec87ad53e686a63958afbaad87f699a3f210be2c17a819f16248d6ea",
+                      "bytes":  1391
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/README.md",
+                      "sha256":  "d55d466521ca2d184ee6d8f3a39dbcc6f2cd8835fd555997fde998a4170dbf67",
+                      "bytes":  1446
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/package.json",
+                      "sha256":  "d77aee3076e891488a2c4d09ed7d8a386538b2592f98badb8fe6975093e29ce2",
+                      "bytes":  5471
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/plugins/bili-watcher/index.js",
+                      "sha256":  "3d6ec1a54bf55e84184889bd8840993dbadacfcb44675e5e14f46c8bec388e1c",
+                      "bytes":  10614
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/README.md",
+                      "sha256":  "9c391589c6f99b90d89fb686555a9ad9a322e7d72844542301d7252be3113026",
+                      "bytes":  5170
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                      "sha256":  "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b",
+                      "bytes":  5813
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/app.js",
+                      "sha256":  "ff3a2cc9a01a0b8aa9d48d79a8d264ec9f66c8ab40963ed87eab6a94f18934a0",
+                      "bytes":  130032
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/bili-explore.js",
+                      "sha256":  "9b869ee939e8c5b789a946612329d5bb4ab8329a67b9e0a562df2adcbaded317",
+                      "bytes":  1705
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/channel-router.js",
+                      "sha256":  "51118e1d9479c55d9e3fffb603e78fd1def8fc6e67ed2796b97ced189bf2eb27",
+                      "bytes":  47402
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/config.js",
+                      "sha256":  "dcb7fcdec181e85b6027b1aee26791998dafd8e06c3cb7979553be140367056f",
+                      "bytes":  18074
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/config-defaults.js",
+                      "sha256":  "e6c10e3630fedf0ff5a17d5d4986d528a1fe8235fd53e16410f90e91c1f176c2",
+                      "bytes":  26156
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/llm.js",
+                      "sha256":  "6748716d2acb4eceae891399f7665c1fddc41a929eac1a017db2dcf461545656",
+                      "bytes":  33628
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/member-notes.js",
+                      "sha256":  "c5b327ec52bc3ea8bbd8b8a2f8c5dbf342608416ffca3009d4122e7588270825",
+                      "bytes":  701
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/memory.js",
+                      "sha256":  "8d63331eb559299aaf1e4f952123b56f06414e2920e3307022fc8a7ae71bcb94",
+                      "bytes":  25444
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/metering.js",
+                      "sha256":  "eca21cc02d078a918f3164eade070c5c1aada7d9c0d6add0d4023ee8e8bf0c74",
+                      "bytes":  8465
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/orchestrator.js",
+                      "sha256":  "f6fe873a615aa77475dc4ee889c886d7ca1de9786e666758cb4c10ab17332c0e",
+                      "bytes":  106541
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/prompt.js",
+                      "sha256":  "69e3ae3576718716dbed8a260bc7f8f52d98491f0048964ac949eb309f86ec8b",
+                      "bytes":  55255
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/routes.js",
+                      "sha256":  "27ad54a438b05e2f04056a2431d600520a87a4e326c15c198749b64a3613b48b",
+                      "bytes":  88731
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/sender.js",
+                      "sha256":  "9ae4066a2214b04e88006b53d7ee43777d10fcc319e7a71212de5d80143f656e",
+                      "bytes":  38542
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/storage-identifiers.js",
+                      "sha256":  "df1ac6f75f3c2b5dbd025d72d586dcfbd4b1d8472aaca7cea691406a7d672db3",
+                      "bytes":  1040
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/store.js",
+                      "sha256":  "30fa6f5e103760451c1275a1925393e2ae977dec50aa96edd0a4dbbea9e5bb2d",
+                      "bytes":  15371
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/tools.js",
+                      "sha256":  "f7792a42baf3279989f5cfbcd4a6a39f5e87781eb7cd82cdb3a7ee29846163a2",
+                      "bytes":  64556
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/_harness.mjs",
+                      "sha256":  "ad8303d4f46e5722c1004bf9dccbc42a8e1584c0206a045ecbe8d70d898f1a04",
+                      "bytes":  19530
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/_isolated-child.mjs",
+                      "sha256":  "233eae6dac123df802f7742750e70d4a25fdd13783cd6f8e1c1eb9ce0f104dd9",
+                      "bytes":  449
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/channel-router-test.mjs",
+                      "sha256":  "1bbe64d22ae312e16a8e8757b89312ac9ae93494813343d74656d879d1433d45",
+                      "bytes":  31039
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/checker-report.test.mjs",
+                      "sha256":  "d17d091abd26ee89ec9c497f3d596686f12f00e976b7dc6712aa27d3cb0f3bf7",
+                      "bytes":  2119
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-e2e.mjs",
+                      "sha256":  "f8fa3ef62d8c488cbf9373b316aa42c5c3954c3d1a3d29b3c00bef25f78e623f",
+                      "bytes":  42073
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-http.mjs",
+                      "sha256":  "5d81dfdbac31ea66f532e2fa217a82ddc32c464418098f342754fb6f14323298",
+                      "bytes":  58358
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-offline.mjs",
+                      "sha256":  "9f8a67c1435ab21e30f26ce7c5527c3bc9b91e9f0ef5bc80817c70a14a0587ca",
+                      "bytes":  66929
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-wiring.mjs",
+                      "sha256":  "be0ab18b7f8b2f37a364459b642f5dfc257fb07c1e7dda625b1f89599682b703",
+                      "bytes":  16823
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/desktop-processing-recovery.test.mjs",
+                      "sha256":  "ac3069df017189c9426ab10029d4f1b4f5d6ac6f23e69646de3916509368f390",
+                      "bytes":  10324
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/headless-runtime.test.mjs",
+                      "sha256":  "1b338e29d6cc1d853dacdff2b491c9558090db82a0cdd3d2340c4c39840006ee",
+                      "bytes":  34454
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/headless-transport.test.mjs",
+                      "sha256":  "3a2c05bc475fed8ac2638116153746bc9be6e6bbb12a4e9b028cc9efcbc271ff",
+                      "bytes":  24647
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/llm-error-redaction.test.mjs",
+                      "sha256":  "de246d4cfee6876ebbd73221a9be5976d4cd9838a854d105e61c63d18cfb41bb",
+                      "bytes":  1420
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/memory-legacy-delete.test.mjs",
+                      "sha256":  "46380d9379e8113d6f68dff7e350d5fb0cc6d1f806506ce2bad964a6f1e4b68b",
+                      "bytes":  10447
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/multi-entry.test.mjs",
+                      "sha256":  "0c28c0901a550d85877730c06e228f269451c0761d9b3b705de03ebcdf22775e",
+                      "bytes":  31569
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/onebot-whitelist-test.mjs",
+                      "sha256":  "dfec0e75b4f7163bda866c21cd4864836a805861ac642cf25e8e1c5f76ea3295",
+                      "bytes":  10166
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/qq-pack.mjs",
+                      "sha256":  "aa7649d8160be8baee5be29df3254febab116cba1780d0e44a2238d651a3a59b",
+                      "bytes":  9995
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/qq-process-detect.mjs",
+                      "sha256":  "a36effff99bf6cfaad98a5a4ddfe54c8c9d7ff96ef0b97469f77ecb0fd1b94d0",
+                      "bytes":  4734
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/render-test.mjs",
+                      "sha256":  "0a48b108bd7291043e55155f513a9c822caee3501715d77f4352138d47121313",
+                      "bytes":  43191
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/send-guard-test.mjs",
+                      "sha256":  "e0f7c8502a460679886a8ab00d473884e92102be241021cb23a0b6e5048444c5",
+                      "bytes":  16461
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/setup-qq-version.mjs",
+                      "sha256":  "31b0e2c012cf69e06198a48073b68ab59f129f0017873b74b3bb74ed1d912830",
+                      "bytes":  21098
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/skill-test.mjs",
+                      "sha256":  "f6b28b5b3b0d037ecf9982ac90a46eb6f663288b7c8de93b9566b4d407871cbc",
+                      "bytes":  37569
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/tools-skill-audit.mjs",
+                      "sha256":  "37a86a239f7b42c1fe06eabf0c5bea0cfc581c052640a4cc28362e78ec21caeb",
+                      "bytes":  33605
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/usage-e2e.mjs",
+                      "sha256":  "2d985c617f4c554da69ed8b0ed1556c9a0bd2a60022cbeb8b442cd3d1423bd0e",
+                      "bytes":  14848
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/ui/app/05-memory-settings.js",
+                      "sha256":  "eaa347e17846c28cceaabc57e63351dec35a375ba4af513c0ba5e17ceea8f2c7",
+                      "bytes":  40462
+                  },
+                  {
+                      "path":  "README.md",
+                      "sha256":  "c2f5c4c70d4cbdf3582360609cfdeced6ffdbc07761107fc9b5ab79496bf72ea",
+                      "bytes":  7213
+                  },
+                  {
+                      "path":  "scripts/check.mjs",
+                      "sha256":  "e5464babfe5a1e0fa86cd53f7ae40cf34a1a9011952986924a4a52b9a56a1c1f",
+                      "bytes":  1735
+                  },
+                  {
+                      "path":  "scripts/review-validation.mjs",
+                      "sha256":  "f89300b0f9e7b703aff1124ffc2fa8701573c0549ef436cbf15d1ca04b8703a0",
+                      "bytes":  3435
+                  },
+                  {
+                      "path":  "scripts/run-tests.mjs",
+                      "sha256":  "0ef61d5a5080894d3428516381524386f6422cde9508059c1bb364dc68a083d2",
+                      "bytes":  2044
+                  },
+                  {
+                      "path":  "UPSTREAM.md",
+                      "sha256":  "c6f17ba2f9614ab063104b9bcdebf4c7e6be6512c4d702024562dc8af30a96ac",
+                      "bytes":  1277
+                  }
+              ],
+    "protectedFiles":  [
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/qqbot.js",
+                               "sha256":  "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/connection.js",
+                               "sha256":  "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/index.js",
+                               "sha256":  "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq/qqbot.js",
+                               "sha256":  "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq-service.js",
+                               "sha256":  "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/routes/qq.js",
+                               "sha256":  "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-settings.js",
+                               "sha256":  "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-runtime.js",
+                               "sha256":  "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/qq-panel.js",
+                               "sha256":  "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                               "sha256":  "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                               "sha256":  "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qq-qqbot.test.mjs",
+                               "sha256":  "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6",
+                               "matchesReview14":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qqbot-settings.test.mjs",
+                               "sha256":  "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2",
+                               "matchesReview14":  true
+                           }
+                       ],
+    "nodeProcesses":  [
+                          {
+                              "Id":  18352,
+                              "Path":  null,
+                              "StartTime":  "\/Date(1793627278388)\/"
+                          },
+                          {
+                              "Id":  55544,
+                              "Path":  null,
+                              "StartTime":  "\/Date(1793476666302)\/"
+                          },
+                          {
+                              "Id":  76972,
+                              "Path":  null,
+                              "StartTime":  "\/Date(1793573795002)\/"
+                          },
+                          {
+                              "Id":  87576,
+                              "Path":  null,
+                              "StartTime":  "\/Date(1793627274760)\/"
+                          },
+                          {
+                              "Id":  90560,
+                              "Path":  null,
+                              "StartTime":  "\/Date(1793676809042)\/"
+                          },
+                          {
+                              "Id":  107504,
+                              "Path":  null,
+                              "StartTime":  "\/Date(1793676642349)\/"
+                          }
+                      ]
+}

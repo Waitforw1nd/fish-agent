@@ -1,16 +1,32 @@
-# Headless runtime
+# Headless Runtime Module
 
-From `packages/qq-agent-core`, use Node.js 22 or 24:
+`modules/headless` runs `qq-agent-core` as a standalone Node.js server (Node.js 22 or 24) without Electron or desktop GUI dependencies. Protocol services (NapCat, LLBot, or Bilibili bridge) run separately.
 
-```sh
-npm ci --omit=dev --ignore-scripts
-export QQ_AGENT_DATA_DIR=/absolute/private/data
-export QQ_AGENT_TOKEN='replace-with-random-console-token'
+## Quick Start
+
+From `packages/qq-agent-core`:
+
+```bash
+export QQ_AGENT_DATA_DIR="/path/to/data"
+export QQ_AGENT_TOKEN="replace-with-random-console-token"
 npm run server:headless
 ```
 
-The console listens on `127.0.0.1:3210` by default. Set `QQ_AGENT_HOST`, `QQ_AGENT_PORT` and `QQ_AGENT_ALLOWED_HOSTS` as needed. Sign in at `/runtime/connection` with the console token. The session cookie is HttpOnly; Origin and Referer must match the allowed Host.
+Key environment variables:
+- `QQ_AGENT_HOST` / `QQ_AGENT_PORT`: Bind address and port (defaults to `127.0.0.1:3210`).
+- `QQ_AGENT_TOKEN`: Console access token (sign in at `/runtime/connection` to obtain an `HttpOnly` session cookie).
+- `QQ_AGENT_ALLOWED_HOSTS`: Allowed `Host` header list (validated against `Origin` / `Referer`).
+- `QQ_AGENT_READY_IPC=1`: Used by `cloud-manager` to receive the `{ type: "fish-agent-listening", pid, port }` Node IPC readiness message.
 
-QQ and Bilibili use the core `channels` configuration and ID routing. QQ can also use `connection` for forward or reverse OneBot WebSocket; reverse connections require a separate protocol token. Bilibili uses the existing OneBot client. Protocol services are managed separately. Official QQBot OpenIDs are incompatible with the current numeric ID router and cannot be enabled.
+## Docker & Testing
 
-Run `npm run test:headless` for authentication, transport and runtime checks. The SIGTERM test requires Linux; Windows does not implement equivalent POSIX signal delivery.
+```bash
+cp modules/headless/.env.example .env
+# Edit .env to set a strong token, then start:
+docker compose --env-file .env -f modules/headless/compose.yaml up -d --build
+
+# Run headless authentication, transport, and runtime tests:
+npm run test:headless
+```
+
+> **Channel note**: Headless uses the core `channels` configuration and numeric ID `ChannelRouter` for both QQ (OneBot v11 forward/reverse WebSocket or HTTP) and Bilibili. Official QQBot string OpenIDs are not supported.

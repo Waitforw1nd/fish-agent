@@ -1,0 +1,135 @@
+Environment: local fake services; Node process tracer enabled.
+COMMAND: desktop-pet node --test test/*.test.mjs
+✔ isolated cloud check exercises the desktop chain and removes its data (20819.914ms)
+✔ shipped character assets are exactly the two reproducible geometric PNGs (14.7826ms)
+✔ code attribution and the original MIT notice are included in distributable files (1.077ms)
+✔ packaging blocks the unsupported runtime and prereleases instead of silently accepting them (0.555ms)
+✔ HTTP and WebSocket redirects never forward pairing codes or device tokens (73.6943ms)
+✔ secure addresses and pairing bind the WebSocket to the same origin (1.1463ms)
+✔ local socket authenticates, resumes replay, explicitly retries unacknowledged ID, and stops after revocation (177.4696ms)
+✔ image attachments are bounded and validated by magic bytes (0.891ms)
+✔ renderer uses text nodes and never fetches remote image URLs (619.4238ms)
+✔ pair response size is bounded before JSON parsing (1.9198ms)
+✔ malicious replay is bounded and does not recursively process nested ready frames (1201.5379ms)
+✔ Linux plaintext fallback is rejected even when Electron reports encryption available (0.8385ms)
+✔ permanently rejected messages leave the retry queue with a visible failure state (0.3734ms)
+✔ real replay storage failure pauses connection, and manual recovery saves each sequence once (58.6892ms)
+✔ credential store persists atomically, rejects unavailable storage and preserves last snapshot (8.5318ms)
+✔ encryption failures preserve existing ciphertext and expose no plaintext or raw exception (3.3204ms)
+✔ activity and independent connection reset stale thinking (0.5324ms)
+✔ missing action mapping selects fallback (0.1157ms)
+✔ PetView replaces image without changing presentation state and releases it (1.3735ms)
+✔ offline activity cannot revive stale thinking (0.1199ms)
+✔ bounded pairing errors show known reason without reflecting remote text (16.099ms)
+✔ pairing rejects cross-port and transport downgrade (0.8173ms)
+✔ malformed pairing payloads and transport diagnostics produce only safe errors (3.4703ms)
+✔ inline replay stops immediately on a recovery failure (2.9072ms)
+✔ valid inline output and streamed input finish both replays before sending (1.0795ms)
+✔ streamed replay failure never reports connected (0.3538ms)
+✔ legacy inline replay still sends an unattempted queued message (0.4542ms)
+✔ negotiated replay waits for both end markers before sending queued text (0.6311ms)
+✔ restart queries durable receipt instead of resending ambiguous work (0.7373ms)
+✔ a recovery capability downgrade cannot silently resend an attempted message (0.7287ms)
+✔ missing capability for an existing output or input cursor pauses without saving a new cursor (0.6548ms)
+✔ a first connection to a legacy server still sends queued text (0.735ms)
+✔ legacy server reconnect preserves an unacknowledged attempt as uncertain (0.6738ms)
+✔ unknown receipt stays uncertain and in-progress can receive a later acknowledgement (1.1396ms)
+✔ own input history merges local row while another device with same client ID remains distinct (1.7455ms)
+✔ undeclared output and input gaps stop before advancing the persisted cursor (0.5857ms)
+✔ an empty replay cannot conceal an undeclared output or input gap (0.6407ms)
+✔ declared retention gap accepts only available frames and does not synthesize a cursor (0.5206ms)
+✔ missing end marker, missing declared frame, or changed epoch prevents automatic sends (0.7182ms)
+✔ input cursor is not advanced when persistence fails (0.3999ms)
+✔ ambiguous ingest failure is uncertain and blocks the next message (0.8719ms)
+✔ malformed receipts/input identities are rejected and permissions use fixed messages (0.7481ms)
+✔ frame validation and bounded segments (0.9312ms)
+✔ restart distinguishes unattempted and uncertain, including legacy items (1.0968ms)
+✔ one in flight, stable IDs and persist before sending (1.8882ms)
+✔ push persistence failure leaves cursor and content unchanged (0.2349ms)
+✔ replay gap makes attempted message uncertain and explicit retry restores queue (0.6609ms)
+✔ server sequence rollback blocks recovery (0.142ms)
+✔ queue budget counts UTF-8 bytes and does not evict pending (9.6879ms)
+✔ connection generations, timeout, and stop clean up timers (0.4954ms)
+✔ streamed replay gates sending until catch-up and uses configurable deadline (0.6554ms)
+✔ failed removed message can be explicitly retried or discarded (0.5642ms)
+✔ queued payload is copied and an unsolicited ack cannot remove it (0.2463ms)
+✔ ack deadline marks uncertainty and pauses later queued sends (0.7529ms)
+✔ corrupt queue blocks connection rather than silently dropping work (0.2411ms)
+✔ corrupt history blocks recovery without exposing malformed rows to renderer (0.1771ms)
+✔ server errors never expose credential-like diagnostics in notices (0.2078ms)
+✔ snapshot, event, and restored values do not alias callers (0.3149ms)
+✔ socket send failure keeps persisted attempted request for recovery (0.4177ms)
+✔ socket rejects pre-ready frames and acknowledgements for queued messages (0.5543ms)
+✔ three opened recovery handshakes without ready pause; unopened failure does not count (0.3476ms)
+✔ ready resets prior recovery handshake failures (0.29ms)
+✔ heartbeat sends at 30 seconds and terminates after 90 seconds without activity (0.2025ms)
+✔ reconnect backoff caps at 30 seconds base and authentication blocks automatic retries (0.3553ms)
+✔ failed ACK persistence retains pending and blocks subsequent request (0.6904ms)
+✔ 200 replay messages and restart retain an actionable uncertain pending row (248.4621ms)
+✔ pending display summaries fit budget without changing original payload (57.9861ms)
+✔ late init cannot overwrite newer status, history or error events (68.4387ms)
+✔ unreadable local credentials still expose a deliberate clear operation (13.7876ms)
+✔ IME confirmation and Shift+Enter do not send, Enter sends once (12.3071ms)
+✔ uncertain actions stay explicit and hostile text stays text (11.6892ms)
+✔ an IPC send in progress cannot duplicate input or erase a newly typed draft or notice (13.2975ms)
+✔ late init cannot revert a successful pairing (11.1337ms)
+✔ two original packs can be loaded and replaced (10.0399ms)
+✔ invalid manifest, paths, bytes and dimensions fall back (38.3913ms)
+﹣ symlink outside pack is rejected (12.8145ms) # symlink privilege unavailable
+✔ directory junction outside pack is rejected (23.5363ms)
+✔ prototype keys, inherited references and unsafe paths are rejected (21.7165ms)
+✔ manifest and referenced image budget are bounded (36.4307ms)
+✔ PNG dimensions and decompression are checked after valid checksums (13.6655ms)
+✔ actual preload exposes fixed commands and strips IPC event objects from subscriptions (1.7181ms)
+✔ IPC rejects foreign windows, subframes, navigation and malformed arguments before side effects (0.3866ms)
+✔ window policy denies navigation, popups, webviews, downloads and unneeded permissions (0.5324ms)
+✔ borrowed hit testing keeps input live and releases empty margin (0.5418ms)
+✔ work area clamping handles negative monitor origins and small screens (0.6613ms)
+✔ display removal recovers window, drag does not break input, cleanup releases polling (0.5457ms)
+ℹ tests 86
+ℹ suites 0
+ℹ pass 85
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 20932.9179
+EXIT: 0
+COMMAND: cloud-manager node --test test/desktop-gateway.test.mjs test/desktop-agent-integration.test.mjs
+✔ real headless desktop reaches local Relay, meters, replays and isolates tenants (11328.9774ms)
+✔ pairing code creation requires session and CSRF, and failed claims consume the IP budget (211.8448ms)
+✔ revocation while upstream handshake is pending prevents a new desktop socket (195.2088ms)
+✔ pairing codes are single-use, expire, and device tokens stay tenant-bound and hashed (177.7358ms)
+✔ seat hard limit rejects additional device without consuming pairing code (171.7897ms)
+✔ overlapping sockets for one device count online time once and terminal failures retain the end time (0.7839ms)
+✔ gateway overrides untrusted headers, rejects forgery and origin, meters online time, and revokes immediately (282.5187ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11565.0339
+EXIT: 0
+COMMAND: qq-agent-core node --test test/desktop-processing-recovery.test.mjs
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ desktop tools cannot touch shared stickers and reminder cancellation is scoped (11.6406ms)
+✔ desktop prompt does not sync or include shared sticker content (131.2039ms)
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ same client ID across devices has isolated in-progress receipts and distinct durable messages (69.7033ms)
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ a failure after chat persistence never turns into an accepted retry, even after restart (173.8196ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 632.4356
+EXIT: 0
+
+Process audit: 24 tracer records had exit timestamps; no recorded PID was live at inspection. The earlier untraced runs exited normally; their individual descendant PIDs cannot be independently verified retrospectively. Their test teardown closes sockets and manager/model servers, and the cloud acceptance asserts its temporary directory was removed.
+Coverage: root run-tests --all invokes cloud-manager test/*.test.mjs, qq-agent-core test:all (including test:headless and test:multi-entry), and desktop-pet test/*.test.mjs. These include the targeted test files above. The real Electron smoke script is separate and was not run by these commands. The only skip was symlink creation due to unavailable Windows privilege; the separate junction escape test passed.

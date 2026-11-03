@@ -1,0 +1,19 @@
+﻿{
+    "at":  "2026-11-03T04:17:45.4788440Z",
+    "frozenMismatches":  [
+
+                         ],
+    "trackedPidsPresent":  [
+
+                           ],
+    "unattributedNodeCount":  9,
+    "newSinceCleanup":  [
+
+                        ],
+    "docsUpdated":  [
+                        "docs/v1.0-acceptance.md",
+                        "docs/goal-progress.md"
+                    ],
+    "evidenceManifest":  "docs/evidence/review16-manifest-2026-11-03.json",
+    "finalDiffWhitespaceCheck":  "passed"
+}

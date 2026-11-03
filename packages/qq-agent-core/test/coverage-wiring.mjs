@@ -22,9 +22,10 @@ const c = createChecker('界面接线（真实 DOM）');
 let JSDOM;
 try {
   ({ JSDOM } = await import('jsdom'));
-} catch {
+} catch (error) {
+  if (error.code !== 'ERR_MODULE_NOT_FOUND' || !/Cannot find package ['"]jsdom['"]/.test(error.message)) throw error;
   console.log('\n⚠ 未安装 jsdom，跳过本套件。启用方式：npm i -D jsdom\n');
-  c.ok('jsdom 未安装 —— 已跳过（安装后自动启用）');
+  c.skip('UI 接线套件', '未安装 jsdom（安装后自动启用）');
   c.finish();
   process.exit(0);
 }

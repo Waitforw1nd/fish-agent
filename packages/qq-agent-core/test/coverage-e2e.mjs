@@ -18,6 +18,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { createChecker, bootApp, sleep, waitFor } from './_harness.mjs';
+import { runIsolatedChild } from './_isolated-child.mjs';
 
 const c = createChecker('端到端链路 + Skill/插件');
 
@@ -43,21 +44,25 @@ async function runIsolatedPluginCase({ files = {}, runner, env = {} }) {
   const runnerPath = path.join(tmp, 'runner.mjs');
   fs.writeFileSync(runnerPath, runner, 'utf8');
 
-  const { spawnSync } = await import('node:child_process');
-  spawnSync(process.execPath, [runnerPath], {
-    stdio: 'ignore',
-    env: {
-      ...process.env,
-      QQ_AGENT_DATA_DIR: tmp,
-      CASE_DIR: tmp,
-      TRACE_FILE: tracePath,
-      RESULT_FILE: path.join(tmp, 'result.json'),
-      LOADER_URL: new URL('../src/plugin-loader.js', import.meta.url).href,
-      MANAGER_URL: new URL('../src/skills/manager.js', import.meta.url).href,
-      SKILLCFG_URL: new URL('../src/skills/config.js', import.meta.url).href,
-      ...env
-    }
-  });
+  try {
+    runIsolatedChild(runnerPath, {
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        QQ_AGENT_DATA_DIR: tmp,
+        CASE_DIR: tmp,
+        TRACE_FILE: tracePath,
+        RESULT_FILE: path.join(tmp, 'result.json'),
+        LOADER_URL: new URL('../src/plugin-loader.js', import.meta.url).href,
+        MANAGER_URL: new URL('../src/skills/manager.js', import.meta.url).href,
+        SKILLCFG_URL: new URL('../src/skills/config.js', import.meta.url).href,
+        ...env
+      }
+    });
+  } catch (error) {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    throw error;
+  }
   return { tmp, tracePath, markerPath };
 }
 
@@ -347,6 +352,9 @@ c.section('8. Skill 开关与工具联动');
       for (const t of mine) assert.equal(t.enabled, true, `恢复后工具 ${t.id} 应可用`);
     });
     } else {
+      c.skip('已加载 Skill 的工具带 skillId，且工具可用性与技能开关一致', '没有已加载的技能工具');
+      c.skip('关闭 Skill → 它的工具立刻全部不可用（单一开关，无影子开关）', '没有已加载的技能工具');
+      c.skip('重新开启 Skill → 工具一起恢复', '没有已加载的技能工具');
       await c.check('空目录：无技能工具时架构仍健康', async () => {
         const r = await request('GET', '/api/skills');
         assert.equal(r.status, 200);

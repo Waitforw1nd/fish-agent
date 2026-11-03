@@ -1,0 +1,123 @@
+﻿{
+    "review":  "review17",
+    "at":  "2026-11-03T04:51:46.5334795Z",
+    "findings":  [
+                     {
+                         "issue":  "Bili stopped logout retained encrypted login; online deletion failures reported success",
+                         "fix":  "Require confirmed stopped process for offline fixed-file deletion; attempt both records, report sanitized failure and allow retry",
+                         "severity":  "P1"
+                     },
+                     {
+                         "issue":  "Bili logout awaited live stop before revocation and stale live synchronization outlived the session",
+                         "fix":  "Revoke immediately, check generation, isolate old-client cleanup from a newer login",
+                         "severity":  "P2"
+                     },
+                     {
+                         "issue":  "Desktop shutdown dropped the final online-duration tail after an uncertain committed interval",
+                         "fix":  "Retry the stable key then drain the final interval with bounded writes",
+                         "severity":  "P2"
+                     },
+                     {
+                         "issue":  "Synchronous desktop send failure left old replay and heartbeat timers",
+                         "fix":  "Clear failed-connection timers and only schedule a heartbeat after successful send",
+                         "severity":  "P2"
+                     },
+                     {
+                         "issue":  "Downloader misreported asynchronous destination failures as network interruption",
+                         "fix":  "Preserve the original destination error",
+                         "severity":  "P3"
+                     }
+                 ],
+    "chains":  {
+                   "log":  "review17-simulated-chains-2026-11-03.txt",
+                   "completedAt":  "2026-11-03T04:48:17.521Z",
+                   "passed":  [
+                                  "QQ protocol OneBot send/receive",
+                                  "QQ official production lifecycle and Gateway/OpenID",
+                                  "Desktop pairing/chat/reconnect/replay/revoke",
+                                  "Bili read-only drafts with zero publishing",
+                                  "Four-entry tenant-scoped idempotent meters"
+                              ],
+                   "startedAt":  "2026-11-03T04:47:43.335Z",
+                   "desktop":  {
+                                   "tokens":  350,
+                                   "outgoing":  7,
+                                   "ledger":  14,
+                                   "incoming":  7
+                               },
+                   "officialWebhookImplemented":  false,
+                   "webhookRequiredByCurrentManual":  false,
+                   "exits":  [
+                                 0,
+                                 0
+                             ]
+               },
+    "verification":  {
+                         "protectedCount":  13,
+                         "protectedMismatches":  0,
+                         "additionalPreviouslyUnchangedTest":  "packages/cloud-manager/test/bili.test.mjs",
+                         "cloudTargetedPassed":  67,
+                         "coreTargetedPassed":  30,
+                         "downloadPassed":  59,
+                         "frozenCount":  198,
+                         "offlineLogoutLifecycleTargetedPassed":  24,
+                         "rootCheckExit":  0,
+                         "frozenMismatches":  0
+                     },
+    "changed":  true,
+    "limitations":  [
+                        "Electron 33.4.11 fails repository minimum-45 gate; native encryption/sandbox, displays, sleep, installer/signing and macOS remain unaccepted",
+                        "Historical ambiguous memory, notes and accounting need manual reconciliation",
+                        "Pending metering intervals are in-memory; persistent storage failure or crash can still lose unsettled usage",
+                        "A reported Bili credential deletion failure requires retry after storage recovery; persisted credentials cannot be claimed deleted",
+                        "No commit, push, deployment, real QQ/Bilibili/payment operations"
+                    ],
+    "codeAndTestFiles":  [
+                             "packages/cloud-manager/src/bili-service.js",
+                             "packages/cloud-manager/test/bili.test.mjs",
+                             "packages/cloud-manager/src/desktop/gateway.js",
+                             "packages/cloud-manager/test/desktop-gateway.test.mjs",
+                             "packages/desktop-pet/src/client.js",
+                             "packages/desktop-pet/test/client.test.mjs",
+                             "packages/protocol-bili-bridge/src/bili/auth.js",
+                             "packages/protocol-bili-bridge/src/bridge.js",
+                             "packages/protocol-bili-bridge/test/auth-logout-race.test.mjs",
+                             "packages/qq-agent-core/scripts/lib/download.mjs",
+                             "packages/qq-agent-core/test/setup-download.mjs"
+                         ],
+    "cleanup":  {
+                    "legacyDirectories":  28,
+                    "uniquePids":  559,
+                    "records":  586,
+                    "manuallyStoppedProcesses":  0,
+                    "currentlyPresentTrackedPids":  0,
+                    "newVarCopies":  0,
+                    "port":  56581,
+                    "portResult":  "No LISTENING row; 1 second TCP probe timed out",
+                    "recordsWithoutExitCallback":  25,
+                    "temporaryDesktopDataExists":  false,
+                    "unattributedNodeProcesses":  9,
+                    "deletion":  "Automatic approval rejected: blocked by policy"
+                },
+    "testAll":  {
+                    "headlessPassed":  26,
+                    "cancelled":  0,
+                    "excludedDangerousHttpRoutes":  4,
+                    "log":  "review17-test-all-2026-11-03.txt",
+                    "node":  "v24.21.0",
+                    "panelPassed":  138,
+                    "bridge":  113,
+                    "failures":  0,
+                    "multiEntryPassed":  31,
+                    "customEnvironmentSkips":  5,
+                    "knownFailures":  0,
+                    "command":  "npm run test:all",
+                    "llbotPassed":  230,
+                    "startedAt":  "2026-11-03T04:44:13.668Z",
+                    "exit":  0,
+                    "cloudPassed":  226,
+                    "platformPermissionSkips":  4,
+                    "desktopPassed":  91,
+                    "completedAt":  "2026-11-03T04:47:20.006Z"
+                }
+}

@@ -1,0 +1,137 @@
+﻿{
+    "review":  "review4",
+    "startedAt":  "2026-11-02T22:12:01.8083785Z",
+    "node":  "v24.22.1",
+    "protectedFiles":  [
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/qqbot.js",
+                               "sha256":  "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e"
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/connection.js",
+                               "sha256":  "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787"
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/index.js",
+                               "sha256":  "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq/qqbot.js",
+                               "sha256":  "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq-service.js",
+                               "sha256":  "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/routes/qq.js",
+                               "sha256":  "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-settings.js",
+                               "sha256":  "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-runtime.js",
+                               "sha256":  "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/qq-panel.js",
+                               "sha256":  "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                               "sha256":  "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb"
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                               "sha256":  "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qq-qqbot.test.mjs",
+                               "sha256":  "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6"
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qqbot-settings.test.mjs",
+                               "sha256":  "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2"
+                           }
+                       ],
+    "nodeProcesses":  [
+                          {
+                              "id":  18352,
+                              "startedAt":  "2026-11-02T21:47:58.3885575+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  45388,
+                              "startedAt":  "2026-11-03T06:10:20.4548414+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  55544,
+                              "startedAt":  "2026-11-01T03:57:46.3024494+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  61628,
+                              "startedAt":  "2026-11-03T06:12:19.5429416+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  76972,
+                              "startedAt":  "2026-11-02T06:56:35.0027127+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  78260,
+                              "startedAt":  "2026-11-03T06:12:19.6564437+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  83492,
+                              "startedAt":  "2026-11-03T06:13:10.0001850+08:00",
+                              "path":  "D:\\tool\\node\\node.exe"
+                          },
+                          {
+                              "id":  87576,
+                              "startedAt":  "2026-11-02T21:47:54.7601702+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  95288,
+                              "startedAt":  "2026-11-03T06:13:09.3949276+08:00",
+                              "path":  "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe"
+                          },
+                          {
+                              "id":  96448,
+                              "startedAt":  "2026-11-03T06:13:04.6052799+08:00",
+                              "path":  null
+                          },
+                          {
+                              "id":  103008,
+                              "startedAt":  "2026-11-03T06:12:41.5986355+08:00",
+                              "path":  "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe"
+                          },
+                          {
+                              "id":  104840,
+                              "startedAt":  "2026-11-03T06:12:41.4791482+08:00",
+                              "path":  "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe"
+                          },
+                          {
+                              "id":  105944,
+                              "startedAt":  "2026-11-03T06:12:42.1040834+08:00",
+                              "path":  "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe"
+                          },
+                          {
+                              "id":  106168,
+                              "startedAt":  "2026-11-03T06:13:43.5338567+08:00",
+                              "path":  "E:\\harness\\cursor\\resources\\app\\resources\\helpers\\node.exe"
+                          },
+                          {
+                              "id":  115544,
+                              "startedAt":  "2026-11-03T03:30:08.7339674+08:00",
+                              "path":  null
+                          }
+                      ],
+    "processSnapshotNote":  "This snapshot was collected during the preflight, after reviewers had begun work; it is not a clean initial-process boundary. The first root inventory, before root tests, reported IDs 18352, 45388, 55544, 76972, 87576, 115544. Permission-restricted processes must not be attributed by start time."
+}

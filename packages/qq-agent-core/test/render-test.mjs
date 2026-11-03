@@ -191,7 +191,8 @@ const ctx = vm.createContext(sandbox);
   for (const name of sections) {
     const fn = ctx[name] || sandbox[name];
     if (typeof fn !== 'function') {
-      console.log('  SKIP  ' + name + '（非函数或未导出）');
+      fail++;
+      console.log('  FAIL  ' + name + '（非函数或未导出）');
       continue;
     }
     try {

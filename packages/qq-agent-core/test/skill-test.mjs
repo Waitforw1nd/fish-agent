@@ -426,23 +426,33 @@ async function main() {
     }
 
     // 反例：不是参数问题（Key 错）时不应触发第二次请求
-    let calls = 0;
-    globalThis.fetch = async () => {
-      calls++;
-      return new Response('{"error":{"message":"Invalid API key"}}',
-        { status: 400, headers: { 'content-type': 'application/json' } });
-    };
+    const fixtureKey = 'fixture-bad-key';
+    const reflectedBody = `Invalid API key: ${fixtureKey}`;
     try {
-      await assert.rejects(
-        () => chatCompletion({
-          messages: [{ role: 'user', content: 'hi' }],
-          overrides: { baseUrl: 'https://api.deepseek.com/v1', apiKey: 'bad', model: 'deepseek-reasoner', timeoutMs: 5000 }
-        }),
-        /Invalid API key/,
-        'Key 错误应原样抛出'
-      );
-      assert.equal(calls, 1, `Key 错误不该触发降级重试（实际 ${calls} 次请求）`);
-      ok('降级反例：与参数无关的 400 不触发重试（不浪费配额）');
+      const { isRetryableError } = await import('../src/llm.js');
+      for (const status of [400, 401]) {
+        let calls = 0;
+        globalThis.fetch = async () => {
+          calls++;
+          return new Response(JSON.stringify({ error: { message: reflectedBody } }),
+            { status, headers: { 'content-type': 'application/json' } });
+        };
+        await assert.rejects(
+          () => chatCompletion({
+            messages: [{ role: 'user', content: 'hi' }],
+            overrides: { baseUrl: 'https://api.deepseek.com/v1', apiKey: fixtureKey, model: 'deepseek-reasoner', timeoutMs: 5000 }
+          }),
+          error => {
+            assert.match(error.message, new RegExp(`HTTP ${status}`));
+            assert.equal(isRetryableError(error), false);
+            assert.equal(error.message.includes(fixtureKey), false);
+            assert.equal(error.message.includes(reflectedBody), false);
+            return true;
+          }
+        );
+        assert.equal(calls, 1, `HTTP ${status} Key 错误不该触发降级重试（实际 ${calls} 次请求）`);
+      }
+      ok('降级反例：鉴权失败和与参数无关的 400 不重试，也不回显密钥');
     } finally {
       globalThis.fetch = realFetch;
     }

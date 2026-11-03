@@ -1,0 +1,42 @@
+Independent review review9; local fixtures only. UTC timestamps. Node v24.22.1
+Only the temporary desktop password line is redacted; test output and failures are retained.
+
+Started: 2026-11-03T00:45:29.454Z
+Check: QQ OneBot + official events/OpenID + Bili drafts + four-entry meters
+Command: E:\harness\cursor\resources\app\resources\helpers\node.exe --test packages/cloud-manager/test/v1-qq-integration.test.mjs packages/cloud-manager/test/review-official-lifecycle.test.mjs packages/cloud-manager/test/bili-explore-integration.test.mjs packages/cloud-manager/test/v1-billing-integration.test.mjs
+Child PID: 101676
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✔ local explore to authenticated agent and Relay meters L0 and L1 without sending (310.043ms)
+✔ official lifecycle uses production links, isolated loopback gateway and tenant metering (6521.8549ms)
+✔ four entry usage APIs reflect idempotent authenticated batches and isolate tenants (146.5305ms)
+validated qq_protocol pid=26736 stopped; meters=[{"meter":"qq_protocol.message.in","quantity":1},{"meter":"qq_protocol.llm.tokens","quantity":50},{"meter":"qq_protocol.message.out","quantity":1},{"meter":"qq_protocol.llm.session","quantity":1},{"meter":"qq_protocol.hosting.seconds","quantity":6.28}]
+validated qq_official pid=81432 stopped; meters=[{"meter":"qq_official.api.call","quantity":2},{"meter":"qq_official.message.in","quantity":1},{"meter":"qq_official.llm.tokens","quantity":50},{"meter":"qq_official.message.out","quantity":1},{"meter":"qq_official.llm.session","quantity":1},{"meter":"qq_official.hosting.seconds","quantity":6.288}]
+✔ QQ OneBot and official gateway traverse real tenant agents and Relay locally (12821.3438ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13147.2869
+Completed: 2026-11-03T00:45:42.719Z
+Exit: 0; signal: none
+
+Started: 2026-11-03T00:45:42.719Z
+Check: Desktop pairing/chat/reconnect/replay/revoke/metering
+Command: E:\harness\cursor\resources\app\resources\helpers\node.exe packages/desktop-pet/scripts/acceptance-cloud.mjs --check
+Child PID: 113644
+PID: 113644
+Panel: http://127.0.0.1:60906/#/tenants/tnt_0091d760-fddb-403c-bbe9-1e2a1523eea9/hosting
+Server URL: http://127.0.0.1:60906
+Temporary admin: admin
+Temporary password: [redacted]
+Temporary data: C:\Users\ADMINI~1\AppData\Local\Temp\fish-cloud-test-GRGRab
+CHECK PASS: client pair, three ack/replies, two-device echo, reconnect/replay, revoke
+RECOVERY PASS: queued resend, offline input history, lost ACK restart receipt, no duplicate model call
+METER PASS: desktop in=7 out=7 ledger=14 tokens=350; online seconds and usage API verified
+Processes stopped: 98836
+Temporary data removed: C:\Users\ADMINI~1\AppData\Local\Temp\fish-cloud-test-GRGRab
+Completed: 2026-11-03T00:46:03.605Z
+Exit: 0; signal: none

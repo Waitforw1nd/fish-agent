@@ -39,7 +39,7 @@ test('v9 migration preserves historical rows and converts review metadata', () =
         ('pending','tenant',456,'pending','owner',NULL,13,NULL);
       PRAGMA user_version = 8; PRAGMA foreign_keys = ON;`);
     migrate(db);
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 9);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 11);
     const old = db.prepare("SELECT * FROM recharges WHERE id='old'").get();
     assert.equal(old.amount_micros, 123); assert.equal(old.created_at, 11);
     assert.equal(old.reviewed_by_user_id, 'admin'); assert.equal(old.reviewed_at, 12);

@@ -1,0 +1,21 @@
+﻿{
+    "review":  "review13",
+    "at":  "2026-11-03T02:42:45.2177930Z",
+    "inventory":  "review13-legacy-cleanup-inventory-2026-11-03.json",
+    "attempts":  [
+                     {
+                         "scope":  "10 verified review9/review10/review11/review12 directories",
+                         "method":  "PowerShell Remove-Item -LiteralPath -Recurse -Force after path and reparse validation",
+                         "result":  "automatic approval rejected: blocked by policy"
+                     },
+                     {
+                         "scope":  "E:\\bigPeach\\fish\\var\\review12-processes-core",
+                         "method":  "single literal PowerShell Remove-Item",
+                         "result":  "automatic approval rejected: blocked by policy"
+                     }
+                 ],
+    "removed":  [
+
+                ],
+    "note":  "No alternate deletion method used. Review13 desktop negative copy also retained after the same policy rejection."
+}

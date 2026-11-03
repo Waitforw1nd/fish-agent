@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,9 +16,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const SRC = fs.readFileSync(path.join(ROOT, 'scripts', 'setup.mjs'), 'utf8');
 
-let pass = 0; let fail = 0;
+let pass = 0; let fail = 0; let skipped = 0;
 const ok = (m) => { pass++; console.log('  ✓ ' + m); };
 const bad = (m, d) => { fail++; console.log('  ✗ ' + m); if (d) console.log('      ' + d); };
+const skip = (m) => { skipped++; console.log('  SKIP ' + m); };
 const check = (c, m, d) => (c ? ok(m) : bad(m, d));
 
 // ── 1) 下载源 ──
@@ -102,24 +104,24 @@ check(SRC.includes('EXPECTED_CLIENT_BUILD'), '期望的 CLIENT_BUILD 由版本�
       `缓存安装包的 SHA256 与固定值一致（${installer}）`,
       `实际 ${actual}\n固定 ${pinned}`);
   } else {
-    ok('本机没有缓存的安装包，跳过哈希实测（源码里的固定值已单独校验）');
+    skip('本机没有缓存的安装包，跳过哈希实测（源码里的固定值已单独校验）');
   }
 }
 
 // ── 6) 实跑 --check：应当报告协议栈真实版本 ──
 // （这一步是"真跑"，能发现函数名写错、模板串拼错这类只在运行时暴露的问题）
+const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fish-setup-check-'));
 try {
-  execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'setup.mjs'), '--check'], {
-    cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60000
-  });
-  // 也可能退出 0
-  ok('--check 可以正常运行');
-} catch (e) {
-  const out = String(e.stdout || '') + String(e.stderr || '');
-  check(out.includes('CLIENT_BUILD'),
-    '--check 会报告协议栈的 CLIENT_BUILD（排查版本问题时第一眼就能看到）',
-    out.slice(0, 400));
-}
+  fs.cpSync(path.join(ROOT, 'scripts'), path.join(fixtureRoot, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(fixtureRoot, 'snowluma'));
+  fs.writeFileSync(path.join(fixtureRoot, 'snowluma', 'index.mjs'), 'var CLIENT_BUILD = "9.9.26-44343";\n');
+  let result; let stderr = ''; let status = 0; let signal = null;
+  try { result = execFileSync(process.execPath, [path.join(fixtureRoot, 'scripts', 'setup.mjs'), '--check'], { cwd: fixtureRoot, encoding: 'utf8', stdio: ['ignore','pipe','pipe'], timeout: 60000 }); }
+  catch (e) { result = String(e.stdout || ''); stderr = String(e.stderr || ''); status = e.status; signal = e.signal; }
+  // The fixture deliberately has no portable QQ, so --check must exit 1.
+  // A crash or timeout after printing CLIENT_BUILD must not count as a pass.
+  check(status === 1 && !signal && !stderr && result.includes('CLIENT_BUILD') && result.includes('9.9.26-44343'), '--check reports the fixture protocol CLIENT_BUILD and missing installation', `status=${status} signal=${signal}\n${(result + stderr).slice(0,400)}`);
+} finally { fs.rmSync(fixtureRoot, { recursive: true, force: true }); }
 
 // ── 6b) 安装器类型识别（纯函数）──────────────────────────────────────
 // 这一节来自真实故障：QQ 9.9.33 的安装包是腾讯自研的 HummerSetup，
@@ -299,7 +301,7 @@ try {
       }
     }
   } else {
-    ok('未安装 snowluma，跳过对齐实测');
+    skip('未安装 snowluma，跳过对齐实测');
   }
 }
 
@@ -321,9 +323,9 @@ try {
       ok('协议栈声明与目标版本一致');
     }
   } else {
-    ok('未安装 snowluma，跳过 CLIENT_BUILD 比对');
+    skip('未安装 snowluma，跳过 CLIENT_BUILD 比对');
   }
 }
 
-console.log(`\n${fail === 0 ? '全部通过' : '存在失败'} —— 通过 ${pass} / 失败 ${fail}`);
+console.log(`\n${fail ? '存在失败' : skipped ? '已执行的检查通过，存在跳过' : '全部通过'} —— 通过 ${pass} / 失败 ${fail} / 跳过 ${skipped}`);
 process.exit(fail ? 1 : 0);

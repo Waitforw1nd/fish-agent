@@ -1,0 +1,1489 @@
+﻿{
+    "review":  "review13",
+    "capturedAt":  "2026-11-03T02:38:23.2095329Z",
+    "protectedFiles":  [
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/qqbot.js",
+                               "sha256":  "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/connection.js",
+                               "sha256":  "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/modules/headless/index.js",
+                               "sha256":  "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq/qqbot.js",
+                               "sha256":  "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/qq-service.js",
+                               "sha256":  "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/routes/qq.js",
+                               "sha256":  "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-settings.js",
+                               "sha256":  "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/src/agent-runtime.js",
+                               "sha256":  "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/qq-panel.js",
+                               "sha256":  "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                               "sha256":  "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                               "sha256":  "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qq-qqbot.test.mjs",
+                               "sha256":  "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6",
+                               "matchesReview12":  true
+                           },
+                           {
+                               "path":  "packages/cloud-manager/test/qqbot-settings.test.mjs",
+                               "sha256":  "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2",
+                               "matchesReview12":  true
+                           }
+                       ],
+    "existingProcesses":  [
+                              {
+                                  "Id":  18352,
+                                  "StartTime":  "\/Date(1793627278388)\/",
+                                  "Path":  null
+                              },
+                              {
+                                  "Id":  55544,
+                                  "StartTime":  "\/Date(1793476666302)\/",
+                                  "Path":  null
+                              },
+                              {
+                                  "Id":  76972,
+                                  "StartTime":  "\/Date(1793573795002)\/",
+                                  "Path":  null
+                              },
+                              {
+                                  "Id":  87576,
+                                  "StartTime":  "\/Date(1793627274760)\/",
+                                  "Path":  null
+                              },
+                              {
+                                  "Id":  88580,
+                                  "StartTime":  "\/Date(1793658618089)\/",
+                                  "Path":  null
+                              },
+                              {
+                                  "Id":  111220,
+                                  "StartTime":  "\/Date(1793673408098)\/",
+                                  "Path":  null
+                              }
+                          ],
+    "files":  [
+                  {
+                      "path":  "deploy/napcat/README.md",
+                      "sha256":  "1130387729e0e068f0b9bc5fedec0075849066a14e317194a87ae6f56144c1e5"
+                  },
+                  {
+                      "path":  "DEVELOPMENT.md",
+                      "sha256":  "ed20277b2ef0782303c9cbbca287dad00abe85cc858a652183a90814150085e7"
+                  },
+                  {
+                      "path":  "docs/admin-upstream-model-management.md",
+                      "sha256":  "e4ee07f495d9e6dd928c8717bc3acaf641eca0590a0edc3580c13d4adcb50806"
+                  },
+                  {
+                      "path":  "docs/bili-explore.md",
+                      "sha256":  "4f2f69c03bb0662a508863b2c2e56632c62be78c538e4607d8ac789917173438"
+                  },
+                  {
+                      "path":  "docs/billing-meters.md",
+                      "sha256":  "5ea7334cb6cac32e1b47685d58986deca960f354124df9caea477abc55fd9745"
+                  },
+                  {
+                      "path":  "docs/cloud-manager.md",
+                      "sha256":  "4a588d44346eb709fb53538862dab6218803fbb7031b41c17a80b70b40d1854c"
+                  },
+                  {
+                      "path":  "docs/desktop-client.md",
+                      "sha256":  "b868ee5252313fb11c2b5901e22bd6f2fbc9e66509c3764dd90475e5356fa52a"
+                  },
+                  {
+                      "path":  "docs/desktop-pet-architecture.md",
+                      "sha256":  "3d6f9bf3919760e495e42421fd19b25bc1cdbd4568c421af9336166743b3d724"
+                  },
+                  {
+                      "path":  "docs/desktop-pet-gateway-followups.md",
+                      "sha256":  "95af205668fb5f345d6c5bd2c4aca137848d10987747a2fce4ff662cf35e4ea5"
+                  },
+                  {
+                      "path":  "docs/desktop-protocol.md",
+                      "sha256":  "8d478950771d6e298316cb362a70b5908a60f57d5d5c755227493eb2b781b412"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-baseline-2026-11-03.json",
+                      "sha256":  "a57ad676bf0b7ce56420a476fd3d9483a9409c38c5f9c248ea096e83a83c2a3c"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-bili-negative.cjs",
+                      "sha256":  "2a6ceac69681f8987cc8fe428b7bf94c8e645b25d2ed6b93aeb237119de7ee34"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-bili-negative-2026-11-03.txt",
+                      "sha256":  "f1cbe7f28ebff548d138a489288444b8c73caa2170d7fdada9a006d9f01237b7"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-cleanup-2026-11-03.json",
+                      "sha256":  "e529dddeafbd6597607a51ec5cc0a6073a6a3f5d724171a241f637ccedcc1707"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-core-negative-2026-11-03.txt",
+                      "sha256":  "60afedd37b9f9380074a6a33cca719a8212b844d7c614831fe878275463d9796"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-core-regression-2026-11-03.txt",
+                      "sha256":  "55c22ef366a5b107a46b90f9abb85892346597e82b173545237de1fbf39eb1f5"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-desktop-negative.cjs",
+                      "sha256":  "6c7643773f431400d617d443c845461def89d4779ec7f6aa9759d2471547fc6f"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-desktop-negative-2026-11-03.txt",
+                      "sha256":  "12b81513fa0b78016698dc001e5520693954a3cd896df90fc3e7b5e5e45eaae0"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-frozen-code-2026-11-03.json",
+                      "sha256":  "74b24ad5925e1822f4d1553d802617e31bf560d9349be50bd866b1ca05c6feda"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-manifest-2026-11-03.json",
+                      "sha256":  "51840acead8e665d8e4cadf8d24ae065a3e5039ee40c2fe5a1c6ce75a0e09560"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-processes-2026-11-03.json",
+                      "sha256":  "3881a6b08e6d117dc7f222458206f53765e63343246f8d263b651da6148c90ab"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-simulated-chains-2026-11-03.txt",
+                      "sha256":  "9b75207b1854d9ba6a3d55ca8b5fdd735817ee1aaf94b53f654a175d1ea55e69"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-static-checks-2026-11-03.json",
+                      "sha256":  "f654b15dece44fecf90de3e64abff995c30d592b06054d633fd9df647c22c544"
+                  },
+                  {
+                      "path":  "docs/evidence/review10-test-all-2026-11-03.txt",
+                      "sha256":  "a916946c38658ef36b80c4f7fbf97758d124b66a5ff30a01ce309cd8fb5438a4"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-baseline-2026-11-03.json",
+                      "sha256":  "ceda9bbc40a8c7ad063d20aaf0de74126352d411a8ab01fc0312d3673b688faf"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-fixed-2026-11-03.txt",
+                      "sha256":  "bcef9b1c93af68b1ef4241e482ecb6c6efcdc03181b212680609fe9cc0fae120"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-negative.mjs",
+                      "sha256":  "4dae52af37c8d45e0e36242393b3c859ee1c7b6a554a573c9fbeea4ef9304a92"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-negative-2026-11-03.txt",
+                      "sha256":  "145770238ff6bfbb78d91db62cacf94b6e1ca1d6090832add2b864385f2d00b5"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-bili-regression-2026-11-03.txt",
+                      "sha256":  "fb209436a069f194d6adff0c2bb650ccddb939dbd82dbaac57415dc6642e0c11"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-cleanup-2026-11-03.json",
+                      "sha256":  "f50903da7918e5b5d5c6e2d3891f4e78afa07ffb542b06ee0f7f1487f0ba8701"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-core-negative-2026-11-03.txt",
+                      "sha256":  "b5a521f4dab082d850c82f10b5f6edf750990a0b70a089f4490af12b4da097ad"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-core-regression-2026-11-03.txt",
+                      "sha256":  "6f3e2a61c26f8f68c94d2138335bdfb096983d20438d97abe244d7f88113fa4c"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-desktop-regression-2026-11-03.txt",
+                      "sha256":  "bae0ef6ba2cbe47a7e20deb7d2628649e2bc068ec00cc846abd173be29b48123"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-frozen-code-2026-11-03.json",
+                      "sha256":  "19bc7faa46592e7dc8838c82f8c9a74c6e7a620b01c0039135a33d9c69454903"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-manifest-2026-11-03.json",
+                      "sha256":  "49404d104a3c774a13ccddecabf14b523e2b985196c2f3eb63798de3a31c00a5"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-processes-2026-11-03.json",
+                      "sha256":  "5b8a8cb3d64d3c92ce53c2293fb92d5cf1d23b9d57d8de0577c3af72e59afa4b"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-security-regression-2026-11-03.txt",
+                      "sha256":  "4641872de6234acb03c135960894261e9170be7c8774b7ad43d5db7a6289297b"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-simulated-chains-2026-11-03.txt",
+                      "sha256":  "6e6d09dfa686d2ae0abc2ad4807810759362045f78a68ead092e15f53df99dae"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-static-checks-2026-11-03.json",
+                      "sha256":  "b7396e492f68e82d9957390f64dd7146acde51fdd2e49ba71e5d3a8a2d97808c"
+                  },
+                  {
+                      "path":  "docs/evidence/review11-test-all-2026-11-03.txt",
+                      "sha256":  "be5ed1d55a0a4011200e269b732c8032df5e8998b7b6f739a6f41ee23861f182"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-baseline-2026-11-03.json",
+                      "sha256":  "bf97e1a6314206ccc607fb17f26900a043c02f59bbc1b4da10809c7fb1e0e856"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-check-2026-11-03.txt",
+                      "sha256":  "460a7ab3b3448153d71a8b353494978981467c9a026f2549deadfc325e3f65f4"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-cleanup-2026-11-03.json",
+                      "sha256":  "9bbdaf2e7c13b3b603405dfab3fe3cb336cf821d8f7718255c159df14937c605"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-cloud-regression-2026-11-03.txt",
+                      "sha256":  "9b8f99f401d18688567048f650e0d6311eb23d8a9e271731d6d6ad6bf23c8030"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-frozen-code-2026-11-03.json",
+                      "sha256":  "ce0cd82cbe33c765a4834a604c99b3705b90eadcc2ddebfa47866ec4cbefbd93"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-legacy-cleanup-2026-11-03.json",
+                      "sha256":  "962eb336bb338e59122d2fffdf17a54720f6aca6869558be7506994aeb5142a0"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-manifest-2026-11-03.json",
+                      "sha256":  "07a4e29b7764da19214bcf04459a672c29e9201124c7376bade58d9b28bd27b3"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-port-check-2026-11-03.json",
+                      "sha256":  "607c611b014fa766da7b429a3e92c07a2ba50e314f9854631e08be8e2b1f86d6"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-processes-2026-11-03.json",
+                      "sha256":  "d570eaf0f4bd97ce6ebc90ad35e08248a77183f2752b33dabc8ead412e128538"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-root-directory-check-2026-11-03.json",
+                      "sha256":  "00772cb1ce26aa79c76681194a99090cbb6bc064ec60cfc63ae25236bf1d3573"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-runtime-gate-2026-11-03.txt",
+                      "sha256":  "8fa66bf384094e963411995c8154aa8d5f121702a4d71c567125110300715f15"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-simulated-chains-2026-11-03.txt",
+                      "sha256":  "efef441892706d7b84ccc1fb01d449b812622607937ac46f2ef1dabac01b0d54"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-static-checks-2026-11-03.json",
+                      "sha256":  "c325262568e6358e1f4c673e7cf60be900807ccd6f68dc7938b9535ca4567a42"
+                  },
+                  {
+                      "path":  "docs/evidence/review12-test-all-2026-11-03.txt",
+                      "sha256":  "3a408f7dcc524787fc84093b097371229d0e793946e7f2df569d0e98208c8496"
+                  },
+                  {
+                      "path":  "docs/evidence/review13-bili-tests.txt",
+                      "sha256":  "afa29737adfd381a16a7070403f702ee24b8befd761bde2f1279c89b20fcf1e4"
+                  },
+                  {
+                      "path":  "docs/evidence/review2-manifest-2026-11-03.json",
+                      "sha256":  "eb17716ecfe35e50784b6562b563af90f1d19810ca970d50a93cd730c19d09c4"
+                  },
+                  {
+                      "path":  "docs/evidence/review2-simulated-chains-2026-11-03.txt",
+                      "sha256":  "c8a0465bd3ba79af347e7884d8159587b6137ebe196279f0088403a97068b4d0"
+                  },
+                  {
+                      "path":  "docs/evidence/review2-test-all-2026-11-03.txt",
+                      "sha256":  "3131b748aa7263a4b576334ee8714f20390230a827127ef28e493bb3e4fb67d7"
+                  },
+                  {
+                      "path":  "docs/evidence/review3-manifest-2026-11-03.json",
+                      "sha256":  "f779a0ae7c8a1bf10d755e73b2092e7d321cc0e11b515a1bd0e913edd76a88c2"
+                  },
+                  {
+                      "path":  "docs/evidence/review3-preflight2-test-all-2026-11-03.txt",
+                      "sha256":  "9ccd7b78afdca178af791831076b6a8715298ccf1ea28a1a90b04475e25a86bd"
+                  },
+                  {
+                      "path":  "docs/evidence/review3-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "3db56b17c3d35a29c289419f06b8d520574830615af98a4c6e2336a34c5e49c1"
+                  },
+                  {
+                      "path":  "docs/evidence/review3-simulated-chains-2026-11-03.txt",
+                      "sha256":  "95c6a0b8964bf46c0cdf75a7a0d4ed20a8b8ba51c23edb3c75d37f83fd36e307"
+                  },
+                  {
+                      "path":  "docs/evidence/review3-test-all-2026-11-03.txt",
+                      "sha256":  "3e9a2d0b8125bc6964040c2a45eedf3145b8ec1715a23f926c0ff5e77213db51"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-baseline-2026-11-03.json",
+                      "sha256":  "692932b12598502c32acd32c938db336d67a67dc97a2bc0ade549ea7875a9b7b"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-cleanup-2026-11-03.json",
+                      "sha256":  "86938568718f42eace6c7d464d5fef2789f5ce83d53f5202cd2b88b2682d026f"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-frozen-code-2026-11-03.json",
+                      "sha256":  "082a8a03a397d089667e459637aa5cc44bd5d69c3359bb729d92f579cc8fee6b"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-manifest-2026-11-03.json",
+                      "sha256":  "d3e0697e57e4f00a6901b079d9f2c98ff5110841da95365b34bbb9853da80273"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "a72315ee4756ad6ba34b226ced86b2ebbfe0e80f65790fb45078a50fab31fc34"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-processes-2026-11-03.json",
+                      "sha256":  "b836f0b8220177dce160b5025482a29569d5a407eb83c0309dabd97576084d16"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-simulated-chains-2026-11-03.txt",
+                      "sha256":  "97a579c210a195619f9f2e122ec09762ca09e0a8627ed869eacde572a6b28ac3"
+                  },
+                  {
+                      "path":  "docs/evidence/review4-test-all-2026-11-03.txt",
+                      "sha256":  "1648c50579d6d4f41f9a47647947903b2b1762af39de0d3dc7058586b8bf848c"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-baseline-2026-11-03.json",
+                      "sha256":  "681f58812775467bf33bac008799d4a3edc9751030e6458bf6ea7869fea2a6fe"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-cleanup-2026-11-03.json",
+                      "sha256":  "adf6867bc038c97054ded0c7c35e439e148a1e4d84e5ce6e26bff86704ea0195"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-frozen-code-2026-11-03.json",
+                      "sha256":  "59a97815926bc2e869b1de956407956bb4b47ba031e683da6ca0f359d14d45bd"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-manifest-2026-11-03.json",
+                      "sha256":  "1b7369017e33c7b277e5cf6352c35fd3998fea674acbd126eceacdc081e574bb"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "aa8441dc1c535583a5163699a7df7709e8a2b78ced231174173c439f8a8eace7"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-processes-2026-11-03.json",
+                      "sha256":  "38bec647b43342b94e0c8437c408b7fb26d1908400ff163db7823e74fde686cc"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-simulated-chains-2026-11-03.txt",
+                      "sha256":  "448b9417319461f41f123bdaadb39367c3d22861cb8685cc9cadd61c9100c5ee"
+                  },
+                  {
+                      "path":  "docs/evidence/review5-test-all-2026-11-03.txt",
+                      "sha256":  "2f11029763d30a0b8fa8b094321ea1ad8f9c64a031ade9b13be2c6ab93a6af03"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-baseline-2026-11-03.json",
+                      "sha256":  "c8f4ecd2922567d8f4b128b72bfe5df9c64e5fe76b899851208bbd65b6841e9e"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-cleanup-2026-11-03.json",
+                      "sha256":  "ea97e70bd511c5f5ec31bbff63f22a6ac0b82edb273c59081b5bf5304e741f44"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-frozen-code-2026-11-03.json",
+                      "sha256":  "38a12043af754de9b433463e03d8d4d68f5e22f6524cc293629fe2f1ea609001"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-manifest-2026-11-03.json",
+                      "sha256":  "9478566e81b3723a3639af99268ea3daa91abc99eed1e63229eccc0c53888b4b"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "86b8e5caf4f68caea2b628fd438c456db9e5b75641474442a1b7f92369db2745"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-processes-2026-11-03.json",
+                      "sha256":  "37aa05c083b8e3ed2427916c6010590b172224fc24518357ea9b76749d9498f7"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-process-tracer.cjs",
+                      "sha256":  "3793fa0dcdaa30e1a9443638fb3c01705bd49c708712d6f7edcf24971da5a528"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-simulated-chains-2026-11-03.txt",
+                      "sha256":  "1765e716f8cc8db336030dbca245a2d11f19f59d5bde3ae7bae728b3d4568b7a"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-static-checks-2026-11-03.json",
+                      "sha256":  "dd0a6472240286941de839f29bfab53f825e99f2fa3e0ded879b21d8a0865de1"
+                  },
+                  {
+                      "path":  "docs/evidence/review6-test-all-2026-11-03.txt",
+                      "sha256":  "5b837d2ca92af62565b1bc0384a980799f57459dd0a4c825e8f03d08b0f2145f"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-baseline-2026-11-03.json",
+                      "sha256":  "16d6946ec11237652a985f929a963a3e69bdb8e660ea7aad6d657a87a54978d8"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-cleanup-2026-11-03.json",
+                      "sha256":  "e2f792590a30f425feee212cf552d83b5076b624aa17718af20cc7346fc9ecf3"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-frozen-code-2026-11-03.json",
+                      "sha256":  "23017d5026426059e1139523a9fa9f944a20222e9dcd3d63ef016d9e7dd5bdf2"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-manifest-2026-11-03.json",
+                      "sha256":  "c02c358fa30b23c2c552bb32b6762aa9d022e9ce3823720368bf02c61db12bcd"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-negative-controls-2026-11-03.json",
+                      "sha256":  "2703cb6de7e667f1e4d3c66b30b7364baab26e640b01992d3340327b255d4b45"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-simulated-chains-2026-11-03.txt",
+                      "sha256":  "83d063120e152b3afc06efc54307a90038ae51ee5427938a1f52b4d89711352a"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-static-checks-2026-11-03.json",
+                      "sha256":  "31f570503c20b07041ab6297015baf4cc1cd7aaa27843123801d0a5a42c1eb99"
+                  },
+                  {
+                      "path":  "docs/evidence/review7-test-all-2026-11-03.txt",
+                      "sha256":  "03f152380acd40be7559cfc061ce6d1f49b5ac5d2a06162b0d76cf49773228d6"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-baseline-2026-11-03.json",
+                      "sha256":  "fe28b54ad349f27f38c1a6dc9735281cb43c026f804e6632998e961dca93f65a"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-cleanup-2026-11-03.json",
+                      "sha256":  "cffd67e02bfcc3923b7554635867a373190ba666b69bffee8629529bf37ece45"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-frozen-code-2026-11-03.json",
+                      "sha256":  "aecd597f12dbcb307531ab0e861d55f4a6e2a58feea1412623ca05ff8973bbad"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-manifest-2026-11-03.json",
+                      "sha256":  "0184711f6b56c2192b2372d0d32e994c30ee701109b2519766f0c3a748991e75"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-negative-controls-2026-11-03.json",
+                      "sha256":  "502a3d742e0369fd7dfc9b0fc62c8bdf859247d470d2405b034a55264ae2b974"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-owned-process-check-2026-11-03.json",
+                      "sha256":  "238be61d7dc37b74e8481ffd1455953fb2b0733ed9007ee1b3b21e9aae6eb53f"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "f57e5b13ec58eaa2855ebff68306b8c721ebcdb5d178cc3c7913f32814ab86ed"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-processes-2026-11-03.json",
+                      "sha256":  "011e566b0b5840838963d03928f881810cd1ec617195c7eed2d845e7397cd266"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-root-regression-2026-11-03.txt",
+                      "sha256":  "75337a82739e4c794e50d9e2e58f27d17c5ff4074a85a7ec9d96897222c2198d"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-routing-regression-2026-11-03.txt",
+                      "sha256":  "9b5829db66955731ab20fa552a0492daaebbc2064c46e5d3180464c413c585d3"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-simulated-chains-2026-11-03.txt",
+                      "sha256":  "ef0a6a5c2d69db3b74a6538288c40415096102a91b85073dd076abf5f2eb1b80"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-static-checks-2026-11-03.json",
+                      "sha256":  "d14d4a8cea671a735b2f289f82ea948dd50ce6a174727a34e6937978942f16f4"
+                  },
+                  {
+                      "path":  "docs/evidence/review8-test-all-2026-11-03.txt",
+                      "sha256":  "98651a6646631eb5a922a31c066e6ed3f34ffd821f24b1ec5e50650a8d7a5d2f"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-baseline-2026-11-03.json",
+                      "sha256":  "b233eee546cd89418d6ae1e03c5fd27af1128db1dc5b1140057064b584aa33e1"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-bili-regression-2026-11-03.json",
+                      "sha256":  "3a697c059ea7412373ebd12e3eeb9b02bfea1b7beaaf595946f5fa8efaf46830"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-bili-regression-2026-11-03.txt",
+                      "sha256":  "9d8285ceebb5401feda754bb441b3bdcc8e92c7b52eff5ed95ee5bff9bf39ad7"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-bili-suite-2026-11-03.txt",
+                      "sha256":  "e33f0f5873d7c61a48df8d719de82bc40ed9913b7c7dc9d96159a9d937beeef9"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-cleanup-2026-11-03.json",
+                      "sha256":  "ca96790462c8cb514ad403e7945c2d44fad659fbc556315e72c3e63def84f72b"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-core-regression-2026-11-03.json",
+                      "sha256":  "6e4a3008f4d105f87d42c3045f693346fa3a3a42dbabee00ecbd5505b99db0dc"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-core-regression-2026-11-03.txt",
+                      "sha256":  "abfd2fe3b35f77abb0dffea5cbce4b76280e553314a6e11a7e934e2a808540d1"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-desktop-negative-2026-11-03.json",
+                      "sha256":  "8fe1166f5ce51e1d658ae04139fd6294ed42e16830af974ad9351245bc04ee33"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-desktop-negative-control.mjs",
+                      "sha256":  "7bd340fbe57b121b13f5e50c3f3a4906eb4b05ad87e1cedb927a988a44d68d9a"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-desktop-regression-2026-11-03.txt",
+                      "sha256":  "5532791f047fadb42f2ecd4f1a66179aae07f8fe96fc46eb9cc74bf3cf14996a"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-frozen-code-2026-11-03.json",
+                      "sha256":  "cf60e0cead69b19c571b7992598517b72b2370c2f60806eccb034e792bcd911c"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-manifest-2026-11-03.json",
+                      "sha256":  "f7fd7bb0ca1a4ce4a77ec7ba934731028fd1741260d65ff9e39fb6d989ccb791"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "cf747dd271238e87d2b91d86152e73cea28d4217dacb09d5a1f93336dbede88d"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-processes-2026-11-03.json",
+                      "sha256":  "9df350d2acf25754dfdfdf2d3c5d9c67d0f04276ec04b1ce544d206341e973a2"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-root-regression-2026-11-03.txt",
+                      "sha256":  "87f4f6428a0b59723eed58c26df47b82cb3641847ee562b23194a25b36a74d09"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-simulated-chains-2026-11-03.txt",
+                      "sha256":  "532533706692847ef5cd5e6ffe2ce84650043622f5ad30172c0f08a97d52a89f"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-static-checks-2026-11-03.json",
+                      "sha256":  "0999c514a3dff5566eeb49e7854ac2d215a5759de326c7ba06c09422b9ec25b5"
+                  },
+                  {
+                      "path":  "docs/evidence/review9-test-all-2026-11-03.txt",
+                      "sha256":  "6bb98328cf7fedb164b6cf9101cc75442fa87a10ddb5daaae9e713a42ed03aa0"
+                  },
+                  {
+                      "path":  "docs/evidence/review-manifest-2026-11-03.json",
+                      "sha256":  "65bc2e7b8550fcffb61112f390c3390a55dc50249f17261f1db19c400ce9ad8e"
+                  },
+                  {
+                      "path":  "docs/evidence/review-preflight-test-all-2026-11-03.txt",
+                      "sha256":  "2708085c1f0ca5689bb09389d7c6e1e5325c3a0ec31fca7ae98e0daca835c4fb"
+                  },
+                  {
+                      "path":  "docs/evidence/review-simulated-chains-2026-11-03.txt",
+                      "sha256":  "841c8e9f30ebef35883f8fca40d7c9f55f7e68ba53473c67e965bd1471f52745"
+                  },
+                  {
+                      "path":  "docs/evidence/review-test-all-2026-11-03.txt",
+                      "sha256":  "98e5ed056d5267979762155acc0a4e06e05f106de45f281e4c820ae95cd82a60"
+                  },
+                  {
+                      "path":  "docs/evidence/v1.0-electron-compat-2026-11-03.json",
+                      "sha256":  "b8a7c437c20357bdac3f6812eaddb8981312e1fb21f12a7f8a94949525dd30f0"
+                  },
+                  {
+                      "path":  "docs/evidence/v1.0-simulated-chains-2026-11-03.txt",
+                      "sha256":  "bce10f6ce699f0abd00e6d62fab6f01ae863f35e07388b05ed07fb5d98f1dfc1"
+                  },
+                  {
+                      "path":  "docs/evidence/v1.0-test-all-2026-11-03.txt",
+                      "sha256":  "7d73ac6e3fd368ffa68815d83cd0e16304c225252bb178a440feb7a84f3d1a40"
+                  },
+                  {
+                      "path":  "docs/extensions.md",
+                      "sha256":  "261e542f9c1f8d77cc2faf55b2775819decdfad74fc5d96ea2a399710b64ec37"
+                  },
+                  {
+                      "path":  "docs/goal-progress.md",
+                      "sha256":  "7637eb9b8f100b03f48555bbf3fbb75c248f58642e1e19ed61b28ba36818b61b"
+                  },
+                  {
+                      "path":  "docs/linux-vps-acceptance.md",
+                      "sha256":  "6623e9cfa799a387f2fe60bc1867ee52cafeb47aa4ab220811c2e11d1520c50e"
+                  },
+                  {
+                      "path":  "docs/multi-entry-implementation.md",
+                      "sha256":  "072eff75f7822a8f215e923d51ab229cd284ed43131c067b95c1a187d710f5d1"
+                  },
+                  {
+                      "path":  "docs/protocols.md",
+                      "sha256":  "16bda145b8e1987e47542d99729f54822242905caa2498b45c0df8b1996dd834"
+                  },
+                  {
+                      "path":  "docs/testing.md",
+                      "sha256":  "7b8478b4da057009187513672ffb648600bbf4d5bf18787580b71905a1889062"
+                  },
+                  {
+                      "path":  "docs/v1.0-acceptance.md",
+                      "sha256":  "e671256ae4a8802ed521e305eb8a22198ef648f4d12bd29cd5c075c1aea03d46"
+                  },
+                  {
+                      "path":  "package.json",
+                      "sha256":  "aeb3095029ae5dc7b72fe199cd278ae5df25f20bdb75eaf902efbd80da7e77bb"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+                      "sha256":  "0ae1043d201fd283cfc1c8d5fdfb917152daed853082ed0315cacf10fe8b50eb"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/bili-explore.js",
+                      "sha256":  "a8e86549ca7c0e014ccaa3349ff09e2b87b67313bd7fe3c0c9895f3b0957f655"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/entries.js",
+                      "sha256":  "ce7d255475306400e1b8454f34174463dbbb2be0f8cedab6e2e1829c304f677a"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/components/qq-panel.js",
+                      "sha256":  "a1d5fb33452642633c697abc8d36a771fc2386d4246db1f8f9da4a61842b5f81"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api.js",
+                      "sha256":  "b4d987e3cd8cdc07d5de89f07f18818e153a1818912ce5670fccaaf84ec3f5d1"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/bili.js",
+                      "sha256":  "5985b576732f52c927e139d8642c0a7de9b110c00c36713586532272eb639b2f"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/billing.js",
+                      "sha256":  "f3954e13b0d33313058d8f6b25f5568888838fb1d330c78f63adf682b3609838"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/entries.js",
+                      "sha256":  "5c425abfd9f25419dcda987122fa99aa339d5aad9c9e323d74067ef6002efbb7"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/api/qq.js",
+                      "sha256":  "f2f259e02a70cadb486c68fcd5b21edbcc7870a2ef23988f5928fd004a8e890b"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/normalize/channels.js",
+                      "sha256":  "33b00dee55112b56cec4c48405068c7aa63d7d91803586fdd28a15a479faa723"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/lib/normalize/tenant.js",
+                      "sha256":  "ca5a61ef6056af4c1be10b27723396e7c32128a2192a6c89b9c952406888abd0"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/test/entries.test.mjs",
+                      "sha256":  "24daec6a3983f33d9a755c322c1e619d5ac346d6f5523e0fca6ef650bcc181be"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/test/official-whitelist.test.mjs",
+                      "sha256":  "799613ac5c8d6e8db7d890b6789f18b0e6802be901cc7277cf0ceb0a4f7f9be2"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/views/admin/tenant-detail.js",
+                      "sha256":  "eb7e6364465cb9717793625a0cb459419a4bfa0de337154ed4fd687fbeacabca"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/views/user/instance.js",
+                      "sha256":  "d2535e9a22e03cb429627b3efe87546efabd372460edf2d5826394e0bb6af633"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/panel/views/user/shared.js",
+                      "sha256":  "bc3eb464f6ea475516bf5b6a6bf68ddd1e17f5f07d0e74e8ea634a4a709ac31c"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/agent-runtime.js",
+                      "sha256":  "469cf2409a5840a26fc5fdd7e592c59d78f8f3e252b3bb9034488abf98133dec"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/agent-settings.js",
+                      "sha256":  "c68df891711fe99a679b82ca59026903a2f941297a5db7020a959f7fea21838f"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/api.js",
+                      "sha256":  "f5d0ba8a16c53fc3045b57f9fa65a477c59de162c8b1b306cdbba137fb85d56a"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/app.js",
+                      "sha256":  "9d4aa100b76a49e3bf76e1c4d004d4773a44c2441b9f836f66f8ff1aee8b2b7f"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/bili-service.js",
+                      "sha256":  "edfdb634c07d24286ef35001d92bfeb32c2d37d505d6e5bd6c73ddf6aa552a80"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/billing.js",
+                      "sha256":  "f1a39a12c1e502b2657bba05183cb9259cbf7627606e82b14764b613790b6fa7"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/billing/hosting-meter.js",
+                      "sha256":  "2286d3c1959bae3899e16257e45ce55940087916d6048da3c2c9c79e552cf0eb"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/billing/provider.js",
+                      "sha256":  "4770703ae38c4b2cb90204639781bb822ee23ce10e79f6d898aa4b5982ff59ce"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/config.js",
+                      "sha256":  "52864f5d886780dec493efaee6a9d397f23f90303c40c110c98956a584dadab9"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/config-guard.js",
+                      "sha256":  "d289940119084fe260be6bf0aa2b6655220986a3fd8d21323e7194e7194114f3"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/contracts/chat-id.js",
+                      "sha256":  "e0e46cc9631a98f2c38e1c95d2c37c8b216814d6f811e272542ccaf4ee449667"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/contracts/http.js",
+                      "sha256":  "634b6a8da797a278eb03e781cf92c1426524017670f3edf656abd1f1351d0de7"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/db.js",
+                      "sha256":  "a44ac3668074bd4d0d46cc480afad1bd29f4e4a3e21e111583b20b025936f098"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/desktop/device-service.js",
+                      "sha256":  "4fc2f539e54052680d23a040a0b045c25ab38e64c0e4c4ada14bd5331d96fa7a"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/desktop/gateway.js",
+                      "sha256":  "5e8e06cb916c2379e7e7cc4f7ee27ba6ec1d7cf2379065245a90b8e990c34d3d"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/entries.js",
+                      "sha256":  "1c8c2f4f14f801f4e8e6a162e4a8ce2cffa713f6bd6197d10ba1b314e675c21e"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/entry-types.js",
+                      "sha256":  "06fc2f38b9f75a4ee53e6bf60d4c8fb6458997271267c2e97af0e3b133799e2f"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/gateway.js",
+                      "sha256":  "877aef2591db43e979776010674f88ad17565b0b701adbf561f97f8070667152"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/hosting.js",
+                      "sha256":  "bb96d981c836fd667c7df5cad6b164597b1510a7dfaeed986ccc46adc780c4a4"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/lifecycle-lock.js",
+                      "sha256":  "c3978fe948dc42dbbe56feb50ffc26a7647ca1683379eae35780e7a4cf2ef464"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/plans.js",
+                      "sha256":  "798c48011340e8f05ca609fef82ad595bf79a7173aa0ca07b37a858452ee9d9d"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/presenters/tenant-presenter.js",
+                      "sha256":  "4868b2cff04e5b8a3dff2cb52090799b87a98f7d30a468c6be1b461df31f9560"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/qq/qqbot.js",
+                      "sha256":  "d1d3fb78519ef6e885be295953ec885c41c5fccf81ee5e3a1059f66c6ad3b22d"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/qq-service.js",
+                      "sha256":  "59ac773d1038215c39d88c35ad0102f15e5939cc419e5de3eb61bab436c96d91"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/relay/server.js",
+                      "sha256":  "e47c12885348bd23997994b7f29c759e15f36e7f59358caa40fdfeef85c33fc0"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/bili.js",
+                      "sha256":  "a9b06d2550a9ac197814079e75d3644d6222ef22ca26ba3501a7228bbfe08932"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/billing.js",
+                      "sha256":  "fe3a7c4a620a0013ccf09f7f553558f755169cf74714a6e6cedef1b75266dd60"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/entries.js",
+                      "sha256":  "f53b2ea5e2805fec8f825a8e6fdcd5e6976756553a89cca3f33b3a71562c4648"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/routes/qq.js",
+                      "sha256":  "dccfcc8ee6d45fb470d48924f55292e33f43533e6658f2d089ee0b612efc7a6d"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/supervisor.js",
+                      "sha256":  "30a88b60d7b4bed995aa0e359dc9fde1c230dcf04a0a7d7d500d7fc48663ec67"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/src/util.js",
+                      "sha256":  "03c2d8dff98d42efd6a3098c06769488dad0d0e24afbe248bd37a005c6b8ee41"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/agent-extensions-view-api.test.mjs",
+                      "sha256":  "4a8407d3429c390e2d090f84b8c70ecea5e144fa7ecc16bb9f91e54a7d34eff3"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/bili-explore-integration.test.mjs",
+                      "sha256":  "07315132c5e08e51e6eae56e7e15e4fc84c90fc5a58e2b0a30e86ba59495b6f1"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/billing-provider.test.mjs",
+                      "sha256":  "216d84b027e4a976dcd5dffd4f198617f3d2b1f12cb762af89f3d2eb15f35d73"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/custom-recharge.test.mjs",
+                      "sha256":  "9707a6a419b9b62f14c278d7ed7f68672d7ccb5d3ef3bd9cd9aff374988fd098"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/desktop-agent-integration.test.mjs",
+                      "sha256":  "a6df60e752c8ce5b42ee7d7d8742fef5f7c0c6acd3455ef62981df37f91475e8"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/desktop-gateway.test.mjs",
+                      "sha256":  "0181b731ae74e1a01410df3e6762b486ec3cdec4cd0057485cbf3a3e87a6defa"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/entry-lifecycle.test.mjs",
+                      "sha256":  "52d15304fd853cb035962e0e2bfc1a101ffa50f0d4856e2117d9e0b9ed396b0b"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/fixtures/fake-upstream.mjs",
+                      "sha256":  "59a4ab02c281a2e02a164868919681bd8f1cf7e31aa51dece853239cb6f45255"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/fixtures/schema-v9.sql",
+                      "sha256":  "c41191677263512b8ff364ed5d5cf198af97fdcb4ac6e4e4292c0552c04b1363"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/fixtures/v1-qq-agent.mjs",
+                      "sha256":  "1e7aedfb2c8faac6ec9bc54e7666d3b09f96dbecbfd1f29fbd86fd8ca3876c61"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/lifecycle-coordination.test.mjs",
+                      "sha256":  "aa62d7e58da24798fdfc902e9d9b9eecc41251f006953139413fd333ef33e23e"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/log-redaction.test.mjs",
+                      "sha256":  "fa0e1d6e4c5652e7b8ef623f69972221ffd2ce27946de449b53b30465b94032b"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/migration-v10.test.mjs",
+                      "sha256":  "c8ca53d713df5a9e5df4ffc821de17224222eeb9346cf13b66113640b2f83ec5"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/qqbot-settings.test.mjs",
+                      "sha256":  "fbb3b6cc98afb8469e5d1fcb9fbc9f87696fb73d7f3e9be08cf29fee03decfa2"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/qq-qqbot.test.mjs",
+                      "sha256":  "04753abfd47355605342629a1f4c6d9a48d56dab124881974633392a49d00eb6"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/qq-switch-api.test.mjs",
+                      "sha256":  "ffa5a448ad8965357e758bf9fd33baba2cf448342832face75427dc91fc4b94b"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/relay.test.mjs",
+                      "sha256":  "c1f8e39cb12c202a2f9876bf177c91cd90a6a600e7cc1e8cc469dfdff516b13d"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/review-official-lifecycle.test.mjs",
+                      "sha256":  "b89a11e7e96f0e6a066d8b9d18e56d9c27dcca93de3999405080f6522f370cbe"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/v1-billing-integration.test.mjs",
+                      "sha256":  "0e90267f3c24a84be93801b068003e03212e55d67c64f2911272fa3518c2e778"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/v1-qq-integration.test.mjs",
+                      "sha256":  "dbcd8673e5c4bbccf253eb93f46c32a8021d7340f6938d390dcca156a63ea7dd"
+                  },
+                  {
+                      "path":  "packages/cloud-manager/test/view-api-backend.test.mjs",
+                      "sha256":  "956326396291f4cf9383e0329c09db536c74b0d4656d5f28a246e0d6813ba5fd"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/licenses/dsh-pet-MIT.txt",
+                      "sha256":  "22757dc9c895b2729a2fc684d227cadfb54d5af3dd300029926839e8c4e269ce"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/package.json",
+                      "sha256":  "b50bd95c2a5ea7a52472cc5a268b73f8b224aeae2bc227d9100cd71675c92d42"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/package-lock.json",
+                      "sha256":  "c5206f980a893c2147c05d48b27e7f5f4b56d1314a2bf71d91be3e99edf639da"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder/idle.png",
+                      "sha256":  "e2c7a2052aa4e2c6d7b552cce53bbe4f39da7abcf7225bd2417dd691f5571901"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder/LICENSE.txt",
+                      "sha256":  "05a9d2cb214c47b232f0ad14b4a4c3aecf18100c01ad45ec4f7a91a228eb6bde"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder/manifest.json",
+                      "sha256":  "146e719ce77dc9ab5ca11cc88f5e73250ef0cf21a1612e6bdc6778faf31e9d3f"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder-alt/idle.png",
+                      "sha256":  "1e8f858162ef9e8db40fef473a88c5670b5e040fda3eaa95a51829b0bb97c82b"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder-alt/LICENSE.txt",
+                      "sha256":  "05a9d2cb214c47b232f0ad14b4a4c3aecf18100c01ad45ec4f7a91a228eb6bde"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/resources/pets/placeholder-alt/manifest.json",
+                      "sha256":  "33038a773e0f0ecde9ca97b553b623a92343f15de819cf0184d233351eee2efb"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/acceptance-cloud.mjs",
+                      "sha256":  "fd37f1603bffd7f37c3de9473cebd4c2b11d73c652790ab9d7d38072458722a4"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/check-runtime.mjs",
+                      "sha256":  "44137fae30b7e4a4de0ccebdf1989e61931737aeafcf6cc97494b1d94126a00d"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/dev.mjs",
+                      "sha256":  "dbe17025e23cd527d841d25debd3d2aa0b854dfcb28eeaefa943e8475be628cb"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/generate-placeholder.mjs",
+                      "sha256":  "734f3761140061f8edfc1c83e08ecbfe741bdc67a5a3480ba4989cda40a3ee01"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/scripts/smoke-electron.mjs",
+                      "sha256":  "0bd94de0bc7e35adb1cbde943df22dabfd8c6eaf4452ed60cb248020932f9d4f"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/client.js",
+                      "sha256":  "a396da00473bfd4cac688ae7c9fe5723cb54ac737603b5fd86a30e1199462f1d"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/presentation-machine.js",
+                      "sha256":  "55521b2ac76bb6263464e7935cca2f96d9fd03563c365fb75963651229028be8"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/protocol-v1.js",
+                      "sha256":  "e5125225acc8843b43ab763dd8325c3df3ae00819ac4585cbda50741d3da65a0"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/recovery-contract.js",
+                      "sha256":  "b2c782eb35a5f3c4a6f4313b26d02e53d51fac183e22423699563e8ab89757b7"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/resource-manifest.js",
+                      "sha256":  "50547d3333d2eb1b8463a494f825ffb8fbdc791bc6e4097fc2a41a7fac406b4f"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/core/session-machine.js",
+                      "sha256":  "015232fa60353a7789787903caa81663e5a972043343e8c97615cdcbb83cea07"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/image.js",
+                      "sha256":  "ab8a86794c30b9a160b3a5b05ee654afab2b81342be0705e0e13d1e1074fa63f"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/index.html",
+                      "sha256":  "4bcc5f8fd0ee2318933af6685bc055eae23256b4a0509272dc41b07fe870edee"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main.js",
+                      "sha256":  "0cea128a8cd91302047fd3fb31adcaa0f6799b901a7ca208148dac00ef0fbeed"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/credential-store.js",
+                      "sha256":  "ec527d6b9d84d9e7882bae6d0df5e0e02bd37536a434223e036356f1582ae705"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/resource-pack-loader.js",
+                      "sha256":  "553508bd9e74a135bec84a45d4d980054b9a740a82d40e91b10cd75035ec6a23"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/security.js",
+                      "sha256":  "4d8f8601690ed643b5e904178113e5de51ca9a1fab35e906632622e7d0e4c153"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/main/window-controller.js",
+                      "sha256":  "7ccae89ca050bef84d9311f3336b188471ad0080b79c85f8604b2823e95954cb"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/pair-response.js",
+                      "sha256":  "037fe4ad16438cfd31e11327970af59960e65ea3041c63b756edb2cb77e35d83"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/preload.cjs",
+                      "sha256":  "9874740387297e6795e7ffe7d3c7f5db3f71429b27528ae459110c2d1cca0c32"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/renderer.js",
+                      "sha256":  "33970d12ef4ad38e750fec14cbf13ce563be92b10617d34c196610040fba34fb"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/secure-storage.js",
+                      "sha256":  "84cdf3002f42f4253e4835407877a7c3893c67ad4ef0da2c704adf3ffc42cedf"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/style.css",
+                      "sha256":  "d489991cbcbf70f6cbd39296a2f5e2a65cc40c97e5f1466cdec94db5455edc9a"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/ui/pet-view.js",
+                      "sha256":  "b712979fac394cae7bb5ddad8906e2e3f9419bef27dcdb287ec9fb12aa2d0a5c"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/vendor/dsh-pet/desktop-geometry.cjs",
+                      "sha256":  "2c83a69d8f98482024660f6b85cff1c830dae218bfe8cb32b6d175043eb4e5b6"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/src/vendor/dsh-pet/pointer-target.cjs",
+                      "sha256":  "2e18340d085c345fffd880af1a5f211fb71c3149aa820f1618d846700ab904c7"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/acceptance-cloud.test.mjs",
+                      "sha256":  "5d419c7727eb7658e254abbcfc0002e17b0b4e02728bb80f1f96d84fa1108825"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/asset-provenance.test.mjs",
+                      "sha256":  "01acd1b3e131590d44f9a2ba6215cf33af728c57d9e2020143aec2c7d6263cac"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/client.test.mjs",
+                      "sha256":  "5ecdc59d0145ce2119327c8080ef6034bdd0b63790a4f43010977920035135cc"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/credential-store.test.mjs",
+                      "sha256":  "766f8f55c2fbb24e73030efcd28e97ac0f32190153e97b528b40ca04b30f65fb"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/fixtures/electron-smoke.cjs",
+                      "sha256":  "8a2ef63a3451891bef8d658cbe3bc4f26cc15b1787a1cd3d35701bafefef001e"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/presentation.test.mjs",
+                      "sha256":  "8677bbb3fdae5b6557d4bbad827dec4a2a5dc3cfb77ee7bc45f7f36b718ee240"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/protocol.test.mjs",
+                      "sha256":  "030c85831fbf984e578cf98eeb8364fabc8b68767b4daee6cc88a2b6705e34ef"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/recovery.test.mjs",
+                      "sha256":  "2c6161e62ceab7f16e2be807e05b4bc1d180d9f3ca1a58242648df7957952c85"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/recovery-capabilities.test.mjs",
+                      "sha256":  "948277a2293a0a0239155b5db5b51244d55420f58bd3abb9c347e86debc32b01"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/renderer.test.mjs",
+                      "sha256":  "8c3f35c19fe08a59a16d85d6aa0e0615a9c67be2ffa0983d9b8cc4c9377c3cf4"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/resource-pack.test.mjs",
+                      "sha256":  "bea36801bdd5717c7116286ef6e554f171d0a6cfb2977d92d3353cc2d18ab8aa"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/security.test.mjs",
+                      "sha256":  "0feea10b355f30549ff0ebf539ba304ab92f8cb33bf0bbf1c078ef96aef44fa0"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/test/window-controller.test.mjs",
+                      "sha256":  "38974d91ac3d1482a188beac7f6efea736c281d0c81c6e2ee883c0cd919611db"
+                  },
+                  {
+                      "path":  "packages/desktop-pet/THIRD_PARTY_NOTICES.md",
+                      "sha256":  "7e5c738359e2844b1d21ace0a951c1094615ffb71432f27b78dc0d0855c65e03"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/api.js",
+                      "sha256":  "24c25a7e6e2ff5f80d04e3969bf090136917dab266626833db5c0c71636afacb"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/live.js",
+                      "sha256":  "cea9052b84cafb52bc40aee982c4fbbf9a7281620fe0e34abf92c32e844060a1"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/video.js",
+                      "sha256":  "bbf062ae80166c808003facb08411e619ab5c7ef81ae8a2c1c2e95efdcd738fb"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bili/wbi.js",
+                      "sha256":  "9f0952f9f2c70374a9895dc78f8fccc9fc59129e2d54a4544adcc13046f59e1e"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/bridge.js",
+                      "sha256":  "bed0b79646cf8d2ed967e54d508e6bd351fb06ca0887631f7f687e506f85a20f"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/config.js",
+                      "sha256":  "6d433ed3116f5fd9ddb968e176f91359b3414aaa5cc6ec1d28c4599a99ff6762"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/explore-services.js",
+                      "sha256":  "1b8bc114dcc9e4900127f2bd9ce51007239d3e3f1e04c0e9034f95b6c6cf47d5"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/main.js",
+                      "sha256":  "88be8017ea9080c49e8f0aa349ca6b57feb5548fb733bd26bd96d6843d05b197"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/mapping/ids.js",
+                      "sha256":  "6a9152a26a451c90ed4f2ec637a4dd0733242c206350e270c63a41f98b8027d6"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/onebot/admin.js",
+                      "sha256":  "29a9fd691b207499dcfa1f8ffab093813a3430eaed4a3a69d80331741b3b4a38"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/src/pollers/explore.js",
+                      "sha256":  "e85eb93be910757c6c02e60f7a722091ae5debe6d1a27898fd3e8ab43fe5eac5"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/dynamic-image.test.mjs",
+                      "sha256":  "ab3548e2168fff0661f189c5f2ed7b1c86a73a5c565cf1b4e123c5d834dd163d"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/e2e.test.mjs",
+                      "sha256":  "19dd422b5c16aa8a1d1d17497b1ebe4878bd09dd065ff09b06732aeeae9f55eb"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/explore.test.mjs",
+                      "sha256":  "11978bab22ed53e860e090805b119648dcc3c234add6692af9fbe630e4aeb939"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/explore-services.test.mjs",
+                      "sha256":  "1de11a06a145f5cbfc1b83c58da8f7a873c4c654b616f9afeec8d2a01b8bfd62"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/live.test.mjs",
+                      "sha256":  "034cb3f77706881183835b8dc2d7c41b0341bb98e63c8e20f156332b767983be"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/mapping.test.mjs",
+                      "sha256":  "cf1a0543cd8ad46b1e39e5fe78d2d477a01f3105c8a9a645ebc3904f1476b105"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/onebot.test.mjs",
+                      "sha256":  "f73198f7a163c208dfb578f64f9d1b1c54a44ddb4aef63441ed489e5beebb4e8"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/pollers.test.mjs",
+                      "sha256":  "ebac8aa54fafbb84514b8259e61097c02e3a3cfc4ff54c33e6d0983ae75bb91a"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/read-only.test.mjs",
+                      "sha256":  "97d0003fa9af8900ce1751f7fb94b86cb77a8b27dc233b014eeabd7b4c633d18"
+                  },
+                  {
+                      "path":  "packages/protocol-bili-bridge/test/video.test.mjs",
+                      "sha256":  "37b65a3ad5a91bc8e1f9814fe59436bbfe0b37fcbc32ac6a0093aee295afd384"
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/devtools/README.md",
+                      "sha256":  "8fbf9ad02d0fc28cfde8e039627d9ed07c4b3cd66b7d85ec1b6c13e2ddf2db9d"
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/README.md",
+                      "sha256":  "e1ba4523548a5d8b146e88ec4ad15ac2e4c9df61dfd17b70f30db7c0f3671df6"
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/test/onebot11-api-test/README.md",
+                      "sha256":  "aacf9a8a85c79cf6323539db5983e2db5726e89a394c13c40c84ec56bc02c7a3"
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/test/test-framework/README.md",
+                      "sha256":  "9bc4f8c802b7bbdf597ccaa7e3294021cd1c2bd5a72703ff9570efa6653bbabc"
+                  },
+                  {
+                      "path":  "packages/protocol-qq-llbot/test/webqq-api-test/README.md",
+                      "sha256":  "eefcf28d8ad97f64dc99c7f80efe4adae8889042e901b33b3434a185b1c60c75"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/multi-instance.md",
+                      "sha256":  "e240f781d15eb8dae1ebd738697c340a933d283b87a8d0d4dbce2fc256e6fbe7"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/plugin-development.md",
+                      "sha256":  "49eddb13005a10b81583b9893c74b506b09e669825688d34edefe4aa2c21f482"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/prompt-pipeline.md",
+                      "sha256":  "8ea96839cd87868d78660380273573431ce5ad0b799b626db06eaddef30b272b"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-development.md",
+                      "sha256":  "7404a451372c0336f15b529210ed0bec39a58ff2989b4af1bd523685ab07ee4a"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-guide-for-beginners.md",
+                      "sha256":  "a5835ff940743953d8e4b8f5c337f44a2cd27c57d6ad4877bfcc0218d2cad032"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-reference.md",
+                      "sha256":  "95a42d7cbf41873b48aeab4d109b628c79c8506bb3025711c610bf714e75e798"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/skill-system.md",
+                      "sha256":  "e1dfbf893f304255bd25f3294f08c3bb5f0b365c599fe865b8451584a5bdff2e"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/snowluma-capabilities.md",
+                      "sha256":  "d9db0d1bbfa76add8b58f38130ea65c0bc2587977756ee84fa27c9844e587f7a"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/doc/extend_development/video-modes.md",
+                      "sha256":  "999ac101854b0fb3c57d96f06e8597a5d06b3160df7420224c28ab5e5b337423"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/connection.js",
+                      "sha256":  "caabf1aef669608de8568a5b70eac98dea6d7c52569c273b48e8aab80cbd7787"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/desktop-channel.js",
+                      "sha256":  "6cf41793294e931ae8a13232d626625b18ec2cac15b80cfed57be47cc2ef0e72"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/index.js",
+                      "sha256":  "cddb67d23b06a3339fa02c1506e21bb4ac0820771ca20bc7fc5c5cae8a312bb3"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/onebot.js",
+                      "sha256":  "5f1a315c51e6fd06ec8b42d35c850b3e750715035c603f91a12fbf42e225ceda"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/qqbot.js",
+                      "sha256":  "333bca879f7e0a2ca9b1d4bff52552491c3399ede72d720be5cde87f3f15637e"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/README.en.md",
+                      "sha256":  "a005bc4fec87ad53e686a63958afbaad87f699a3f210be2c17a819f16248d6ea"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/modules/headless/README.md",
+                      "sha256":  "d55d466521ca2d184ee6d8f3a39dbcc6f2cd8835fd555997fde998a4170dbf67"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/package.json",
+                      "sha256":  "a728d97c286ba6edc4c11b0da80b77c0f343dc26cb4a12d2cc44568ec73cb53b"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/plugins/bili-watcher/index.js",
+                      "sha256":  "3d6ec1a54bf55e84184889bd8840993dbadacfcb44675e5e14f46c8bec388e1c"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/README.md",
+                      "sha256":  "9c391589c6f99b90d89fb686555a9ad9a322e7d72844542301d7252be3113026"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+                      "sha256":  "3cd9fef31987ec71382129fba9c7be90ef5a7209b9cba8fedc3547ba9241713b"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/app.js",
+                      "sha256":  "ebef13908f284b472009be0f64232f11b0c08726608d42d4faff5f2a5acaac09"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/bili-explore.js",
+                      "sha256":  "9b869ee939e8c5b789a946612329d5bb4ab8329a67b9e0a562df2adcbaded317"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/channel-router.js",
+                      "sha256":  "51118e1d9479c55d9e3fffb603e78fd1def8fc6e67ed2796b97ced189bf2eb27"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/config.js",
+                      "sha256":  "dcb7fcdec181e85b6027b1aee26791998dafd8e06c3cb7979553be140367056f"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/config-defaults.js",
+                      "sha256":  "e6c10e3630fedf0ff5a17d5d4986d528a1fe8235fd53e16410f90e91c1f176c2"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/llm.js",
+                      "sha256":  "e4557fe90485a086029a592d9242c8a5df79ed977f559ed138672912326af802"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/memory.js",
+                      "sha256":  "44265c811f4ef395dde8c61918724f5898e2a5d6ce5e9aa995331c6eb2b8b107"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/metering.js",
+                      "sha256":  "eca21cc02d078a918f3164eade070c5c1aada7d9c0d6add0d4023ee8e8bf0c74"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/orchestrator.js",
+                      "sha256":  "c7cbc833ace23703d485ba24c890f420afb6aef11dcd8e56295b827d9108cb1a"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/routes.js",
+                      "sha256":  "27ad54a438b05e2f04056a2431d600520a87a4e326c15c198749b64a3613b48b"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/sender.js",
+                      "sha256":  "9ae4066a2214b04e88006b53d7ee43777d10fcc319e7a71212de5d80143f656e"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/storage-identifiers.js",
+                      "sha256":  "df1ac6f75f3c2b5dbd025d72d586dcfbd4b1d8472aaca7cea691406a7d672db3"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/store.js",
+                      "sha256":  "30fa6f5e103760451c1275a1925393e2ae977dec50aa96edd0a4dbbea9e5bb2d"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/src/tools.js",
+                      "sha256":  "f7792a42baf3279989f5cfbcd4a6a39f5e87781eb7cd82cdb3a7ee29846163a2"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/_harness.mjs",
+                      "sha256":  "ad8303d4f46e5722c1004bf9dccbc42a8e1584c0206a045ecbe8d70d898f1a04"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/_isolated-child.mjs",
+                      "sha256":  "233eae6dac123df802f7742750e70d4a25fdd13783cd6f8e1c1eb9ce0f104dd9"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/channel-router-test.mjs",
+                      "sha256":  "1bbe64d22ae312e16a8e8757b89312ac9ae93494813343d74656d879d1433d45"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/checker-report.test.mjs",
+                      "sha256":  "d17d091abd26ee89ec9c497f3d596686f12f00e976b7dc6712aa27d3cb0f3bf7"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-e2e.mjs",
+                      "sha256":  "f8fa3ef62d8c488cbf9373b316aa42c5c3954c3d1a3d29b3c00bef25f78e623f"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-http.mjs",
+                      "sha256":  "5d81dfdbac31ea66f532e2fa217a82ddc32c464418098f342754fb6f14323298"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-offline.mjs",
+                      "sha256":  "9f8a67c1435ab21e30f26ce7c5527c3bc9b91e9f0ef5bc80817c70a14a0587ca"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/coverage-wiring.mjs",
+                      "sha256":  "be0ab18b7f8b2f37a364459b642f5dfc257fb07c1e7dda625b1f89599682b703"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/desktop-processing-recovery.test.mjs",
+                      "sha256":  "ac3069df017189c9426ab10029d4f1b4f5d6ac6f23e69646de3916509368f390"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/headless-runtime.test.mjs",
+                      "sha256":  "1b338e29d6cc1d853dacdff2b491c9558090db82a0cdd3d2340c4c39840006ee"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/headless-transport.test.mjs",
+                      "sha256":  "3a2c05bc475fed8ac2638116153746bc9be6e6bbb12a4e9b028cc9efcbc271ff"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/memory-legacy-delete.test.mjs",
+                      "sha256":  "1e3129450aa75c656f09b92ea491e305d1fefe086868a9336018222f78c23cf2"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/multi-entry.test.mjs",
+                      "sha256":  "0c28c0901a550d85877730c06e228f269451c0761d9b3b705de03ebcdf22775e"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/onebot-whitelist-test.mjs",
+                      "sha256":  "dfec0e75b4f7163bda866c21cd4864836a805861ac642cf25e8e1c5f76ea3295"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/qq-pack.mjs",
+                      "sha256":  "aa7649d8160be8baee5be29df3254febab116cba1780d0e44a2238d651a3a59b"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/qq-process-detect.mjs",
+                      "sha256":  "a36effff99bf6cfaad98a5a4ddfe54c8c9d7ff96ef0b97469f77ecb0fd1b94d0"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/render-test.mjs",
+                      "sha256":  "0a48b108bd7291043e55155f513a9c822caee3501715d77f4352138d47121313"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/send-guard-test.mjs",
+                      "sha256":  "e0f7c8502a460679886a8ab00d473884e92102be241021cb23a0b6e5048444c5"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/setup-qq-version.mjs",
+                      "sha256":  "31b0e2c012cf69e06198a48073b68ab59f129f0017873b74b3bb74ed1d912830"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/tools-skill-audit.mjs",
+                      "sha256":  "37a86a239f7b42c1fe06eabf0c5bea0cfc581c052640a4cc28362e78ec21caeb"
+                  },
+                  {
+                      "path":  "packages/qq-agent-core/test/usage-e2e.mjs",
+                      "sha256":  "2d985c617f4c554da69ed8b0ed1556c9a0bd2a60022cbeb8b442cd3d1423bd0e"
+                  },
+                  {
+                      "path":  "README.md",
+                      "sha256":  "c2f5c4c70d4cbdf3582360609cfdeced6ffdbc07761107fc9b5ab79496bf72ea"
+                  },
+                  {
+                      "path":  "scripts/check.mjs",
+                      "sha256":  "e5464babfe5a1e0fa86cd53f7ae40cf34a1a9011952986924a4a52b9a56a1c1f"
+                  },
+                  {
+                      "path":  "scripts/review-validation.mjs",
+                      "sha256":  "f89300b0f9e7b703aff1124ffc2fa8701573c0549ef436cbf15d1ca04b8703a0"
+                  },
+                  {
+                      "path":  "scripts/run-tests.mjs",
+                      "sha256":  "0ef61d5a5080894d3428516381524386f6422cde9508059c1bb364dc68a083d2"
+                  },
+                  {
+                      "path":  "UPSTREAM.md",
+                      "sha256":  "c6f17ba2f9614ab063104b9bcdebf4c7e6be6512c4d702024562dc8af30a96ac"
+                  }
+              ]
+}

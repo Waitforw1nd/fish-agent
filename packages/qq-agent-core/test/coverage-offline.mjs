@@ -1267,7 +1267,7 @@ c.section('15. gif-to-video.js GIF 转视频（含奇数尺寸回归）');
       import('node:child_process').then(({ execFile }) =>
         execFile('ffmpeg', ['-version'], { windowsHide: true }, (e) => res(e ? null : 'ffmpeg')));
     });
-    if (!ffmpeg) return;   // 没装 ffmpeg 的环境跳过（转换链依赖它，路由矩阵上面已覆盖）
+    if (!ffmpeg) return c.skip('gifToVideoDataUrl：奇数尺寸 GIF 也能转出（yuv420p 只吃偶数宽高）', '未安装 ffmpeg');
     const { execFile } = await import('node:child_process');
     const tmpIn = path.join(os.tmpdir(), `qqa_test_odd_${Date.now()}.gif`);
     await new Promise((res) => execFile('ffmpeg',

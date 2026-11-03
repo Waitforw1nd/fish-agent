@@ -1,0 +1,9 @@
+﻿{
+    "sourceWorktreeReverted":  false,
+    "expectedStatus":  "recovery_error",
+    "exitCode":  1,
+    "expectedFailure":  true,
+    "case":  "inline replay stops immediately on a recovery failure",
+    "method":  "in-memory module with the single loop guard removed",
+    "oldLogicActualStatus":  "connected"
+}

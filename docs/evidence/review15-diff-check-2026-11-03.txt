@@ -1,0 +1,2 @@
+﻿Git diff --check accepts CRLF through core.whitespace=cr-at-eol.
+Exit: 0

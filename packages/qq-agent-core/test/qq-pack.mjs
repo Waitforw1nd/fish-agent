@@ -12,9 +12,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
-let pass = 0; let fail = 0;
+let pass = 0; let fail = 0; let skipped = 0;
 const ok = (m) => { pass++; console.log('  ✓ ' + m); };
 const bad = (m, d) => { fail++; console.log('  ✗ ' + m); if (d) console.log('      ' + d); };
+const skip = (m) => { skipped++; console.log('  SKIP ' + m); };
 const check = (c, m, d) => (c ? ok(m) : bad(m, d));
 
 const { stripReason, isStagedUpdate, STRIP_RULES,
@@ -111,11 +112,11 @@ console.log('\n=== 隐私保护 ===');
   // 扫描函数真的要能工作：造一个含用户名的文件，必须被抓出来
   const os = await import('node:os');
   const tmpScan = fs.mkdtempSync(path.join(os.tmpdir(), 'privscan-'));
-  const me = os.userInfo().username;
+  const me = 'fish_test_unique_identity';
   fs.mkdirSync(path.join(tmpScan, 'sub'), { recursive: true });
   fs.writeFileSync(path.join(tmpScan, 'clean.bin'), Buffer.from('nothing to see here'));
   fs.writeFileSync(path.join(tmpScan, 'sub', 'leak.json'), JSON.stringify({ path: `C:\\Users\\${me}\\Desktop\\x` }));
-  const r = scanForPrivateData(tmpScan);
+  const r = scanForPrivateData(tmpScan, { identity: identityNeedles({ USERNAME: me }) });
   check(r.identity.some((h) => h.file.includes('leak.json')),
     `能扫出含用户名的文件（用户名 "${me}"）`);
   check(!r.identity.some((h) => h.file === 'clean.bin'), '干净文件不会误报');
@@ -148,7 +149,7 @@ console.log('\n=== 本地归档（如果存在）===');
 // 默认产出 zip；也认 tar.zst（--format tar.zst 时）
 const arc = [path.join(ROOT, 'dist', 'QQ_portable.zip'), path.join(ROOT, 'dist', 'QQ_portable.tar.zst')]
   .find((p) => fs.existsSync(p));
-if (fs.existsSync(arc)) {
+if (arc) {
   const { createHash } = await import('node:crypto');
   const h = createHash('sha256');
   await new Promise((res, rej) => {
@@ -161,8 +162,8 @@ if (fs.existsSync(arc)) {
     `归档 SHA256 与 setup 里的固定值一致（${(fs.statSync(arc).size / 1048576).toFixed(0)} MB）`,
     `实际 ${actual}\n固定 ${pinned || '（没写死）'}`);
 } else {
-  ok('本地没有归档，跳过哈希比对（先跑 npm run pack:qq 生成）');
+  skip('本地没有归档，无法比对 SHA256');
 }
 
-console.log(`\n${fail === 0 ? '全部通过' : '存在失败'} —— 通过 ${pass} / 失败 ${fail}`);
+console.log(`\n${fail ? '存在失败' : skipped ? '已执行的检查通过，存在跳过' : '全部通过'} —— 通过 ${pass} / 失败 ${fail} / 跳过 ${skipped}`);
 process.exit(fail ? 1 : 0);

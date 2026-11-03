@@ -23,6 +23,7 @@ globalThis.fetch = (url, options) => {
 after(() => { globalThis.fetch = realFetch; fs.rmSync(temp, { recursive: true, force: true }); });
 const { DEFAULT_CONFIG, deepMerge, setRuntimeConfig, getConfig } = await import('../src/config.js');
 const { createApp } = await import('../src/app.js');
+const { logger } = await import('../src/logger.js');
 const { ChannelRouter } = await import('../src/channel-router.js');
 const { createHeadlessApp } = await import('../modules/headless/index.js');
 const { CONNECTION_DEFAULTS } = await import('../modules/headless/connection.js');
@@ -48,6 +49,28 @@ async function boot(t, patch = {}) {
   return { app, env, port, request };
 }
 
+test('startup logs do not disclose credentials embedded in endpoint URLs', async t => {
+  const secret = 'fixture-endpoint-secret';
+  const endpoint = `http://user:${secret}@127.0.0.1:1/${secret}?key=${secret}#${secret}`;
+  setRuntimeConfig(deepMerge(DEFAULT_CONFIG, {
+    extensions: { hotReload: false }, proactive: { enabled: false },
+    connection: { ...structuredClone(CONNECTION_DEFAULTS), enabled: false },
+    channels: { qq: { wsUrl: endpoint, httpUrl: endpoint }, bili: { enabled: true, wsUrl: endpoint, httpUrl: endpoint } },
+    api: { baseUrl: endpoint, model: 'fixture' }
+  }));
+  const forwarded = [];
+  const app = createHeadlessApp({ env: { QQ_AGENT_HOST: '127.0.0.1', QQ_AGENT_PORT: '0', QQ_AGENT_TOKEN: 'fixture' }, log: line => forwarded.push(line) });
+  t.after(async () => { await app.stop(); app.server.closeAllConnections(); });
+  await app.start();
+  const logs = logger.recent(500).map(entry => entry.text);
+  assert.ok(logs.some(line => line.includes('QQ 通道:')));
+  assert.ok(logs.some(line => line.includes('B站通道:')));
+  assert.ok(logs.some(line => line.includes('模型:')));
+  assert.ok(forwarded.some(line => line.includes('QQ 通道:')), 'startup logs reach the caller');
+  assert.doesNotMatch(logs.join('\n'), new RegExp(secret));
+  assert.doesNotMatch(forwarded.join('\n'), new RegExp(secret));
+});
+
 test('headless composition is opt-in and validates credentials before taking a data lock', async () => {
   setRuntimeConfig(structuredClone(DEFAULT_CONFIG));
   assert.throws(() => createHeadlessApp({ env: {} }), /requires/);
@@ -59,6 +82,16 @@ test('headless composition is opt-in and validates credentials before taking a d
     assert.equal(typeof app.launchPortableQQ, 'function');
     assert.equal(getConfig().connection, undefined, 'desktop defaults do not acquire module-specific settings');
   } finally { await app.stop(); }
+});
+
+test('stopping an app removes its process cleanup listeners', async () => {
+  setRuntimeConfig(structuredClone(DEFAULT_CONFIG));
+  const signals = ['exit', 'SIGINT', 'SIGTERM'];
+  const before = signals.map(signal => process.listenerCount(signal));
+  const app = createApp({ log: () => {} });
+  assert.deepEqual(signals.map(signal => process.listenerCount(signal)), before.map(n => n + 1));
+  await app.stop();
+  assert.deepEqual(signals.map(signal => process.listenerCount(signal)), before);
 });
 
 test('console login, SSE cookies, host/origin checks, secret masking and desktop route isolation', async t => {
@@ -99,7 +132,7 @@ test('console login, SSE cookies, host/origin checks, secret masking and desktop
   const connection = await (await request('/api/runtime/connection')).json();
   assert.equal(connection.qqbot.appSecret, undefined);
   assert.equal(connection.qqbot.hasAppSecret, true);
-  assert.equal((await request('/api/config', { method: 'POST', body: JSON.stringify({ connection: { enabled: true } }) })).status, 400);
+  assert.equal((await request('/api/config', { method: 'POST', body: JSON.stringify({ connection: { enabled: true } }) })).status, 200, '官方 QQBot 接入允许启用（外网被测试拦截，连接会失败但配置合法）');
   assert.equal((await request('/api/config', { method: 'POST', body: JSON.stringify({ connection: { type: 'invalid' } }) })).status, 400);
   assert.ok(app.onebot instanceof ChannelRouter);
   assert.equal((await request('/api/qq-portable/launch', { method: 'POST', body: '{}' })).status, 409);
@@ -390,4 +423,146 @@ test('NapCat headless sends inline media once and rejects container cache paths'
   const { VideoReader } = await import('../src/video-reader.js');
   const video = await new VideoReader(app.onebot).probe({ path: secret, file: 'container-video' });
   assert.equal(video.sizeBytes, undefined);
+});
+test('official IDs retain isolated message history and memory after reload', async t => {
+  const { app, request } = await boot(t);
+  const ids=['group:qqbot_group_a-b','group:qqbot_group_a_b','private:qqbot_user_p-r'];
+  for(const [i,key] of ids.entries()) app.store.appendIncoming(key,{mid:'msg'+i,ts:Date.now(),senderId:'member',senderName:'member',text:'text'+i});
+  const { ChatStore }=await import('../src/store.js'); const reload=new ChatStore();
+  for(const [i,key] of ids.entries()) { assert.ok(reload.listChats().includes(key)); assert.equal(reload.recent(key,{limit:10})[0].text,'text'+i); const part=key.replace(':','_'); const result=await request(`/api/chats/${part}/messages`); assert.equal(result.status,200); assert.equal((await result.json()).messages[0].text,'text'+i); }
+  for(const part of ['group_qqbot_user_wrong','private_qqbot_group_wrong','group_qqbot_group_'+ 'x'.repeat(129)]) assert.equal((await request(`/api/chats/${part}/messages`)).status,404);
+  for(const key of [ids[0],ids[2]]) { const part=key.replace(':','_'); assert.equal((await request(`/api/memory-files/${part}`)).status,200); }
+  app.memory.editMemberImpression(ids[0], {userId:'m-a', name:'first', impressions:['one']});
+  app.memory.editMemberImpression(ids[1], {userId:'m_a', name:'second', impressions:['two']});
+  const { MemoryStore } = await import('../src/memory.js'); const memory = new MemoryStore();
+  assert.ok(memory.listChats().includes(ids[0])); assert.ok(memory.listChats().includes(ids[1]));
+  assert.equal(memory.members(ids[0])[0].name, 'first'); assert.equal(memory.members(ids[1])[0].name, 'second');
+  const member = await request('/api/memory-files/group_qqbot_group_a-b/members/m-a', {method:'PUT',body:JSON.stringify({name:'first',impressions:['changed']})}); assert.equal(member.status,200);
+  const oldKey='group:qqbot_group_legacy-a'; const legacyName='group_qqbot_group_legacy_a';
+  fs.writeFileSync(path.join(temp,'messages',legacyName+'.json'), JSON.stringify({chatKey:oldKey,nextLocalId:2,messages:[{id:1,text:'old history'}]}));
+  const oldDir=path.join(temp,'memory',legacyName); fs.mkdirSync(oldDir,{recursive:true}); fs.writeFileSync(path.join(oldDir,'u_member.json'),JSON.stringify({userId:'member',name:'legacy memory',impressions:[{content:'old',createdAt:1}]}));
+  fs.writeFileSync(path.join(oldDir,'_meta.json'),JSON.stringify({chatKey:oldKey})); // Directory metadata cannot prove ownership of every member.
+  const legacyStore=new ChatStore(); const legacyMemory=new MemoryStore();
+  assert.equal(legacyStore.recent(oldKey,{limit:1})[0].text,'old history'); assert.deepEqual(legacyMemory.members(oldKey),[]);
+  assert.ok(fs.existsSync(path.join(oldDir,'u_member.json')));
+  assert.equal(legacyMemory.members('group:qqbot_group_legacy_a').length,0);
+  legacyStore.appendIncoming('group:qqbot_group_legacy_a',{text:'other'}); assert.equal(JSON.parse(fs.readFileSync(path.join(temp,'messages',legacyName+'.json'),'utf8')).chatKey,oldKey);
+});
+
+test('memory consolidation HTTP route accepts full entry member IDs and rejects unsafe numeric IDs', async t => {
+  const requests = [];
+  const model = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    requests.push(JSON.parse(body));
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ model: 'memory-route-fixture', usage: { prompt_tokens: 3, completion_tokens: 2 },
+      choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{"impressions":["整理后的印象"]}' } }] }));
+  });
+  await new Promise(resolve => model.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { model.close(resolve); model.closeAllConnections(); }));
+  const previousCloud = process.env.QQ_AGENT_CLOUD;
+  process.env.QQ_AGENT_CLOUD = '1';
+  t.after(() => {
+    if (previousCloud === undefined) delete process.env.QQ_AGENT_CLOUD;
+    else process.env.QQ_AGENT_CLOUD = previousCloud;
+  });
+  const { app, request } = await boot(t, {
+    api: { baseUrl: `http://127.0.0.1:${model.address().port}/v1`, apiKey: 'sk-fish-fixture', model: 'memory-route-fixture' }
+  });
+  const cases = [
+    ['group:906671', '123456789', 'qq'],
+    ['group:4503599627370566', '4503599627370567', 'bili'],
+    ['private:7459086882832399', '7459086882832399', 'desktop'],
+    ['group:qqbot_group_MEMORY_Route', 'M'.repeat(128), 'qqbot']
+  ];
+  for (const [chatKey, userId, platform] of cases) {
+    app.memory.editMemberImpression(chatKey, { userId, name: 'fixture', impressions: ['旧印象'] });
+    app.memory.editMemberImpression(chatKey, { userId: '906672', name: 'unselected', impressions: ['保留原文'] });
+    const before = requests.length;
+    const response = await request('/api/memory-files/consolidate', {
+      method: 'POST', body: JSON.stringify({ chatKey, userIds: [userId], force: true })
+    });
+    assert.equal(response.status, 202, await response.text());
+    await waitFor(() => !app.orchestrator.consolidating.has(chatKey), 'HTTP memory consolidation must complete');
+    assert.equal(requests.length, before + 1);
+    assert.equal(requests.at(-1)._fish_attribution.platform, platform);
+    assert.equal(requests.at(-1)._fish_attribution.chatKey, chatKey);
+    assert.deepEqual(app.memory.getMember(chatKey, userId).impressions.map(item => item.content), ['整理后的印象']);
+    assert.deepEqual(app.memory.getMember(chatKey, '906672').impressions.map(item => item.content), ['保留原文']);
+  }
+  const beforeInvalid = requests.length;
+  for (const userId of ['9007199254740992', '12345678901234567', 'not-numeric']) {
+    const response = await request('/api/memory-files/consolidate', {
+      method: 'POST', body: JSON.stringify({ chatKey: cases[2][0], userIds: [userId] })
+    });
+    assert.equal(response.status, 400);
+  }
+  assert.equal(requests.length, beforeInvalid, 'invalid member IDs must not reach the model');
+});
+
+test('memory consolidation attributes all four entries with shared and dedicated models', async t => {
+  const requests = [];
+  const server = http.createServer(async (req, res) => {
+    let body = '';
+    for await (const part of req) body += part;
+    requests.push(JSON.parse(body));
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ model: 'memory-fixture', usage: { prompt_tokens: 3, completion_tokens: 2, total_tokens: 5 },
+      choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: '{"impressions":["保留印象"]}' } }] }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
+  const previous = getConfig();
+  const previousCloud = process.env.QQ_AGENT_CLOUD;
+  process.env.QQ_AGENT_CLOUD = '1';
+  t.after(() => {
+    setRuntimeConfig(previous);
+    if (previousCloud === undefined) delete process.env.QQ_AGENT_CLOUD;
+    else process.env.QQ_AGENT_CLOUD = previousCloud;
+  });
+  const baseUrl = `http://127.0.0.1:${server.address().port}/v1`;
+  const { ChatStore } = await import('../src/store.js');
+  const { MemoryStore } = await import('../src/memory.js');
+  const { Orchestrator } = await import('../src/orchestrator.js');
+  const store = new ChatStore();
+  const memory = new MemoryStore();
+  const router = new ChannelRouter({ channels: {
+    qq: { client: { type: 'qqbot' } }, bili: { client: {} }, desktop: { client: {} }
+  } });
+  const orchestrator = new Orchestrator({ store, memory, onebot: router });
+  const chats = [
+    ['group:906661', 'qq'], ['group:qqbot_group_MEMORY_OpenId', 'qqbot'],
+    ['private:7459086882832385', 'desktop'], ['group:4503599627370505', 'bili']
+  ];
+  for (const useChatModel of [true, false]) {
+    setRuntimeConfig(deepMerge(DEFAULT_CONFIG, {
+      api: { baseUrl, apiKey: 'sk-fish-fixture', model: 'chat-fixture' },
+      memory: { useChatModel, provider: 'memory-test', model: 'memory-fixture' },
+      providers: [{ id: 'memory-test', baseURL: baseUrl, apiKey: 'sk-fish-fixture' }]
+    }));
+    for (const [chatKey, platform] of chats) {
+      memory.editMemberImpression(chatKey, { userId: '906662', name: 'fixture', impressions: ['保留印象'] });
+      const count = requests.length;
+      const result = await orchestrator.consolidateMemoryForChat(chatKey, { userIds: ['906662'], force: true });
+      assert.deepEqual(result.failed, []);
+      assert.equal(result.results.length, 1);
+      assert.equal(requests.length, count + 1);
+      assert.equal(requests.at(-1)._fish_attribution.platform, platform);
+      assert.equal(requests.at(-1)._fish_attribution.chatKey, chatKey);
+      assert.match(requests.at(-1)._fish_attribution.runId, /^memory-[a-f0-9-]+$/);
+      assert.equal(requests.at(-1).model, useChatModel ? 'chat-fixture' : 'memory-fixture');
+    }
+  }
+  // Round 1 added attribution, but archive management must also work after the
+  // corresponding transport has been disabled or replaced.
+  for (const channel of router.channels.values()) channel.enabled = false;
+  for (const [chatKey, platform] of chats) {
+    const result = await orchestrator.consolidateMemoryForChat(chatKey, { userIds: ['906662'], force: true });
+    assert.deepEqual(result.failed, []);
+    assert.equal(requests.at(-1)._fish_attribution.platform, platform);
+    assert.equal(requests.at(-1)._fish_attribution.chatKey, chatKey);
+    const [kind, id] = chatKey.split(':');
+    assert.throws(() => router.platformFor(kind, id), /未启用/);
+  }
 });

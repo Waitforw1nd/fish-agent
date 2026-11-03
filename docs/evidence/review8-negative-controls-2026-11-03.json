@@ -1,0 +1,39 @@
+{
+  "review": "review8",
+  "capturedAt": "2026-11-03T00:20:20.173Z",
+  "controls": [
+    {
+      "name": "removed UP cancellation",
+      "expected": "test exit 1 after removing the cancellation in an isolated package copy",
+      "actualLog": "✖ removing a watched UP revokes its in-flight exploration even if re-added (32.5378ms)\r\nℹ tests 1\r\nℹ suites 0\r\nℹ pass 0\r\nℹ fail 1\r\nℹ cancelled 0\r\nℹ skipped 0\r\nℹ todo 0\r\nℹ duration_ms 201.6495\r\n\r\n✖ failing tests:\r\n\r\ntest at var\\review8-bili-negative-copy\\test\\explore.test.mjs:14:1\r\n✖ removing a watched UP revokes its in-flight exploration even if re-added (32.5378ms)\r\n  AssertionError [ERR_ASSERTION]: feed\r\n  + actual - expected\r\n  \r\n    [\r\n      'feed',\r\n  +   'context',\r\n  +   'summary',\r\n  +   'draft'\r\n    ]\r\n  \r\n      at TestContext.<anonymous> (file:///E:/bigPeach/fish/var/review8-bili-negative-copy/test/explore.test.mjs:36:12)\r\n      at async Test.run (node:internal/test_runner/test:1409:7)\r\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\r\n    generatedMessage: false,\r\n    code: 'ERR_ASSERTION',\r\n    actual: [ 'feed', 'context', 'summary', 'draft' ],\r\n    expected: [ 'feed' ],\r\n    operator: 'deepStrictEqual',\r\n    diff: 'simple'\r\n  }\r\nExit code: 1\r\n"
+    },
+    {
+      "name": "bridge stop cancellation",
+      "expected": "test exit 1 after removing stop cancellation in the copy",
+      "actualLog": "✖ removing a watched UP or stopping the bridge revokes in-flight exploration (27.1869ms)\r\nℹ tests 1\r\nℹ suites 0\r\nℹ pass 0\r\nℹ fail 1\r\nℹ cancelled 0\r\nℹ skipped 0\r\nℹ todo 0\r\nℹ duration_ms 190.3602\r\n\r\n✖ failing tests:\r\n\r\ntest at var\\review8-bili-negative-copy\\test\\explore.test.mjs:14:1\r\n✖ removing a watched UP or stopping the bridge revokes in-flight exploration (27.1869ms)\r\n  AssertionError [ERR_ASSERTION]: feed\r\n  + actual - expected\r\n  \r\n    [\r\n      'feed',\r\n  +   'context',\r\n  +   'summary',\r\n  +   'draft'\r\n    ]\r\n  \r\n      at TestContext.<anonymous> (file:///E:/bigPeach/fish/var/review8-bili-negative-copy/test/explore.test.mjs:41:12)\r\n      at async Test.run (node:internal/test_runner/test:1409:7)\r\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\r\n    generatedMessage: false,\r\n    code: 'ERR_ASSERTION',\r\n    actual: [ 'feed', 'context', 'summary', 'draft' ],\r\n    expected: [ 'feed' ],\r\n    operator: 'deepStrictEqual',\r\n    diff: 'simple'\r\n  }\r\nExit code: 1\r\n"
+    },
+    {
+      "name": "pause/resume during historical meter delivery",
+      "expected": "production regression fails before the root fix, then passes",
+      "actualLog": "✖ cancellation while flushing historical meters cannot revive an old exploration round (31.8604ms)\r\nℹ tests 1\r\nℹ suites 0\r\nℹ pass 0\r\nℹ fail 1\r\nℹ cancelled 0\r\nℹ skipped 0\r\nℹ todo 0\r\nℹ duration_ms 188.9979\r\n\r\n✖ failing tests:\r\n\r\ntest at packages\\protocol-bili-bridge\\test\\explore.test.mjs:49:1\r\n✖ cancellation while flushing historical meters cannot revive an old exploration round (31.8604ms)\r\n  AssertionError [ERR_ASSERTION]: resume\r\n  + actual - expected\r\n  \r\n    [\r\n      'meter',\r\n  +   'feed'\r\n    ]\r\n  \r\n      at TestContext.<anonymous> (file:///E:/bigPeach/fish/packages/protocol-bili-bridge/test/explore.test.mjs:80:12)\r\n      at async Test.run (node:internal/test_runner/test:1409:7)\r\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {\r\n    generatedMessage: false,\r\n    code: 'ERR_ASSERTION',\r\n    actual: [ 'meter', 'feed' ],\r\n    expected: [ 'meter' ],\r\n    operator: 'deepStrictEqual',\r\n    diff: 'simple'\r\n  }\r\n"
+    },
+    {
+      "name": "isolated plugin child exits after valid trace",
+      "expected": "old helper accepts exit 7, repaired helper fails",
+      "actualLog": "old helper: child status=7; trace assertion=PASS; parent outcome=0\r\nfixed helper: parent status=1; trace exists=true; assertion=true\r\nnode:internal/modules/run_main:107\r\n    triggerUncaughtException(\r\n    ^\r\n\r\nAssertionError [ERR_ASSERTION]: isolated plugin case exited with status 7\r\n\r\n7 !== 0\r\n\r\n    at runIsolatedChild (file:///C:/Users/ADMINI%7E1/AppData/Local/Temp/fish-negative-child-NMF0ni/fixed.mjs:8:10)\r\n    at file:///E:/bigPeach/fish/[eval1]:1:119\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)\r\n    at async node:internal/modules/esm/loader:223:26\r\n    at async ModuleLoader.executeModuleJob (node:internal/modules/esm/loader:220:20)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {\r\n  generatedMessage: false,\r\n  code: 'ERR_ASSERTION',\r\n  actual: 7,\r\n  expected: 0,\r\n  operator: 'strictEqual',\r\n  diff: 'simple'\r\n}\r\n\r\nNode.js v24.22.1\r\n\r\n"
+    },
+    {
+      "name": "cross-entry real OneBot WebSocket",
+      "result": "An in-memory prior router delivered the Bili event with a QQ ID. The repaired production router rejected it before attribution, then accepted a valid QQ event with the same message ID.",
+      "log": "review8-routing-regression-2026-11-03.txt",
+      "note": "The temporary mutation was removed from the permanent test before the final test:all run. That test now exercises the production router only."
+    }
+  ],
+  "targetedRegression": {
+    "log": "review8-root-regression-2026-11-03.txt",
+    "tests": 68,
+    "pass": 68,
+    "fail": 0
+  },
+  "developmentNote": "The first attempt to add the meter-wait regression returned a number from the fixture store callback. That fixture error was corrected before the reproduced assertion failure retained here."
+}

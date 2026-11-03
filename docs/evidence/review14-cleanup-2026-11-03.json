@@ -1,0 +1,63 @@
+﻿{
+    "review":  "review14",
+    "capturedAt":  "2026-11-03T03:24:23.3922021Z",
+    "traceRecordCount":  924,
+    "distinctTrackedPids":  849,
+    "recordsWithoutExit":  49,
+    "trackedPidsStillPresent":  [
+
+                                ],
+    "remainingNodeProcesses":  [
+                                   {
+                                       "id":  18352,
+                                       "startTime":  "2026-11-02T13:47:58.3885575Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  55544,
+                                       "startTime":  "2026-10-31T19:57:46.3024494Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  65632,
+                                       "startTime":  "2026-11-03T03:12:15.1363886Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  76972,
+                                       "startTime":  "2026-11-01T22:56:35.0027127Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  87576,
+                                       "startTime":  "2026-11-02T13:47:54.7601702Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  88580,
+                                       "startTime":  "2026-11-02T22:30:18.0891379Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  96616,
+                                       "startTime":  "2026-11-03T03:10:55.1212124Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  113244,
+                                       "startTime":  "2026-11-03T03:11:35.6855921Z",
+                                       "path":  null
+                                   },
+                                   {
+                                       "id":  116412,
+                                       "startTime":  "2026-11-03T03:08:43.3913207Z",
+                                       "path":  null
+                                   }
+                               ],
+    "temporaryData":  "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\fish-cloud-test-906wJc",
+    "temporaryDataExists":  false,
+    "killedProcesses":  [
+
+                        ],
+    "note":  "Early delegate smoke runs predated tracer setup and completed with teardown. Final full runs and simulated chains were traced. No unowned process was signalled."
+}

@@ -1,84 +1,30 @@
-# 视频理解：两条路怎么选
+# 视频理解模式与配置
 
-## 结论
+核心通过 `api.videoMode` 控制收到群聊视频消息时的处理路线，**原生视频输入**与**本地抽帧**两条路线二选一（互斥，避免重复计费或触发 OpenAI 兼容网关 `400` 格式冲突）：
 
-**两条路互斥，二选一**，由设置页的「视频理解方式」决定：
-
-| 值 | 行为 |
+| `videoMode` 值 | 行为说明 |
 |---|---|
-| `auto`（默认） | 配了「视频输入专用模型」→ 原生读视频；否则抽帧；抽帧不可用 → 只给元信息 |
-| `native` | 强制把视频直接交给全模态模型 |
-| `frames` | 强制抽帧成图片 |
-| `off` | 只读时长/分辨率等元信息，不喂画面 |
+| `auto`（默认） | 配置了 `api.videoModel` 时走原生视频直传；否则尝试 `video.frames` 抽帧；均不可用时仅读取视频时长与分辨率元信息。 |
+| `native` | 强制以 `{ type: "video_url", video_url: { url } }` 原生格式发送给全模态模型。 |
+| `frames` | 强制使用本地 `ffmpeg` 扩展抽取关键帧作为多张图片输入视觉模型。 |
+| `off` | 仅读取元信息，不传输画面内容。 |
 
-## 为什么不能两条一起喂
+## 模块分工与安全边界
 
-1. **重复计费**：同一段内容既当视频又当图片发一遍，token 翻倍。
-2. **格式冲突**：多数 OpenAI 兼容网关不接受一条消息里同时出现 `video_url` 和 `image_url`，
-   会直接 400。
-3. **语义重复**：模型看到同一段内容两种呈现，容易过度描述。
+- **路由判定**：`src/video-reader.js`（`resolveVideoRoute`）决定当前会话走哪条路线；`src/llm.js`（`specializedModelFor`）在检测到图片或视频部件时自动切换到 `visionModel` 或 `videoModel`。
+- **防 SSRF 先下载后抽帧**：不让 `ffmpeg` 直接请求外部消息中的原始 URL（防止通过恶意视频链接探测宿主机内网），统一先经 `src/safe-fetch.js` 做公网 DNS 与 IP 校验并下载为本地临时文件（上限 200 MB），再执行抽帧。
 
-所以是刻意互斥，不是偷懒。
+## 配置示例
 
-## 职责分层
-
-| 层 | 负责 | 位置 |
-|---|---|---|
-| 选哪条路 | `auto/native/frames/off` 的判定 | `src/video-reader.js` 的 `resolveVideoRoute()`（纯函数） |
-| 用哪个模型 | 检测到视频部分就切 `api.videoModel` | `src/llm.js` 的 `specializedModelFor()` |
-| 怎么抽帧 | ffmpeg 调用、帧数/尺寸/质量 | `skills/video-frames`（能力 `video.frames`） |
-| 组装消息 | 把画面拼成正确的 parts | `src/tools.js` 的 `read_video` + `src/orchestrator.js` |
-
-抽帧做成 Skill 的理由：ffmpeg 是外部程序（装没装、装在哪都看环境），
-抽几帧/多大/什么质量是口味问题，而这些都不该写死在核心里。
-**关掉这个 Skill 就自动退回"只读元信息"**，不会报错。
-
-## 原生视频输入的现状（重要）
-
-OpenAI 兼容的**视频输入没有统一标准**，各家格式不同：
-
-| 厂商 | 格式 |
-|---|---|
-| Gemini 兼容端点 | `file_data` / `video_url` |
-| Qwen-VL | `video_url` |
-| OpenRouter | 部分模型透传 `video_url` |
-| GPT-4o 系列 | 实际上仍是**逐帧当图片**，没有真正的 video 部分 |
-| 多数中转网关 | 不认识 `video_url`，会 400 |
-
-本项目采用 `{ type: 'video_url', video_url: { url } }`，**由配置显式开启**（`videoMode: native`
-或填了 `videoModel`）。为什么不由代码猜：
-
-- 维护一张"哪些模型支持视频"的表必然滞后且不准；
-- 猜错的代价是请求直接 400，比"没启用"更糟。
-
-所以规则是：**你填了 `videoModel` = 你声明"我有能读视频的模型"**，核心不猜。
-
-如果 native 被网关拒绝：把「视频理解方式」改成 `frames` 即可。这是已知的、需要人工切换的场景。
-
-## 为什么不让 ffmpeg 直接读 URL
-
-社区版的做法是 `ffmpeg -ss 30 -i https://...`，只拉真正需要的那几段字节
-（10 分钟视频取 4 帧只传几百 KB，而不是几十 MB），确实省流量。
-
-**但那有 SSRF 缺口**：URL 来自 OneBot 消息段（发送方可影响），ffmpeg 会自己解析 DNS 并连接，
-我们没有任何机会做内网校验 —— 让群友发一条"视频链接"就能让宿主去探内网端口。
-
-所以本项目坚持：先经 `safe-fetch` 校验并落地成文件，再对本地文件抽帧。
-代价是下载整个视频（上限 200MB），换来的是不能被当跳板。
-
-## 相关配置
-
-```jsonc
+```json
 {
   "api": {
-    "model": "cheap-text-model",        // 日常聊天用便宜的纯文本模型
-    "visionModel": "qwen-vl-max",       // 有图片的请求自动切到这个
-    "videoModel": "gemini-2.5-pro",     // 有视频的请求自动切到这个（并启用原生视频输入）
+    "model": "deepseek-chat",
+    "visionModel": "qwen-vl-max",
+    "videoModel": "gemini-2.5-pro",
     "videoMode": "auto"
   }
 }
 ```
 
-> 历史遗留说明：`visionModel` / `videoModel` 曾经**只是存下来给 UI 看**，
-> 没有任何代码读取 —— 填了不起作用。现在检测到对应模态时会真的切模型
-> （仅主调用路径；记忆整理与备选模型降级不受影响）。
+> 若所用的中转网关不支持 `video_url` 字段导致请求返回 `400`，将 `videoMode` 改为 `"frames"` 并确保宿主机已安装 `ffmpeg` 即可。

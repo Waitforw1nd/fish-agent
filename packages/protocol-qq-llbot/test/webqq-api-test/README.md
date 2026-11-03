@@ -1,81 +1,36 @@
-# WebQQ API Integration Tests
+# WebQQ 管理接口真机集成测试
 
-WebUI BE REST endpoint 集成测试。**真起 bot + webui，HTTP 直接打**，不 mock。
+针对 LLBot WebUI 后端（`src/webui/BE/routes/webqq/*.ts`）的单账号实机 HTTP 集成测试，与 `test/webui/` 下的 Mock 单元测试互补。
 
-## 目的
+## 前置条件与配置
 
-验证 `src/webui/BE/routes/webqq/*.ts` 暴露的 ~40 个 endpoint 在真协议层下的端到端行为：
-
-- 重构 NT API 字段时端到端发现 webui 是否漏改
-- 验证新加的 endpoint 真的 work（最近的 `chats` / `actions` / `fav-emoji/add-from-url`）
-- 跟 `test/webui/` 下的 vitest 单测（mock NT API）互补
-
-## 跑前提
-
-- bot 在跑（已经登录、SSO session 还活着）
-- webui 已起，能从外部 HTTP 访问到（默认 `http://127.0.0.1:3080`）
-- WebUI 密码已经设过
-
-## 配置
+需先启动并登录一个真实的 LLBot 实例（WebUI 默认 `http://127.0.0.1:3080` 且已设置密码）：
 
 ```bash
-cd test/webqq-api-test
+cd packages/protocol-qq-llbot/test/webqq-api-test
+npm install
 cp config/test.config.example.json config/test.config.json
-$EDITOR config/test.config.json
 ```
+
+编辑 `config/test.config.json`（已被 `.gitignore` 忽略，不会提交）：
 
 ```json
 {
   "host": "http://127.0.0.1:3080",
-  "password": "<你的 webui 登录密码 明文>",
-  "user_id": "<bot 自己的 QQ 号>",
-  "test_group_id": "<查询测试用的群号 - 不会被改动>",
-  "test_user_id": "<查询测试用的用户 QQ 号 - 不会被改动>"
+  "password": "<WebUI 明文登录密码>",
+  "user_id": "<机器人自身 QQ 号>",
+  "test_group_id": "<用于只读查询的群号>",
+  "test_user_id": "<用于只读查询的 QQ 号>"
 }
 ```
 
-`password` 是明文（client 会自己算 sha256 当 X-Webui-Token 发）。`config/test.config.json` 在 .gitignore 里，不会上传。
-
-## 安装 + 运行
+## 运行测试
 
 ```bash
-npm install
-
-# 默认: 跑所有非破坏性测试 (GET 列表/查询/状态)
-npm test
-
-# 跑 destructive 测试 (戳一戳/添加收藏/etc) — 真改 bot 状态
-RUN_DESTRUCTIVE=1 npm test
-
-# 单文件
-npm test -- tests/chats.test.ts
-
-# Serial 模式 (本来就 maxWorkers=1，没区别)
-npm run test:serial
+npm test                       # 包含查询、参数校验及向自身发送群/好友戳一戳
+npm test -- tests/chats.test.ts # 单独运行指定测试文件
 ```
 
-跑完会生成 `test-report.html` 可在浏览器打开看报告。
+完整套件会实际发送戳一戳，请只使用专门的测试账号和测试群。`RUN_DESTRUCTIVE` 不控制当前用例；从 URL 添加收藏表情的成功用例和危险的群、好友状态修改用例目前无条件跳过。
 
-## 覆盖范围 (Phase 1)
-
-| 文件 | 覆盖 endpoints |
-|------|----------------|
-| `tests/chats.test.ts` | GET `/friends` `/groups` `/pins` |
-| `tests/members.test.ts` | GET `/members` `/group-member` `/group-detail` `/uid` `/uin` `/user` `/user-info` |
-| `tests/messages.test.ts` | GET `/messages` `/forward-msg` (skip - 没现成 resId) `/video-url` (skip - 没现成 fileUuid) |
-| `tests/notifications.test.ts` | GET `/notifications/group` `/notifications/friend` `/notifications/friend/doubt` |
-| `tests/fav-emoji.test.ts` | GET `/fav-emoji`; POST `/fav-emoji/add-from-url` (destructive) |
-| `tests/actions.test.ts` | POST `/group/poke` `/friend/poke` (destructive); kick/ban/quit/setRole 等更危险的写注释里默认不跑 |
-
-## 不在覆盖内 (Phase 2)
-
-- `/upload` / `/upload-file` (multipart)
-- `/events` (SSE)
-- `/file-proxy` `/image-proxy` `/audio-proxy` (返二进制流)
-- `/messages` POST (发消息 — 需要双账号互发验证)
-- `/messages/recall` `/messages/emoji-like` `/messages/ptt-to-text` (需要先有真 msgId/msgSeq)
-
-## 跟 OB11 测试的关系
-
-OB11 测试 (`test/onebot11-api-test/`) 是双账号 OB11 协议测试，结构更复杂（事件订阅 + 双向断言）。
-WebQQ 测试是单账号 webui REST 测试，结构上更简单——webui 是给单 bot 的管理面板，无需双向交互。
+执行完成后会在当前目录生成 `test-report.html` 报告。

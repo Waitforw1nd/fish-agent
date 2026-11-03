@@ -1,0 +1,30 @@
+[skill:bili-watcher] B 站 watcher 已启用；订阅目标由云端配置管理
+✖ memory consolidation HTTP route accepts full entry member IDs and rejects unsafe numeric IDs (116.6785ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 383.7605
+
+✖ failing tests:
+
+test at packages\qq-agent-core\test\headless-runtime.test.mjs:419:1
+✖ memory consolidation HTTP route accepts full entry member IDs and rejects unsafe numeric IDs (116.6785ms)
+  AssertionError [ERR_ASSERTION]: {"ok":false,"error":"userIds 需为 QQ 号数组"}
+  
+  400 !== 202
+  
+      at TestContext.<anonymous> (file:///E:/bigPeach/fish/packages/qq-agent-core/test/headless-runtime.test.mjs:453:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 400,
+    expected: 202,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

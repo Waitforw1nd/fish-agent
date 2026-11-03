@@ -1,0 +1,95 @@
+{
+  "at": "2026-11-03T01:14:48.249Z",
+  "node": "v24.21.0",
+  "rootCheck": {
+    "exit": 0,
+    "signal": null,
+    "output": "\n> fish-bot@0.1.0 check\n> node scripts/check.mjs\n\nRoot orchestration check passed on Node.js v24.21.0.\n"
+  },
+  "whitespace": {
+    "exit": 0,
+    "output": ""
+  },
+  "runtimeGate": {
+    "exit": 1,
+    "signal": null,
+    "output": "禁止打包：请更新 Electron 及锁文件到受支持稳定版（本次审查基线 >= 45），并完成原生安全验收。\n"
+  },
+  "protectedFiles": [
+    {
+      "path": "packages/qq-agent-core/modules/headless/qqbot.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/connection.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/qq-agent-core/modules/headless/index.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/qq/qqbot.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/qq-service.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/routes/qq.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/agent-settings.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/src/agent-runtime.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/panel/components/qq-panel.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/panel/components/agent-studio/whitelist-editor.js",
+      "unchanged": true
+    },
+    {
+      "path": "packages/qq-agent-core/scripts/qqbot-smoke.mjs",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/test/qq-qqbot.test.mjs",
+      "unchanged": true
+    },
+    {
+      "path": "packages/cloud-manager/test/qqbot-settings.test.mjs",
+      "unchanged": true
+    }
+  ],
+  "frozenChanged": [],
+  "changedThisRound": [
+    "packages/desktop-pet/src/client.js",
+    "packages/desktop-pet/test/recovery-capabilities.test.mjs",
+    "packages/protocol-bili-bridge/src/bridge.js",
+    "packages/protocol-bili-bridge/src/pollers/explore.js",
+    "packages/protocol-bili-bridge/test/explore.test.mjs",
+    "packages/qq-agent-core/plugins/bili-watcher/index.js",
+    "packages/qq-agent-core/src/app.js",
+    "packages/qq-agent-core/src/store.js",
+    "packages/qq-agent-core/test/headless-transport.test.mjs"
+  ],
+  "focusedTests": {
+    "files": 163,
+    "only": []
+  },
+  "documentLinks": {
+    "documents": 37,
+    "links": 201,
+    "missing": []
+  },
+  "completedAt": "2026-11-03T01:21:56.129Z",
+  "frozenVerifiedAfterFinalTests": true
+}
