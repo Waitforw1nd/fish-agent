@@ -1,0 +1,1 @@
+Original geometric fish artwork created for the Fish project using scripts/generate-placeholder.mjs. No third-party artwork is used. The Fish project may use, modify, and distribute this placeholder artwork.

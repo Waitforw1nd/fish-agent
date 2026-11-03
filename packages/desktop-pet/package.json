@@ -1,0 +1,17 @@
+{
+  "name": "fish-desktop-pet",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": { "start": "electron .", "dev": "node scripts/dev.mjs", "test": "node --test test/*.test.mjs", "acceptance": "node scripts/acceptance-cloud.mjs", "acceptance:check": "node scripts/acceptance-cloud.mjs --check", "assets:generate": "node scripts/generate-placeholder.mjs", "predist": "node scripts/check-runtime.mjs", "dist": "electron-builder" },
+  "dependencies": { "ws": "^8.18.0" },
+  "devDependencies": { "electron": "^33.2.0", "electron-builder": "^26.15.3", "jsdom": "^30.0.1" },
+  "build": {
+    "appId": "cn.fish.desktoppet", "productName": "养鱼 Bot 桌宠", "files": ["src/**/*", "resources/**/*", "licenses/**/*", "THIRD_PARTY_NOTICES.md", "package.json"],
+    "win": { "target": ["nsis"] }, "mac": { "target": ["dmg"] },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true }
+  }
+}
+
+

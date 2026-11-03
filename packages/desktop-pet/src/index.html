@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; media-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>养鱼 Bot · 桌宠</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header data-interactive><span class="brand">养鱼 Bot <small>桌宠</small></span><div><button id="toggle" title="展开或收起对话" aria-expanded="true">收起</button><button id="hide" title="隐藏到托盘" aria-label="隐藏到托盘">—</button></div></header>
+  <main>
+    <div id="hero">
+      <div id="bubble" class="bubble" aria-live="polite" hidden></div>
+      <button id="fish" class="pet" aria-label="点击小鱼展开对话，按住拖动"></button>
+      <div class="pet-caption"><span class="ai">AI 生成</span><span id="activity">陪你聊一会儿</span></div>
+    </div>
+    <div id="connection" data-interactive><span id="status" role="status">等待配对</span><button id="reconnect" hidden>重新连接</button></div>
+    <div id="panel" data-interactive>
+      <section id="pair">
+        <h1>把小鱼接到你的云端</h1><p class="hint">在面板添加桌宠设备，再输入一次性配对码。</p>
+        <label for="host">服务地址</label><input id="host" placeholder="https://你的云服务地址" autocomplete="url" maxlength="2048">
+        <label for="code">配对码</label><input id="code" placeholder="8 位配对码" autocomplete="off" maxlength="8" spellcheck="false">
+        <button id="pairButton" class="primary">连接小鱼</button>
+        <p class="hint">设备凭据由 Windows 加密保存在本机。</p>
+      </section>
+      <section id="chat" hidden>
+        <div id="messages" aria-live="polite"><p class="empty">连接好了，和小鱼打个招呼吧。</p></div>
+        <form id="form"><label class="sr-only" for="text">对话内容</label><textarea id="text" rows="2" placeholder="和小鱼说点什么…" maxlength="10000" autocomplete="off"></textarea><button class="primary" type="submit">发送</button></form>
+        <p class="input-hint">Enter 发送 · Shift+Enter 换行</p>
+      </section>
+      <footer><label for="pack">占位形象</label><select id="pack"><option value="fish.placeholder">小青鱼</option><option value="fish.placeholder-alt">小橙鱼</option></select><button id="unpair" class="link" title="只清除本机凭据；云端吊销请在面板操作">清除本机配对</button></footer>
+    </div>
+    <p id="notice" role="alert" data-interactive></p>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

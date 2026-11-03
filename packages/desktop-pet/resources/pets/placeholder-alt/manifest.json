@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "fish.placeholder-alt",
+  "version": "0.1.0",
+  "name": "小橙鱼",
+  "author": "Fish project",
+  "license": {
+    "id": "LicenseRef-Fish-Owned",
+    "file": "LICENSE.txt"
+  },
+  "canvas": {
+    "width": 256,
+    "height": 256
+  },
+  "anchor": {
+    "x": 0.5,
+    "y": 1
+  },
+  "hitBox": {
+    "x": 0.13,
+    "y": 0.27,
+    "width": 0.75,
+    "height": 0.5
+  },
+  "assets": {
+    "base": {
+      "type": "image",
+      "path": "idle.png"
+    }
+  },
+  "actions": {
+    "idle": {
+      "asset": "base",
+      "loop": true
+    }
+  },
+  "activityMap": {
+    "idle": "idle",
+    "thinking": "idle",
+    "talking": "idle",
+    "sleeping": "idle"
+  },
+  "emotionMap": {
+    "neutral": "idle"
+  },
+  "fallbackAction": "idle"
+}
