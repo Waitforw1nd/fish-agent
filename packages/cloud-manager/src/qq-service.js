@@ -7,6 +7,7 @@ import { napcatDriver } from './qq/napcat.js';
 import { snowlumaDriver } from './qq/snowluma.js';
 import { DockerRuntime } from './qq/docker-runtime.js';
 import { QQSwitchExecutor } from './qq/switch.js';
+import { QQBOT_DRIVER_ID, QQBOT_SECRET_NAME, QQBOT_CONFIG_NAME, qqbotDescriptor, normalizeQqbotInput, verifyQqbotCredentials } from './qq/qqbot.js';
 
 const DRIVERS = {
   llbot: llbotDriver,
@@ -95,11 +96,12 @@ export class QQService {
   }
 
   capabilities(driverId = 'llbot') {
+    if (driverId === QQBOT_DRIVER_ID) return qqbotDescriptor.capabilities;
     return DRIVERS[driverId]?.capabilities || null;
   }
 
   async drivers() {
-    return Promise.all(Object.values(DRIVERS).map(async (driver) => {
+    const local = await Promise.all(Object.values(DRIVERS).map(async (driver) => {
       const allowed = (this.config.qqDrivers || []).includes(driver.id);
       let installed = this.entryExists(driver.id), reasonCode = '', reason = '';
       if (driver.id === 'napcat') {
@@ -110,6 +112,14 @@ export class QQService {
       if (!allowed) { reasonCode = 'DRIVER_NOT_ALLOWED'; reason = '平台未允许此协议端'; }
       return { id: driver.id, label: driver.label, allowed, installed, available: allowed && installed && !reasonCode, reasonCode: reasonCode || null, reason: reason || null, capabilities: driver.capabilities };
     }));
+    // 官方机器人：无本地协议端，凭证托管 + Agent 直连官方网关，无需安装。
+    const qqbotAllowed = (this.config.qqDrivers || []).includes(QQBOT_DRIVER_ID);
+    local.push({
+      id: QQBOT_DRIVER_ID, label: qqbotDescriptor.label, allowed: qqbotAllowed, installed: true,
+      available: qqbotAllowed, reasonCode: qqbotAllowed ? null : 'DRIVER_NOT_ALLOWED',
+      reason: qqbotAllowed ? null : '平台未允许此协议端', capabilities: qqbotDescriptor.capabilities
+    });
+    return local;
   }
 
   account(tenantId) {
@@ -213,6 +223,7 @@ export class QQService {
       throw fail(409, 'QQ_ALREADY_RUNNING', 'QQ 协议端正在运行，请先停止再修改配置');
     }
     const driverId = requested;
+    if (driverId === QQBOT_DRIVER_ID) return this.prepareQqbotUnlocked(tenant, options);
     const driver = this.driver(driverId);
     if (!driver || !(this.config.qqDrivers || []).includes(driverId)) throw fail(400, 'UNKNOWN_DRIVER', '未知或未允许的 QQ 协议端驱动');
     const expectedUin = String(options.uin || options.expectedUin || current?.expected_uin || '').trim();
@@ -282,6 +293,133 @@ export class QQService {
     };
   }
 
+  // ── 官方 QQ 机器人（qqbot）：无本地协议端进程，Agent 直连官方网关 ──────
+
+  qqbotConfig(tenant) {
+    try { return JSON.parse(this.secrets.get(tenant.id, QQBOT_CONFIG_NAME, '{}') || '{}'); } catch { return {}; }
+  }
+
+  async prepareQqbotUnlocked(tenant, options = {}) {
+    if (!(this.config.qqDrivers || []).includes(QQBOT_DRIVER_ID)) throw fail(400, 'UNKNOWN_DRIVER', '平台未允许官方机器人驱动');
+    const current = this.account(tenant.id);
+    if (current && current.driver !== QQBOT_DRIVER_ID) {
+      const process = await this.runtimeStatus(tenant, current);
+      if (['running', 'starting', 'restarting'].includes(process.state)) {
+        throw fail(409, 'QQ_ALREADY_RUNNING', 'QQ 协议端正在运行，请先停止再切换为官方机器人');
+      }
+    }
+    const stored = this.qqbotConfig(tenant);
+    const input = normalizeQqbotInput({
+      appId: options.appId ?? (current?.driver === QQBOT_DRIVER_ID ? current?.expected_uin : undefined),
+      appSecret: options.appSecret,
+      sandbox: options.sandbox !== undefined ? options.sandbox : stored.sandbox === true,
+      intents: options.intents !== undefined ? options.intents : stored.intents
+    });
+    const appSecret = input.appSecret || this.secrets.get(tenant.id, QQBOT_SECRET_NAME, '');
+    if (!appSecret) throw fail(400, 'QQBOT_SECRET_REQUIRED', '请填写官方机器人的 AppSecret');
+    this.assertQqbotAvailable(tenant.id, input.appId);
+    // 同配置幂等：没换 AppID、没给新密钥、没改沙箱/意图 → 直接回状态
+    if (current?.driver === QQBOT_DRIVER_ID && current.expected_uin === input.appId
+      && !input.appSecret && options.sandbox === undefined && options.intents === undefined) {
+      return { ...(await this.status(tenant, { probe: false })), prepared: { driver: QQBOT_DRIVER_ID }, driverChanged: false };
+    }
+    await verifyQqbotCredentials({ appId: input.appId, appSecret, tokenUrl: this.config.qqbotTokenUrl || undefined });
+    const account = {
+      ...(current?.driver === QQBOT_DRIVER_ID ? current : {}),
+      tenant_id: tenant.id,
+      driver: QQBOT_DRIVER_ID,
+      expected_uin: input.appId,      // 官方机器人没有 QQ 号：用 AppID 占位（同时充当跨租户占用键）
+      uin: input.appId,
+      nickname: current?.driver === QQBOT_DRIVER_ID ? current.nickname : null,
+      state: 'prepared',
+      webui_port: null, ob11_port: null, http_port: null,
+      auth_source: 'none',
+      last_error: null,
+      effective_profile_id: null, effective_runtime_id: null,
+      runtime_generation: 0, runtime_secret_namespace: null
+    };
+    immediateTransaction(this.db, () => {
+      this.assertQqbotAvailable(tenant.id, input.appId);
+      this.secrets.set(tenant.id, QQBOT_SECRET_NAME, appSecret);
+      this.secrets.set(tenant.id, QQBOT_CONFIG_NAME, JSON.stringify({ sandbox: input.sandbox, intents: input.intents ?? null }));
+      this.upsertAccount(account);
+      this.db.prepare('UPDATE qq_accounts SET revision = revision + 1 WHERE tenant_id = ?').run(tenant.id);
+    });
+    await this.onLinksChanged?.(tenant, { reason: 'qq.prepare' });
+    return {
+      ...(await this.status(tenant, { probe: false })),
+      prepared: { driver: QQBOT_DRIVER_ID },
+      driverChanged: Boolean(current && current.driver !== QQBOT_DRIVER_ID)
+    };
+  }
+
+  assertQqbotAvailable(tenantId, appId) {
+    if (this.db.prepare("SELECT 1 FROM qq_accounts WHERE driver='qqbot' AND expected_uin=? AND tenant_id<>?").get(appId, tenantId)) {
+      throw fail(409, 'QQBOT_APP_IN_USE', '该官方机器人已绑定其他租户');
+    }
+  }
+
+  async startQqbotUnlocked(tenant, account) {
+    if (!(this.config.qqDrivers || []).includes(QQBOT_DRIVER_ID)) throw fail(400, 'UNKNOWN_DRIVER', '平台未允许官方机器人驱动');
+    const appId = String(account.expected_uin || '');
+    this.assertQqbotAvailable(tenant.id, appId);
+    const appSecret = this.secrets.get(tenant.id, QQBOT_SECRET_NAME, '');
+    if (!appId || !appSecret) throw fail(409, 'QQBOT_NOT_PREPARED', '请先配置官方机器人的 AppID / AppSecret');
+    await verifyQqbotCredentials({ appId, appSecret, tokenUrl: this.config.qqbotTokenUrl || undefined });
+    this.updateAccount(tenant.id, { state: 'awaiting_login', last_error: null });
+    // 官方机器人没有协议端进程：写完 Agent 配置即可，Agent 在运行则由 onLinksChanged 触发热重启
+    await this.onLinksChanged?.(tenant, { reason: 'qq.start' });
+    return this.status(tenant);
+  }
+
+  async qqbotStatusUnlocked(tenant, account, operationFields, probe) {
+    const agentState = this.agentRuntime ? (await this.agentRuntime.status(tenant, { probe: false })).state : 'stopped';
+    const health = probe && this.agentRuntime && agentState === 'running' ? await this.agentRuntime.health(tenant) : null;
+    const channel = health?.channels?.qq || (health?.onebot?.connected ? health.onebot : null);
+    const connected = Boolean(health?.ok && channel?.connected === true);
+    const channelError = String(channel?.error || '').trim();
+    let state = account.state;
+    let lastError = account.last_error;
+    if (connected) { state = 'online'; lastError = null; }
+    else if (['online', 'awaiting_login'].includes(account.state)) { state = 'awaiting_login'; if (channelError) lastError = channelError; }
+    const nickname = channel?.nickname || channel?.self?.nickname || account.nickname || null;
+    this.updateAccount(tenant.id, { state, last_error: lastError || null, nickname });
+    return {
+      ...operationFields,
+      driver: QQBOT_DRIVER_ID,
+      kernel: QQBOT_DRIVER_ID,
+      driverLabel: qqbotDescriptor.label,
+      state,
+      phase: connected ? 'online' : (state === 'awaiting_login' ? 'waiting_login' : 'stopped'),
+      runtimeState: agentState === 'running' ? 'ready' : 'stopped',
+      loginState: connected ? 'online' : 'offline',
+      agentChannelState: connected ? 'connected' : 'disconnected',
+      runtimeGeneration: account.runtime_generation || 0,
+      canChat: connected,
+      running: agentState === 'running',
+      loggedIn: connected,
+      online: connected,
+      expectedUin: account.expected_uin,
+      uin: account.expected_uin,
+      nickname,
+      capabilities: qqbotDescriptor.capabilities,
+      mode: null,
+      process: { state: agentState, pid: null, restarts: 0, startedAt: null, readyAt: null },
+      ports: {},
+      authToken: { applicable: false, hasToken: false, validation: 'idle', source: 'none', status: 'ok' },
+      authTokenStatus: 'ok',
+      authTokenMessage: '',
+      qrAvailable: false,
+      onebotConnected: connected,
+      onebotPort: null,
+      onebotTokenConfigured: false,
+      error: lastError || null,
+      message: lastError || '',
+      lastError: lastError || null,
+      entryExists: true
+    };
+  }
+
   driverContext(tenant, account, driverId, tokens, driver = null) {
     return {
       config: this.config,
@@ -331,6 +469,7 @@ export class QQService {
       const driver = options.driver || account?.driver;
       const uin = options.uin || account?.expected_uin;
       const changed = !account || (driver && driver !== account.driver) || (uin && String(uin) !== account.expected_uin)
+        || (driver === 'qqbot' && (options.appId || options.appSecret || options.sandbox !== undefined || options.intents !== undefined))
         || (options.mode !== undefined && options.mode !== status?.mode)
         || (options.pmhqPort !== undefined && Number(options.pmhqPort) !== status?.ports?.pmhq);
       if (changed) await this.prepareUnlocked(tenant, { ...options, driver, uin });
@@ -364,6 +503,7 @@ export class QQService {
     if (pending) await pending;
     const account = this.account(tenant.id);
     if (!account) throw fail(409, 'QQ_NOT_PREPARED', '请先准备 QQ 协议端配置');
+    if (account.driver === QQBOT_DRIVER_ID) return this.startQqbotUnlocked(tenant, account);
     const driver = this.driver(account.driver);
     if (!driver) throw fail(400, 'UNKNOWN_DRIVER', '未知 QQ 协议端驱动');
     const process = await this.runtimeStatus(tenant, account);
@@ -674,6 +814,7 @@ export class QQService {
         lastError: null
       };
     }
+    if (account.driver === QQBOT_DRIVER_ID) return this.qqbotStatusUnlocked(tenant, account, operationFields, probe);
     const driver = this.driver(account.driver);
     let process = await this.runtimeStatus(tenant, account);
     const observedGeneration = account.driver === 'napcat' ? this.docker.row(tenant.id)?.generation : null;
@@ -935,6 +1076,19 @@ export class QQService {
     const operation = this.db.prepare("SELECT phase FROM qq_operations WHERE tenant_id=? AND status IN ('running','needs_attention')").get(tenant.id);
     if (operation && !['committed', 'resume_intent', 'verify_agent', 'rollback_saved', 'rollback_resume_intent'].includes(operation.phase)) return null;
     const account = this.account(tenant.id);
+    if (account?.driver === QQBOT_DRIVER_ID) {
+      // 官方机器人：启用状态由 qq.start/qq.stop 的 state 决定；Agent 直连网关，无本地端口
+      if (!['awaiting_login', 'online'].includes(account.state)) return null;
+      const cfg = this.qqbotConfig(tenant);
+      return {
+        enabled: true,
+        driver: QQBOT_DRIVER_ID,
+        generation: account.runtime_generation || 0,
+        appId: String(account.expected_uin || ''),
+        sandbox: cfg.sandbox === true,
+        intents: cfg.intents ?? null
+      };
+    }
     if (!account || ['unprepared', 'uin_mismatch'].includes(account.state) || (account.driver === 'napcat' && (account.state !== 'online' || account.uin !== account.expected_uin || this.docker.row(tenant.id)?.desired_state !== 'running'))) return null;
     const tokens = this.tokens(tenant, account);
     return {
@@ -972,6 +1126,8 @@ export class QQService {
     this.secrets.delete(tenant.id, 'qq.onebot_token');
     this.secrets.delete(tenant.id, 'qq.webui_password');
     this.secrets.delete(tenant.id, 'qq.auth_token');
+    this.secrets.delete(tenant.id, QQBOT_SECRET_NAME);
+    this.secrets.delete(tenant.id, QQBOT_CONFIG_NAME);
     this.db.prepare('DELETE FROM qq_accounts WHERE tenant_id = ?').run(tenant.id);
   }
 }

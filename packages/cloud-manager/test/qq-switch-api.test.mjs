@@ -10,7 +10,7 @@ test('switch routes enforce roles and active tenant, and pass through operation 
   const tenant = { id: 't', status: 'active' };
   let role = 'operator', active = true;
   const operation = { operationId: 'op', status: 'running', phase: 'preflight' };
-  const router = createApiRouter({ config: { apiMaxBodyBytes: 10000 }, auth: {}, tenants: {
+  const router = createApiRouter({ config: { apiMaxBodyBytes: 10000 }, auth: { require: () => ({ user: { id: 'u' } }) }, tenants: {
     require(id, user, minRole) { calls.push(['require', id, minRole]); if (role === 'viewer' && minRole !== 'viewer') throw Object.assign(new Error('forbidden'), { status: 403 }); return { tenant, role }; },
     assertActive() { if (!active) throw Object.assign(new Error('inactive'), { status: 403 }); }
   }, db: { prepare() { return { get(tenantId, operationId) { calls.push(['read', tenantId, operationId]); return operation; } }; } }, qq: {
@@ -28,7 +28,7 @@ test('switch routes enforce roles and active tenant, and pass through operation 
   }
   const body = { driver: 'napcat', expectedRevision: 2, idempotencyKey: 'key', uin: '12345' };
   const result = await request('POST', '/api/tenants/t/qq/switch', body);
-  assert.equal(result.status, 202); assert.deepEqual(result.body.operation, operation); assert.deepEqual(calls[1][2], body);
+  assert.equal(result.status, 202); assert.deepEqual(result.body.operation, operation); assert.deepEqual(calls.find(call => call[0] === 'start')[2], body);
   role = 'viewer'; await assert.rejects(request('POST', '/api/tenants/t/qq/switch', body), { status: 403 });
   assert.equal((await request('GET', '/api/tenants/t/qq/operations/op')).body.operation.operationId, 'op');
   assert.equal(calls.some(call => call[0] === 'get'), false);

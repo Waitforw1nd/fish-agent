@@ -2,10 +2,15 @@ import { h, clear } from '../../lib/dom.js';
 import { normalizeAgentContacts } from '../../lib/normalize.js';
 import { button, checkbox, entries, field, input, lines, optionalCall, panel, perform, textarea } from '../common.js';
 
+function validContactId(value, kind) {
+  if (/^[1-9]\d{0,15}$/.test(value) && Number.isSafeInteger(Number(value))) return true;
+  return (kind === 'group' ? /^qqbot_(?:group|channel)_[A-Za-z0-9_-]{1,128}$/ : /^qqbot_(?:user|dm)_[A-Za-z0-9_-]{1,128}$/).test(value);
+}
+
 export function createWhitelistEditor(ctx, config, refresh) {
   const ro = ctx.readOnly;
-  const groups = textarea(lines(config.allow?.groups), { disabled: ro, placeholder: '每行一个群号，也可用逗号分隔' });
-  const friends = textarea(lines(config.allow?.private), { disabled: ro, placeholder: '每行一个 QQ 号' });
+  const groups = textarea(lines(config.allow?.groups), { disabled: ro, placeholder: '每行一个群号或 qqbot_group_ / qqbot_channel_ 会话 ID' });
+  const friends = textarea(lines(config.allow?.private), { disabled: ro, placeholder: '每行一个 QQ 号或 qqbot_user_ / qqbot_dm_ 会话 ID' });
   const denyGroups = textarea(lines(config.deny?.groups), { disabled: ro });
   const denyPrivate = textarea(lines(config.deny?.private), { disabled: ro });
   const globalBlocklist = textarea(lines(config.globalBlocklist), { disabled: ro });
@@ -41,8 +46,10 @@ export function createWhitelistEditor(ctx, config, refresh) {
   const save = button('保存白名单', async () => {
     const groupsAllowed = entries(groups.value), friendsAllowed = entries(friends.value);
     const groupsDenied = entries(denyGroups.value), friendsDenied = entries(denyPrivate.value), global = entries(globalBlocklist.value);
-    if ([...groupsAllowed, ...friendsAllowed, ...groupsDenied, ...friendsDenied, ...global].some((value) => !/^\d{1,20}$/.test(value))) {
-      ctx.toast?.show?.('群号和 QQ 号必须为数字。', { tone: 'danger' }); return;
+    if ([...groupsAllowed, ...groupsDenied].some(value => !validContactId(value, 'group'))
+        || [...friendsAllowed, ...friendsDenied].some(value => !validContactId(value, 'private'))
+        || global.some(value => !/^\d{1,20}$/.test(value))) {
+      ctx.toast?.show?.('请填写有效数字 ID 或对应类型的官方 QQ Bot 会话 ID；全局成员屏蔽仍使用数字。', { tone: 'danger' }); return;
     }
     const blocks = {};
     for (const row of blocklist.value.split(/\r?\n/)) {

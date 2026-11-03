@@ -17,15 +17,15 @@ export function createQqApi({ request, tenantPath, setCsrfToken }) {
     cancelQQOperation(tenantId, operationId, { signal } = {}) {
       return request(tenantPath(tenantId, `/qq/operations/${encodeURIComponent(operationId)}/cancel`), { method: 'POST', signal });
     },
-    prepareQQ(tenantId, { kernel, uin } = {}) {
+    prepareQQ(tenantId, { kernel, uin, appId, appSecret, sandbox } = {}) {
       return request(tenantPath(tenantId, '/qq/prepare'), {
-        method: 'POST', body: qqBody(kernel, uin)
+        method: 'POST', body: qqBody(kernel, uin, { appId, appSecret, sandbox })
       });
     },
     prepareQQAdvanced: (tenantId, body) => request(tenantPath(tenantId, '/qq/prepare'), { method: 'POST', body }),
-    startQQ(tenantId, { kernel, uin } = {}) {
+    startQQ(tenantId, { kernel, uin, appId, appSecret, sandbox } = {}) {
       return request(tenantPath(tenantId, '/qq/start'), {
-        method: 'POST', body: qqBody(kernel, uin)
+        method: 'POST', body: qqBody(kernel, uin, { appId, appSecret, sandbox })
       });
     },
     refreshQQQrcode(tenantId, runtimeGeneration = null) {
@@ -43,9 +43,12 @@ export function createQqApi({ request, tenantPath, setCsrfToken }) {
     getQQLogs: (id) => request(tenantPath(id, '/qq/logs'))
   };
 }
-function qqBody(kernel, uin) {
+function qqBody(kernel, uin, extra = {}) {
   const body = {};
   if (kernel) body.kernel = String(kernel);
   if (uin) body.uin = String(uin).trim();
+  if (extra.appId !== undefined && extra.appId !== null && String(extra.appId).trim() !== '') body.appId = String(extra.appId).trim();
+  if (extra.appSecret !== undefined && extra.appSecret !== null && String(extra.appSecret).trim() !== '') body.appSecret = String(extra.appSecret).trim();
+  if (extra.sandbox !== undefined) body.sandbox = extra.sandbox === true;
   return body;
 }

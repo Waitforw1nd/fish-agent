@@ -3,7 +3,7 @@ import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
 
-export function requestJson(url, { method = 'GET', headers = {}, body = null, timeoutMs = 3000, lookup = undefined } = {}) {
+export function requestJson(url, { method = 'GET', headers = {}, body = null, timeoutMs = 3000, lookup = undefined, maxBytes = Infinity, deadlineMs = 0 } = {}) {
   return new Promise((resolve, reject) => {
     let parsed;
     try { parsed = new URL(url); } catch (error) { reject(error); return; }
@@ -26,16 +26,26 @@ export function requestJson(url, { method = 'GET', headers = {}, body = null, ti
       timeout: timeoutMs
     }, (res) => {
       let text = '';
+      let bytes = 0;
       res.setEncoding('utf8');
-      res.on('data', (chunk) => { text += chunk; });
+      res.on('data', (chunk) => {
+        bytes += Buffer.byteLength(chunk);
+        if (bytes > maxBytes) { req.destroy(Object.assign(new Error('response too large'), { code: 'RESPONSE_TOO_LARGE' })); return; }
+        text += chunk;
+      });
       res.on('end', () => {
+        clearTimeout(deadline);
         let json = null;
         try { json = text ? JSON.parse(text) : null; } catch { /* text response */ }
         resolve({ status: res.statusCode, headers: res.headers, body: json, text });
       });
+      res.on('error', error => { clearTimeout(deadline); reject(error); });
+      res.on('aborted', () => { clearTimeout(deadline); reject(Object.assign(new Error('response aborted'), { code: 'RESPONSE_ABORTED' })); });
     });
+    const deadline = deadlineMs > 0 ? setTimeout(() => req.destroy(Object.assign(new Error('request deadline exceeded'), { code: 'ETIMEDOUT' })), deadlineMs) : null;
+    deadline?.unref?.();
     req.on('timeout', () => req.destroy(Object.assign(new Error('request timeout'), { code: 'ETIMEDOUT' })));
-    req.on('error', reject);
+    req.on('error', error => { clearTimeout(deadline); reject(error); });
     if (payload) req.write(payload);
     req.end();
   });

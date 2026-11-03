@@ -4,13 +4,24 @@ import { OneBotClient } from '../../src/onebot.js';
 
 const safeId = value => {
   const id = String(value || '');
-  if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('QQBot 返回了无效的 ID');
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new Error('QQBot 返回了无效的 ID');
   return id;
 };
 const remember = (map, key, value, limit = 1000) => {
   map.set(key, value);
   if (map.size > limit) map.delete(map.keys().next().value);
 };
+const publicCode = value => /^-?\d{1,12}$/.test(String(value ?? '')) ? String(value) : 'unknown';
+async function platformResponse(fetchImpl, url, options) {
+  let response;
+  try { response = await fetchImpl(url, { ...options, redirect: 'error' }); }
+  catch { throw new Error('QQBot 平台连接失败，请检查网络与平台地址'); }
+  let data;
+  try { data = await response.json(); }
+  catch { throw new Error(`QQBot 平台返回了无效 JSON（HTTP ${response.status}）`); }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('QQBot 平台返回了无效数据');
+  return { response, data };
+}
 
 export class QQBotClient extends OneBotClient {
   constructor({ appId, appSecret, sandbox = false, intents, onEvent, fetchImpl = fetch, reconnectMs = 3000, apiBase, tokenUrl }) {
@@ -30,6 +41,10 @@ export class QQBotClient extends OneBotClient {
     this.seen = new Map();
     this.groups = new Map();
     this.friends = new Map();
+    // 机器人在群里的 member_openid 与 READY 的 user.id 不是同一套值：
+    // GROUP_AT 事件 content 里的 <@…> 用的是 member_openid。收到 AT 事件时
+    // 把提及 ID 学进来，供全量消息的 @ 判定与正文清洗使用。
+    this.selfMentions = new Set();
   }
   status(connected, error = '') {
     this.connected = connected;
@@ -41,13 +56,15 @@ export class QQBotClient extends OneBotClient {
     if (this.accessToken && Date.now() < this.tokenExpiresAt) return this.accessToken;
     if (!this.tokenPromise) this.tokenPromise = (async () => {
       if (!this.appId || !this.appSecret) throw new Error('缺少 QQBot AppID / AppSecret');
-      const response = await this.fetchImpl(this.tokenUrl, {
+      const { response, data } = await platformResponse(this.fetchImpl, this.tokenUrl, {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ appId: this.appId, clientSecret: this.appSecret }),
         signal: AbortSignal.timeout(15000)
       });
-      const data = await response.json();
-      if (!response.ok || !data.access_token) throw new Error(`QQBot 获取凭证失败：HTTP ${response.status}，code=${data.code || 'unknown'}`);
+      if (!response.ok || typeof data.access_token !== 'string' || !data.access_token || data.access_token.length > 8192
+          || !Number.isFinite(Number(data.expires_in)) || Number(data.expires_in) <= 0) {
+        throw new Error(`QQBot 获取凭证失败：HTTP ${response.status}，code=${publicCode(data.code)}`);
+      }
       this.accessToken = data.access_token;
       this.tokenExpiresAt = Date.now() + Math.max(1, Number(data.expires_in) - 60) * 1000;
       return this.accessToken;
@@ -56,17 +73,20 @@ export class QQBotClient extends OneBotClient {
   }
   async request(route, body, method = 'POST') {
     const token = await this.token();
-    const response = await this.fetchImpl(`${this.apiBase}${route}`, {
-      method, headers: { authorization: `QQBot ${token}`, 'X-Union-Appid': this.appId, 'content-type': 'application/json' },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(20000)
-    });
-    const data = await response.json();
-    if (!response.ok || data.code) {
-      if (response.status === 401) this.tokenExpiresAt = 0;
-      // Never retry message POSTs: the remote result may be unknown.
-      throw new Error(`QQBot ${method} ${route} 失败：HTTP ${response.status}，code=${data.code || 'unknown'}`);
-    }
-    return data;
+    let success = false;
+    try {
+      const { response, data } = await platformResponse(this.fetchImpl, `${this.apiBase}${route}`, {
+        method, headers: { authorization: `QQBot ${token}`, 'X-Union-Appid': this.appId, 'content-type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(20000)
+      });
+      success = response.ok && (data.code == null || data.code === 0 || data.code === '0');
+      if (!success) {
+        if (response.status === 401) this.tokenExpiresAt = 0;
+        // Never retry message POSTs: the remote result may be unknown.
+        throw new Error(`QQBot ${method} ${route} 失败：HTTP ${response.status}，code=${publicCode(data.code)}`);
+      }
+      return data;
+    } finally { try { this.onApiCall?.({ success }); } catch {} }
   }
   async connect() {
     this.stopped = false;
@@ -79,8 +99,10 @@ export class QQBotClient extends OneBotClient {
       await this.token();
       const gateway = await this.request('/gateway/bot', undefined, 'GET');
       if (this.stopped || generation !== this.generation) return;
-      const url = new URL(gateway.url);
-      if (!['ws:', 'wss:'].includes(url.protocol)) throw new Error('QQBot 网关地址无效');
+      let url;
+      try { url = new URL(gateway.url); } catch { throw new Error('QQBot 网关地址无效'); }
+      if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password
+          || (url.protocol === 'ws:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname))) throw new Error('QQBot 网关地址无效');
       const ws = new WebSocket(url, { handshakeTimeout: 15000, maxPayload: 8 * 1024 * 1024 });
       this.socket = ws;
       this.acked = true;
@@ -97,6 +119,7 @@ export class QQBotClient extends OneBotClient {
         if (!current()) return;
         let packet;
         try { packet = JSON.parse(String(raw)); } catch { return; }
+        if (!packet || typeof packet !== 'object' || Array.isArray(packet)) return;
         if (packet.s !== undefined && packet.s !== null) this.sequence = packet.s;
         if (packet.op === 10) {
           clearInterval(this.heartbeatTimer);
@@ -117,6 +140,7 @@ export class QQBotClient extends OneBotClient {
           ws.close();
         } else if (packet.op === 0) {
           if (packet.t === 'READY') {
+            if (!packet.d || typeof packet.d.session_id !== 'string') { ws.terminate(); return; }
             this.sessionId = packet.d.session_id;
             this.selfInfo = { user_id: packet.d.user?.id || this.appId, nickname: packet.d.user?.username || 'QQBot' };
             clearTimeout(this.readyTimer);
@@ -157,7 +181,7 @@ export class QQBotClient extends OneBotClient {
     this.status(false);
   }
   dispatch(type, data) {
-    const modes = { GROUP_AT_MESSAGE_CREATE: ['group', 'group', data.group_openid], C2C_MESSAGE_CREATE: ['private', 'user', data.author?.user_openid], AT_MESSAGE_CREATE: ['group', 'channel', data.channel_id], MESSAGE_CREATE: ['group', 'channel', data.channel_id], DIRECT_MESSAGE_CREATE: ['private', 'dm', data.guild_id] };
+    const modes = { GROUP_AT_MESSAGE_CREATE: ['group', 'group', data.group_openid], GROUP_MESSAGE_CREATE: ['group', 'group', data.group_openid], C2C_MESSAGE_CREATE: ['private', 'user', data.author?.user_openid], AT_MESSAGE_CREATE: ['group', 'channel', data.channel_id], MESSAGE_CREATE: ['group', 'channel', data.channel_id], DIRECT_MESSAGE_CREATE: ['private', 'dm', data.guild_id] };
     const mode = modes[type];
     if (!mode) return;
     const [kind, scope, openid] = mode;
@@ -167,48 +191,109 @@ export class QQBotClient extends OneBotClient {
     remember(this.seen, mid, true, 3000);
     this.failures = 0;
     const userId = safeId(data.author?.member_openid || data.author?.user_openid || data.author?.id);
-    const content = String(data.content || '').replace(new RegExp(`<@!?${this.selfId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}>`, 'g'), '').trim();
+    const rawContent = String(data.content || '');
+    // AT 事件里的 <@…> 提及的就是机器人自己（member_openid 形态），学进集合。
+    const mentionIds = [...rawContent.matchAll(/<@!?([A-Za-z0-9_-]+)>/g)].map(m => m[1]);
+    if (type.includes('AT_MESSAGE')) for (const m of mentionIds) this.selfMentions.add(m);
+    const stripIds = [this.selfId, ...this.selfMentions].filter(Boolean)
+      .map(s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const content = stripIds.length
+      ? rawContent.replace(new RegExp(`<@!?(${stripIds.join('|')})>`, 'g'), '').trim()
+      : rawContent.trim();
     const segments = [];
-    if (type.includes('AT_MESSAGE')) segments.push({ type: 'at', data: { qq: this.selfId } });
+    // 全量模式（GROUP_MESSAGE_CREATE）下 @ 机器人不一定走 AT 事件，用 mentions 兜底判定。
+    const known = new Set([String(this.selfId || ''), ...[...this.selfMentions].map(String)]);
+    const mentionedSelf = (data.mentions || []).some(u => u?.bot
+      && [u.id, u.member_openid, u.user_openid].filter(Boolean).map(String).some(x => known.has(x)));
+    if (type.includes('AT_MESSAGE') || mentionedSelf) segments.push({ type: 'at', data: { qq: this.selfId } });
     segments.push({ type: 'text', data: { text: content } });
     for (const attachment of data.attachments || []) {
       if (/^image\//.test(attachment.content_type)) segments.push({ type: 'image', data: { url: String(attachment.url).startsWith('//') ? `https:${attachment.url}` : attachment.url } });
     }
     const event = { post_type: 'message', message_type: kind, self_id: this.selfId, user_id: kind === 'private' ? id : userId, group_id: kind === 'group' ? id : undefined, message_id: mid, time: Date.parse(data.timestamp) / 1000 || Date.now() / 1000, sender: { user_id: userId, nickname: data.author?.username || userId }, message: segments };
-    // Group/C2C replies require an unexpired received msg_id; no active push fallback.
+    // 群/C2C 仅允许绑定未过期入站 msg_id 的被动回复。
     remember(this.anchors, mid, { mid, id, kind, scope, openid: String(openid), receivedAt: Date.now(), seq: 0 });
     remember(this.messages, mid, event);
     remember(kind === 'group' ? this.groups : this.friends, id, id, 500);
-    this.onEvent(event);
+    Promise.resolve().then(() => this.onEvent(event)).then(accepted => {
+      if (accepted === false) { this.seen.delete(mid); this.status(this.connected, 'QQBot 入站事件处理失败'); }
+    }, () => { this.seen.delete(mid); this.status(this.connected, 'QQBot 入站事件处理失败'); });
+  }
+  parseTarget(kind, id) {
+    const match = /^qqbot_(group|user|channel|dm)_([A-Za-z0-9_-]{1,128})$/.exec(String(id));
+    if (!match || (kind === 'group') !== ['group', 'channel'].includes(match[1])) throw new Error('QQBot 会话 ID 无效，请使用连接页显示的完整 ID');
+    const scope = match[1];
+    const openid = match[2];
+    const path = scope === 'group' ? `/v2/groups/${openid}` : scope === 'user' ? `/v2/users/${openid}` : scope === 'channel' ? `/channels/${openid}` : `/dms/${openid}`;
+    return { scope, openid, path };
+  }
+  /** 找可用的被动回复锚点；无锚点返回 null，发送方必须拒绝发送。 */
+  anchorFor(kind, id, replyToMessageId) {
+    let anchor = null;
+    if (replyToMessageId) {
+      anchor = this.anchors.get(String(replyToMessageId));
+      if (!anchor || anchor.id !== id || anchor.kind !== kind) throw new Error('QQBot 引用回复的消息不属于本会话，请检查 replyToMessageId');
+    } else {
+      anchor = [...this.anchors.values()].reverse().find(a => a.id === id && a.kind === kind) || null;
+    }
+    if (!anchor) return null;
+    const ttl = anchor.scope === 'user' ? 3600000 : 300000;
+    // 达到被动回复次数上限时停止发送，不回落到主动消息。
+    const cap = anchor.scope === 'user' ? 4 : 5;
+    const expired = Date.now() - anchor.receivedAt > ttl;
+    const exhausted = ['group', 'user'].includes(anchor.scope) && anchor.seq >= cap;
+    if (expired || exhausted) {
+      if (replyToMessageId) throw new Error(`QQBot 被动回复${expired ? '窗口已过期' : `次数已达 ${cap} 次上限`}，请等待新的入站消息`);
+      return null;
+    }
+    return anchor;
+  }
+  /** 发消息并翻译平台错误码（主动消息权限/频控是最常见的两类拦截）。 */
+  async postMessage(path, body, mode) {
+    try {
+      return await this.request(`${path}/messages`, body);
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      if (message.includes('40034105')) {
+        throw new Error(`QQBot ${mode}失败：机器人没有主动消息权限（请让群主在 群设置 → 群机器人 中开启「主动推送消息」）`);
+      }
+      if (message.includes('40034100')) {
+        throw new Error(`QQBot ${mode}失败：主动消息超过频控（认证 60 条/分钟、未认证 30 条/分钟，单群 20 条/分钟、每群每天 1000 条），请稍后重试`);
+      }
+      throw error;
+    }
   }
   target(kind, id, replyToMessageId) {
-    const match = /^qqbot_(group|user|channel|dm)_([A-Za-z0-9_-]+)$/.exec(String(id));
-    if (!match || (kind === 'group') !== ['group', 'channel'].includes(match[1])) throw new Error('QQBot 会话 ID 无效，请使用连接页显示的完整 ID');
-    let anchor;
-    if (replyToMessageId) anchor = this.anchors.get(String(replyToMessageId));
-    else anchor = [...this.anchors.values()].reverse().find(a => a.id === id && a.kind === kind);
-    if (!anchor || anchor.id !== id || anchor.kind !== kind) throw new Error('QQBot 缺少本会话的回复上下文，请先向机器人发消息');
-    const ttl = anchor.scope === 'user' ? 3600000 : 300000;
-    if (Date.now() - anchor.receivedAt > ttl) throw new Error('QQBot 被动回复窗口已过期，请先向机器人发新消息');
-    if (['group', 'user'].includes(anchor.scope) && anchor.seq >= 5) throw new Error('QQBot 此消息的回复次数已达 5 次');
-    const path = anchor.scope === 'group' ? `/v2/groups/${anchor.openid}` : anchor.scope === 'user' ? `/v2/users/${anchor.openid}` : anchor.scope === 'channel' ? `/channels/${anchor.openid}` : `/dms/${anchor.openid}`;
+    const { path } = this.parseTarget(kind, id);
+    const anchor = this.anchorFor(kind, id, replyToMessageId);
+    if (!anchor) throw new Error('QQBot 缺少本会话的回复上下文，请先向机器人发消息');
     return { anchor, path };
   }
   async sendText(kind, id, text, options = {}) {
     if (options.atUserId) throw new Error('QQBot 此适配器不支持指定 @，请发送普通回复');
-    const { anchor, path } = this.target(kind, id, options.replyToMessageId);
-    const msg_seq = ++anchor.seq;
-    const data = await this.request(`${path}/messages`, { content: String(text), msg_id: anchor.mid, ...(['group','user'].includes(anchor.scope) ? { msg_type: 0, msg_seq } : {}) });
+    const { path } = this.parseTarget(kind, id);
+    const anchor = this.anchorFor(kind, id, options.replyToMessageId);
+    // 没有可用锚点时拒绝发送。
+    if (!anchor) throw new Error('QQBot passive reply window is unavailable');
+    const body = { content: String(text), msg_id: anchor.mid, ...(['group', 'user'].includes(anchor.scope) ? { msg_type: 0, msg_seq: ++anchor.seq } : {}) };
+    const data = await this.postMessage(path, body, '被动回复');
     return { message_id: data.id };
   }
   async sendImage(kind, id, url, options = {}) {
     if (!/^https?:\/\//i.test(url)) throw new Error('QQBot 官方媒体接口需要公网 HTTP(S) 图片 URL，不支持本地文件或 base64');
-    const { anchor, path } = this.target(kind, id, options.replyToMessageId);
-    if (!['group', 'user'].includes(anchor.scope)) throw new Error('QQBot 频道图片发送尚不支持');
+    const { scope, path } = this.parseTarget(kind, id);
+    if (!['group', 'user'].includes(scope)) throw new Error('QQBot 频道图片发送尚不支持');
     if (options.atUserId) throw new Error('QQBot 此适配器不支持指定 @');
-    const msg_seq = ++anchor.seq;
+    const anchor = this.anchorFor(kind, id, options.replyToMessageId);
+    if (!anchor) throw new Error('QQBot passive reply window is unavailable');
+    // Reserve before the asynchronous upload, so concurrent images cannot exceed
+    // the reply cap or reuse a msg_seq. Uncertain uploads are never retried.
+    const seq = ++anchor.seq;
     const uploaded = await this.request(`${path}/files`, { file_type: 1, url, srv_send_msg: false });
-    const data = await this.request(`${path}/messages`, { content: ' ', msg_type: 7, media: { file_info: uploaded.file_info }, msg_id: anchor.mid, msg_seq });
+    const ttl = scope === 'user' ? 3600000 : 300000;
+    if (Date.now() - anchor.receivedAt > ttl) throw new Error('QQBot passive reply window expired during upload');
+    const body = { content: ' ', msg_type: 7, media: { file_info: uploaded.file_info }, msg_id: anchor.mid, msg_seq: seq };
+    const data = await this.postMessage(path, body, '被动回复');
     return { message_id: data.id };
   }
   sendSticker(...args) { return this.sendImage(...args); }

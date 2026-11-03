@@ -1,6 +1,5 @@
 import { sendJson } from '../http.js';
-import { getPlan, listPlans } from '../plans.js';
-import { httpError, parseQueryInt } from '../contracts/http.js';
+import { httpError, requireObjectBody } from '../contracts/http.js';
 import { redactSecrets } from '../util.js';
 
 function safeQQOperation(operation) {
@@ -10,7 +9,8 @@ function safeQQOperation(operation) {
 }
 
 export function registerQQRoutes(router, deps) {
-  const { config, auth, tenants, hosting, qq, bili, relay, relayKeys, billing, backup, settings, audit, users, agent, customUpstreams, logger, db, readBody, tenantCtx, activeTenant, summary, listSummaries, updateAgentRelayConfig } = deps;
+  const { config, auth, tenants, hosting, qq, audit, db, readBody, tenantCtx, activeTenant } = deps;
+  const entries = deps.entries;
   // QQ protocol driver
   const qrView = (qrcode) => ({
     ...qrcode,
@@ -26,7 +26,7 @@ export function registerQQRoutes(router, deps) {
   });
   router.post('/api/tenants/:id/qq/switch', async (ctx) => {
     const { tenant } = activeTenant(ctx);
-    const body = await readBody(ctx);
+    const body = requireObjectBody(await readBody(ctx));
     const operation = await qq.startSwitch(tenant, {
       driver: body.driver, expectedRevision: body.expectedRevision,
       idempotencyKey: body.idempotencyKey, ...(body.uin === undefined ? {} : { uin: body.uin })
@@ -50,20 +50,24 @@ export function registerQQRoutes(router, deps) {
   });
   router.post('/api/tenants/:id/qq/qrcode/refresh', async (ctx) => {
     const { tenant } = activeTenant(ctx);
-    const body = await readBody(ctx);
+    const body = requireObjectBody(await readBody(ctx));
     const qrcode = await qq.refreshQrcode(tenant, { runtimeGeneration: body.runtimeGeneration });
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.qrcode.refresh', detail: { driver: qrcode.driver, runtimeGeneration: qrcode.runtimeGeneration }, ip: ctx.ip });
     sendJson(ctx.res, 200, { ok: true, qrcode: qrView(qrcode) });
   });
   router.post('/api/tenants/:id/qq/prepare', async (ctx) => {
     const { tenant } = activeTenant(ctx);
-    const body = await readBody(ctx);
+    const body = requireObjectBody(await readBody(ctx));
     const result = await qq.prepare(tenant, {
       driver: body.driver || body.kernel,
       uin: body.uin || body.expectedUin || body.qq,
       mode: body.mode,
       pmhqPort: body.pmhqPort,
-      authToken: body.authToken
+      authToken: body.authToken,
+      appId: body.appId,
+      appSecret: body.appSecret,
+      sandbox: body.sandbox,
+      intents: body.intents
     });
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.prepare', detail: { driver: result.driver, expectedUin: result.expectedUin }, ip: ctx.ip });
     sendJson(ctx.res, 200, { ok: true, qq: result, prepared: result.prepared || null });
@@ -71,15 +75,23 @@ export function registerQQRoutes(router, deps) {
 
   router.post('/api/tenants/:id/qq/start', async (ctx) => {
     const { tenant } = activeTenant(ctx);
-    let body = {};
-    try { body = await readBody(ctx); } catch { body = {}; }
+    const body = requireObjectBody(await readBody(ctx));
     const result = await qq.prepareAndStart(tenant, {
       driver: body.driver || body.kernel,
       uin: body.uin || body.expectedUin || body.qq,
       mode: body.mode,
       pmhqPort: body.pmhqPort,
-      authToken: body.authToken
+      authToken: body.authToken,
+      appId: body.appId,
+      appSecret: body.appSecret,
+      sandbox: body.sandbox,
+      intents: body.intents
     });
+    if (entries) {
+      const selected = qq.account(tenant.id);
+      entries.setEnabled(tenant, selected.driver === 'qqbot' ? 'qq_official' : 'qq_protocol', true);
+      await hosting.handleLinksChanged(tenant, { reason: 'qq.explicit-start' });
+    }
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.start', detail: { driver: result.driver }, ip: ctx.ip });
     sendJson(ctx.res, 200, { ok: true, qq: result });
   });
@@ -114,7 +126,7 @@ export function registerQQRoutes(router, deps) {
 
   router.put('/api/tenants/:id/qq/auth-token', async (ctx) => {
     const { tenant } = tenantCtx(ctx, 'operator');
-    const body = await readBody(ctx);
+    const body = requireObjectBody(await readBody(ctx));
     if (!Object.hasOwn(body, 'token')) throw httpError(400, 'TOKEN_REQUIRED', '缺少 token 字段');
     const result = await qq.setAuthToken(tenant, body.token);
     audit.record({ actorUserId: ctx.auth.user.id, tenantId: tenant.id, action: 'qq.auth-token.set', detail: { source: result.source }, ip: ctx.ip });
